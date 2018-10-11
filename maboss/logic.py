@@ -10,14 +10,17 @@ boolNot = pp.oneOf("! NOT")
 boolAnd = pp.oneOf("&& & AND")
 boolOr = pp.oneOf("|| | OR")
 boolXor = pp.oneOf("^ XOR")
-varName = (~boolAnd + ~boolOr + ~boolXor + ~boolNot + ~boolCst
-           + ~pp.Literal('Node') + pp.Word(pp.alphas, pp.alphanums+'_'))
+boolTest = pp.Literal("?")
+boolElse = pp.Literal(":")
+varName = (~boolAnd + ~boolOr + ~boolXor + ~boolNot + ~boolCst + ~boolTest + ~boolElse
+           + ~pp.Literal('Node') + pp.Word(pp.alphas+'$', pp.alphanums+'_'))
 varName.setParseAction(lambda token: token[0])
 lparen = '('
 rparen = ')'
 logTerm = (pp.Optional(boolNot)
            + (boolCst | varName | (lparen + logExp + rparen)))
-logAnd = logTerm + pp.ZeroOrMore(boolAnd + logTerm)
+logIFE = logTerm + pp.ZeroOrMore(boolTest + logTerm + boolElse + logTerm)
+logAnd = logIFE + pp.ZeroOrMore(boolAnd + logTerm)
 logOr = logAnd + pp.ZeroOrMore(boolOr + logAnd)
 logExp << pp.Combine(logOr + pp.ZeroOrMore(boolXor + logOr), adjacent=False, joinString=' ')
 

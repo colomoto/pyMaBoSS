@@ -99,12 +99,12 @@ class Network(dict):
     Network objects are in charge of carrying the initial states of each node.
     """
 
-    def __init__(self, nodeList):
+    def __init__(self, nodeList, booleanVariablesList):
         super().__init__({nd.name: nd for nd in nodeList})
         self.names = [nd.name for nd in nodeList]
         self.logicExp = {nd.name: nd.logExp for nd in nodeList}
 
-        if not logic._check_logic_defined(self.names,
+        if not logic._check_logic_defined(self.names + booleanVariablesList,
                                           [nd.logExp for nd in nodeList if nd.logExp]):
             raise ValueError("Some logic rule had unkown variables")
 
