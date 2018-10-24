@@ -103,8 +103,9 @@ class Network(dict):
         super().__init__({nd.name: nd for nd in nodeList})
         self.names = [nd.name for nd in nodeList]
         self.logicExp = {nd.name: nd.logExp for nd in nodeList}
+        self.booleanVariables = booleanVariablesList
 
-        if not logic._check_logic_defined(self.names + booleanVariablesList,
+        if not logic._check_logic_defined(self.names + self.booleanVariables,
                                           [nd.logExp for nd in nodeList if nd.logExp]):
             raise ValueError("Some logic rule had unkown variables")
 
@@ -118,7 +119,7 @@ class Network(dict):
 
     def copy(self):
         new_ndList = [self[name].copy() for name in self.names]
-        new_network = Network(new_ndList)
+        new_network = Network(new_ndList, self.booleanVariables)
         new_network._attribution = self._attribution.copy()
         new_network._initState = self._initState.copy()
         return new_network
