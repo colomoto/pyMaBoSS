@@ -122,7 +122,13 @@ class Result(object):
         """Return the content of fp.csv as a pandas dataframe."""
         if self.fptable is None:
             table_file = "{}/res_fp.csv".format(self._path)
-            self.fptable = pd.read_csv(table_file, "\t", skiprows=[0])
+
+            # Checks if fixed points are found
+            with open(table_file, 'r') as f:
+                size = sum(1 for _ in f)
+                if size > 1:
+                    self.fptable = pd.read_csv(table_file, "\t", skiprows=[0])
+
         return self.fptable
 
     def get_nodes_probtraj(self):
