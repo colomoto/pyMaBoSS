@@ -123,11 +123,11 @@ class Result(object):
         if self.fptable is None:
             table_file = "{}/res_fp.csv".format(self._path)
 
-            # Checks if fixed points are found
-            with open(table_file, 'r') as f:
-                size = sum(1 for _ in f)
-                if size > 1:
-                    self.fptable = pd.read_csv(table_file, "\t", skiprows=[0])
+            try:
+                self.fptable = pd.read_csv(table_file, "\t", skiprows=[0])
+
+            except pd.errors.EmptyDataError:
+                pass
 
         return self.fptable
 
