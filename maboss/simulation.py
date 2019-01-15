@@ -51,7 +51,7 @@ class Simulation(object):
     """
 
 
-    def __init__(self, nt, parameters=None, **kwargs):
+    def __init__(self, nt, parameters=collections.OrderedDict({}), **kwargs):
         """
         Initialize the Simulation object.
 
