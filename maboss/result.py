@@ -95,19 +95,20 @@ class Result(BaseResult):
 
 class StoredResult(BaseResult):
 
-    def __init__(self, path):
+    def __init__(self, path, prefix="res"):
         
         self._path = path
+        self._prefix = prefix
         BaseResult.__init__(self)
      
     def get_fp_file(self):
-        return os.path.join(self._path, "res_fp.csv")
+        return os.path.join(self._path, "%s_fp.csv" % self._prefix)
 
     def get_probtraj_file(self):
-        return os.path.join(self._path, "res_probtraj.csv")
+        return os.path.join(self._path, "%s_probtraj.csv" % self._prefix)
 
     def get_statdist_file(self):
-        return os.path.join(self._path, "res_statdist.csv")
+        return os.path.join(self._path, "%s_statdist.csv" % self._prefix)
 
 def _check_prefix(prefix):
     if type(prefix) is not str:
