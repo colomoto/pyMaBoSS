@@ -41,6 +41,7 @@ class BaseResult(object):
         if simul is not None:
             self.palette = simul.palette
         self.fptable = None
+        self.first_state_index = None
         self.states = None
         self.nodes = None
         self.state_probtraj = None
@@ -213,10 +214,21 @@ class BaseResult(object):
     def get_probtraj_dtypes(self):
         with open(self.get_probtraj_file(), 'r') as probtraj:
             cols = probtraj.readline().split("\t")
-            nb_states = int((len(cols) - 5) / 3)
 
-            dtype = {"Time": np.float64, "TH": np.float64, "ErrorTH": np.float64, "H": np.float64, "HD=0": np.float64,
-                     "State": np.str, "Proba": np.float64, "ErrorProba": np.float64}
+            first_state_index = 5
+            for i in range(first_state_index, len(cols)):
+                if cols[i].startswith("State"):
+                    first_state_index = i
+                    break
+
+            nb_states = int((len(cols) - first_state_index) / 3)
+
+            dtype = {"Time": np.float64, "TH": np.float64, "ErrorTH": np.float64, "H": np.float64, "HD=0": np.float64}
+            
+            for i in range(first_state_index-5):
+                dtype.update({("HD=%d" % (i+1)): np.float64})
+            
+            dtype.update({"State": np.str, "Proba": np.float64, "ErrorProba": np.float64})
             for i in range(1, nb_states):
                 dtype.update({"State.%d" % i: np.str, "Proba.%d" % i: np.float64, "ErrorProba.%d" % i: np.float64})
             return dtype
@@ -225,9 +237,9 @@ class BaseResult(object):
         if self.states is None:
             self.states = set()
             with Pool(processes=nb_cores) as pool:
-                self.states = self.states.union(*(pool.map(
+                self.states = self.states.union(*(pool.starmap(
                     get_state_from_line, 
-                    [df.iloc[i, :] for i in df.index]
+                    [(df.iloc[i, :], self.get_first_state_index(df)) for i in df.index]
                 )))
         return self.states
 
@@ -251,13 +263,25 @@ class BaseResult(object):
                         self.nodes.add(nd)
         return self.nodes
 
+    def get_first_state_index(self, df):
+        """Return the indice of the first column being a state
+           By default it's five, but if we specify some refstate,
+           it'll be more.
+        """
+        if self.first_state_index is None:
+            for i in range(5, len(df.columns)):
+                if df.columns[i].startswith("State"):
+                    self.first_state_index = i
+                    break
+        return self.first_state_index
+
     def make_trajectory_table(self, df):
         """Creates a table giving the probablilty of each state a every moment.
 
             The rows are indexed by time points and the columns are indexed by
             state name.
         """
-        cols = range(5, len(df.columns), 3)
+        cols = range(self.get_first_state_index(df), len(df.columns), 3)
         states = self.get_states(df, cols)
         time_points = np.asarray(df['Time'])
         time_table = pd.DataFrame(
@@ -278,7 +302,7 @@ class BaseResult(object):
             The rows are indexed by time points and the columns are indexed by
             state name.
         """
-        cols = range(5, len(df.columns), 3)
+        cols = range(self.get_first_state_index(df), len(df.columns), 3)
         states = self.get_states(df, cols)
         time_points = np.asarray(df['Time'])
         time_table = pd.DataFrame(
@@ -299,7 +323,7 @@ class BaseResult(object):
             The rows are indexed by time points and the columns are indexed by
             state name.
         """
-        cols = range(5, len(df.columns), 3)
+        cols = range(self.get_first_state_index(df), len(df.columns), 3)
         states = self.get_states_parallel(df, nb_cores)
     
         with Pool(processes=nb_cores) as pool:
@@ -313,7 +337,7 @@ class BaseResult(object):
 
     def make_node_proba_table(self, df):
         """Same as make_trajectory_table but with nodes instead of states."""
-        cols = range(5, len(df.columns), 3)
+        cols = range(self.get_first_state_index(df), len(df.columns), 3)
         nodes = self.get_nodes(df, cols)
         time_points = np.asarray(df['Time'])
         time_table = pd.DataFrame(
@@ -329,7 +353,7 @@ class BaseResult(object):
 
     def make_node_proba_error_table(self, df):
         """Same as make_trajectory_table but with nodes instead of states."""
-        cols = range(5, len(df.columns), 3)
+        cols = range(self.get_first_state_index(df), len(df.columns), 3)
         nodes = self.get_nodes(df, cols)
         time_points = np.asarray(df['Time'])
         time_table = pd.DataFrame(
@@ -362,9 +386,9 @@ def make_trajectory_line_parallel(row, states, cols):
             df[state][row["Time"]] = row[c+1]
     return df
 
-def get_state_from_line(line):
+def get_state_from_line(line, index_first_state):
     t_states = set()
-    for c in range(5, len(line), 3):
+    for c in range(index_first_state, len(line), 3):
         if type(line[c]) is str:  # Otherwise it is nan
             t_states.add(line[c])
     return t_states
