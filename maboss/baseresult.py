@@ -69,7 +69,7 @@ class BaseResult(object):
         if error:
             table_error = self.get_states_probtraj_errors()
             if prob_cutoff is not None:
-                table_error = table_error[table.columns]
+                table_error = table_error.loc[:, table.columns]
 
         if until:
             table = table[table.index <= until]
