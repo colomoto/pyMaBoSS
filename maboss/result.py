@@ -19,29 +19,43 @@ import subprocess
 
 class Result(BaseResult):
 
-    def __init__(self, simul, command=None):
+    def __init__(self, simul, command=None, workdir=None, overwrite=False):
         BaseResult.__init__(self, simul, command)
-        self._path = tempfile.mkdtemp()
-        cfg_fd, self._cfg = tempfile.mkstemp(dir=self._path, suffix='.cfg')
-        os.close(cfg_fd)
-        
-        bnd_fd, self._bnd = tempfile.mkstemp(dir=self._path, suffix='.bnd')
-        os.close(bnd_fd)
-        
-        with ExitStack() as stack:
-            bnd_file = stack.enter_context(open(self._bnd, 'w'))
-            cfg_file = stack.enter_context(open(self._cfg, 'w'))
-            simul.print_bnd(out=bnd_file)
-            simul.print_cfg(out=cfg_file)
 
-        maboss_cmd = simul.get_maboss_cmd()
-        if command:
-            maboss_cmd = command
+        self.workdir = workdir
+        if workdir is None:
+            self._path = tempfile.mkdtemp()
+        else:
+            self._path = workdir
+            if os.path.exists(self._path) and overwrite:
+                shutil.rmtree(self._path)
+                os.mkdir(self._path)
+            
+            elif not os.path.exists(self._path):
+                os.mkdir(self._path)
 
-        self._err = subprocess.call([maboss_cmd, "-c", self._cfg, "-o",
-                                     self._path+'/res', self._bnd])
-        if self._err:
-            print("Error, MaBoSS returned non 0 value", file=stderr)
+        if workdir is None or overwrite:
+
+            cfg_fd, self._cfg = tempfile.mkstemp(dir=self._path, suffix='.cfg')
+            os.close(cfg_fd)
+            
+            bnd_fd, self._bnd = tempfile.mkstemp(dir=self._path, suffix='.bnd')
+            os.close(bnd_fd)
+            
+            with ExitStack() as stack:
+                bnd_file = stack.enter_context(open(self._bnd, 'w'))
+                cfg_file = stack.enter_context(open(self._cfg, 'w'))
+                simul.print_bnd(out=bnd_file)
+                simul.print_cfg(out=cfg_file)
+
+            maboss_cmd = simul.get_maboss_cmd()
+            if command:
+                maboss_cmd = command
+
+            self._err = subprocess.call([maboss_cmd, "-c", self._cfg, "-o",
+                                        self._path+'/res', self._bnd])
+            if self._err:
+                print("Error, MaBoSS returned non 0 value", file=stderr)
 
     def get_fp_file(self):
         return "{}/res_fp.csv".format(self._path)
@@ -89,7 +103,8 @@ class Result(BaseResult):
             shutil.copy(self._path + '/' + f, prefix)
 
     def __del__(self):
-        shutil.rmtree(self._path)
+        if self.workdir is None:
+            shutil.rmtree(self._path)
 
 
 

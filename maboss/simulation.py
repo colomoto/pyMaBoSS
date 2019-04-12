@@ -82,6 +82,9 @@ class Simulation(object):
         self.mutationTypes = {}
         self.refstate = {}
 
+        self.workdir = None
+        self.overwrite = False
+
     def update_parameters(self, **kwargs):
         """Add elements to ``self.param``."""
         for p in kwargs:
@@ -209,7 +212,7 @@ class Simulation(object):
         :param command: specify a MaBoSS command, default to None for automatic selection
         :rtype: :py:class:`Result`
         """
-        return Result(self, command)
+        return Result(self, command, self.workdir, self.overwrite)
 
 
     def mutate(self, node, state):
@@ -287,6 +290,10 @@ class Simulation(object):
 
     def get_mutations(self):
         return self.mutationTypes
+
+    def set_workdir(self, path, overwrite=False):
+        self.workdir = path
+        self.overwrite = overwrite
 
 def _make_mutant_node(nd):
     """Create a new logic for mutation that can be activated from .cfg file."""

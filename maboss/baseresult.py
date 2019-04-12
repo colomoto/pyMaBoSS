@@ -30,7 +30,7 @@ class BaseResult(object):
     in the working directory.
     """
 
-    def __init__(self, simul=None, command=None):
+    def __init__(self, simul=None, command=None, workdir=None):
         
         self._trajfig = None
         self._piefig = None
