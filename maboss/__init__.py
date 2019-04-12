@@ -4,7 +4,7 @@ from .result import *
 from .gsparser import load
 from .server import MaBoSSClient
 from .upp import UpdatePopulation
-from .ensemble import EnsembleResult
+from .ensemble import EnsembleResult, Ensemble
 
 from colomoto_jupyter import IN_IPYTHON
 if IN_IPYTHON:
