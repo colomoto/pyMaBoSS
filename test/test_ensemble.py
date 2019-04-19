@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 from unittest import TestCase
-from maboss import load, EnsembleResult
+from maboss import load, Ensemble
 from os.path import dirname, join
 
 
@@ -13,6 +13,7 @@ class TestEnsembleMaBoSS(TestCase):
 
 	def test_ensemble(self):
 
-		results = EnsembleResult(join(dirname(__file__), "ensemble"), join(dirname(__file__), "simple_config.cfg"))
+		ensemble_model = Ensemble(join(dirname(__file__), "ensemble"), join(dirname(__file__), "simple_config.cfg"))
+		results = ensemble_model.run()
 		results.get_fptable()
 		results.get_states_probtraj()
