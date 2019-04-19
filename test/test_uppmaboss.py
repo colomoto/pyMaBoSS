@@ -14,8 +14,8 @@ class TestUpPMaBoSS(TestCase):
 	def test_uppmaboss(self):
 
 		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
-		uppmaboss_sim = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"), "WT")
-
+		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
+		uppmaboss_sim = uppmaboss_model.run('WT')
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
 			1.0, 0.6899230000000027, 0.6332961899289637, 0.6106773832094052, 0.596996988470672, 0.5764113383141323, 
@@ -27,7 +27,8 @@ class TestUpPMaBoSS(TestCase):
 			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio/1e-6)
 		
 		# Now again, but with save results
-		uppmaboss_sim = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"), "WT")
+		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
+		uppmaboss_sim = uppmaboss_model.run('WT')
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		
 		for i, pop_ratio in enumerate(pop_ratios):
