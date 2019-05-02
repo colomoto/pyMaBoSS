@@ -15,7 +15,7 @@ else:
     from contextlib import ExitStack
 from os.path import isfile
 import pyparsing as pp
-from .logic import varName, logExp
+from .logic import varName
 from .network import Node, Network
 from .simulation import Simulation
 externVar = pp.Suppress('$') + ~pp.White() + varName
@@ -118,11 +118,7 @@ def load(bnd_filename, cfg_filename):
 
         nodes = _read_bnd(bnd_content, is_internal_list)
 
-        # Some boolean variables can be defined in the .cfg and used in the .bnd
-        # We need to know about them when checking the logical formulae.
-        boolean_variables = ["$%s" % var for var, value in variables.items() if value in ['TRUE', 'FALSE']]
-
-        net = Network(nodes, boolean_variables)
+        net = Network(nodes)
         for istate in istate_list:
             net.set_istate(istate, istate_list[istate])
         for v in variables:

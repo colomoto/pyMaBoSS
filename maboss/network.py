@@ -76,12 +76,8 @@ class Node(object):
         """
         if not string:
             self.logExp = None
-        if logic._check_logic_syntax(string):
-            self.logExp = string
         else:
-            print("Warning, syntax error: %s" % string, file=stderr)
-            print("logExp set to None", file=stderr)
-            self.logExp = None
+            self.logExp = string
 
     def __str__(self):
         rt_up_str = str(self.rt_up)
@@ -111,7 +107,7 @@ class Network(collections.OrderedDict):
     Network objects are in charge of carrying the initial states of each node.
     """
 
-    def __init__(self, nodeList, booleanVariablesList):
+    def __init__(self, nodeList):
         if version_info[0] < 3:
             super(Network, self).__init__([(nd.name, nd) for nd in nodeList])
         else:
@@ -119,11 +115,6 @@ class Network(collections.OrderedDict):
 
         self.names = [nd.name for nd in nodeList]
         self.logicExp = {nd.name: nd.logExp for nd in nodeList}
-        self.booleanVariables = booleanVariablesList
-
-        if not logic._check_logic_defined(self.names + self.booleanVariables,
-                                          [nd.logExp for nd in nodeList if nd.logExp]):
-            raise ValueError("Some logic rule had unkown variables")
 
         # _attribution gives for each node the list of node with which it is
         # binded.
@@ -152,7 +143,7 @@ class Network(collections.OrderedDict):
 
     def copy(self):
         new_ndList = [self[name].copy() for name in self.names]
-        new_network = Network(new_ndList, self.booleanVariables)
+        new_network = Network(new_ndList)
         new_network._attribution = self._attribution.copy()
         new_network._initState = self._initState.copy()
         return new_network
