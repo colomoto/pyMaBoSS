@@ -85,6 +85,10 @@ class Simulation(object):
         self.workdir = None
         self.overwrite = False
 
+        errors = self.check()
+        if len(errors) > 0:
+            print(errors)
+
     def update_parameters(self, **kwargs):
         """Add elements to ``self.param``."""
         for p in kwargs:
@@ -125,7 +129,7 @@ class Simulation(object):
 
             messages = []
             if len(t_stderr) != 0:
-                messages = list(set(t_stderr.decode().split("\n")))
+                messages = [mess.replace("MaBoSS: ", "") for mess in list(set(t_stderr.decode().split("\n"))) if mess != '']
 
             return messages
 
