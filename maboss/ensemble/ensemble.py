@@ -32,7 +32,7 @@ class Ensemble(object):
         self.istates = collections.OrderedDict()
         self.outputs = collections.OrderedDict()
         self.mutations = collections.OrderedDict()
-
+        self.individual_results = False
         self._cfg = os.path.join(self._path, "model.cfg")
 
         if cfg_filename is not None:
@@ -59,11 +59,13 @@ class Ensemble(object):
                 # Here we update the existing values
                 self.mutations.update(kwargs[p])
 
+            elif p == "individual_results":
+                self.individual_results = kwargs[p]
         self.write_cfg()
         self.write_mutations()
 
     def run(self):
-        return EnsembleResult(self.models_files, self._cfg)
+        return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results)
 
     def read_nodes(self, filename):
 

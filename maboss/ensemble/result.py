@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from ..results.baseresult import BaseResult
+from ..results.storedresult import StoredResult
 import os
 import tempfile
 import subprocess
@@ -11,17 +12,26 @@ import shutil
 
 class EnsembleResult(BaseResult):
 
-    def __init__(self, models_files, cfg_filename, prefix="res"):
-
+    def __init__(self, models_files, cfg_filename, prefix="res", individual_results=False):
+  
         self.models_files = models_files
         self._cfg = cfg_filename
         self._path = tempfile.mkdtemp()
-        self.prefix = prefix
         BaseResult.__init__(self, self._path)
+        self.prefix = prefix
 
         maboss_cmd = "MaBoSS"
-        cmd_line = [maboss_cmd, "-c", self._cfg,'--ensemble',  "-o", self._path+'/'+self.prefix] + self.models_files
-        
+
+        options = ["--ensemble"]
+        if individual_results:
+            options.append("--save-individual")
+
+        cmd_line = [
+            maboss_cmd, "-c", self._cfg
+        ] + options + [
+            "-o", self._path+'/'+self.prefix
+        ] + self.models_files
+
         res = subprocess.Popen(
             cmd_line,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -44,6 +54,10 @@ class EnsembleResult(BaseResult):
         
     def get_statdist_file(self):
         return os.path.join(self._path, "%s_statdist.csv" % self.prefix)
+
+    def getResultsFromModel(self, model):
+        return StoredResult(self._path, self.prefix + "_model_" + str(model))
+
 
     def __del__(self):
         shutil.rmtree(self._path)
