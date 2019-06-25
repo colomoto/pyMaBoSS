@@ -52,3 +52,17 @@ class TestLoadModels(TestCase):
 		for i, proba in enumerate(probas):
 			self.assertAlmostEqual(proba, expected_probas[i], delta=proba*1e-6)
 			
+	def test_load_multiple_cfgs(self):
+
+		sim = load(join(dirname(__file__), "reprod_all.bnd"))
+
+		sim2 = load(
+			join(dirname(__file__), "p53_Mdm2.bnd"), 
+			join(dirname(__file__), "p53_Mdm2_runcfg.cfg")
+		)
+
+		sim3 = load(
+			join(dirname(__file__), "cellcycle.bnd"),
+			join(dirname(__file__), "cellcycle_runcfg.cfg"),
+			join(dirname(__file__), "cellcycle_runcfg-thread_1.cfg")
+		)
