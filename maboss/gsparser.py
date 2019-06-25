@@ -96,32 +96,22 @@ cfg_grammar = pp.ZeroOrMore(cfg_decl)
 cfg_grammar.ignore('//' + pp.restOfLine)
 
 
-def load(bnd_filename, cfg_filename=None, cfg_filenames=[]):
+def load(bnd_filename, cfg_filename):
     """Loads a network from a MaBoSS format file.
 
     :param str bnd_filename: Network file
     :param str cfg_filename: Configuraton file
-    :param list cfg_filenames: List of configuration files
     :keyword str simulation_name: name of the returned :py:class:`.Simulation` object
     :rtype: :py:class:`.Simulation`
     """
-    assert cfg_filename is not None or len(cfg_filenames) > 0, "need at list one cfg file"
     assert bnd_filename.lower().endswith(".bnd"), "wrong extension for bnd file"
-    assert cfg_filename is None or cfg_filename.lower().endswith(".cfg"), "wrong extension for cfg file"
+    assert cfg_filename.lower().endswith(".cfg"), "wrong extension for cfg file"
 
     with ExitStack() as stack:
         bnd_file = stack.enter_context(open(bnd_filename, 'r'))
+        cfg_file = stack.enter_context(open(cfg_filename, 'r'))
         bnd_content = bnd_file.read()
-
-        cfg_content = ""
-        if cfg_filename is not None:
-            cfg_file = stack.enter_context(open(cfg_filename, 'r'))
-            cfg_content = cfg_file.read()
-
-        elif len(cfg_filenames) > 0:
-            for t_cfg_filename in cfg_filenames:
-                cfg_file = stack.enter_context(open(t_cfg_filename, 'r'))
-                cfg_content += cfg_file.read()
+        cfg_content = cfg_file.read()
 
         (variables, parameters, is_internal_list,
          istate_list, refstate_list) = _read_cfg(cfg_content)
