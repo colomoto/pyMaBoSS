@@ -96,7 +96,7 @@ cfg_grammar = pp.ZeroOrMore(cfg_decl)
 cfg_grammar.ignore('//' + pp.restOfLine)
 
 
-def load(bnd_filename, cfg_filename):
+def load(bnd_filename, *cfg_filenames):
     """Loads a network from a MaBoSS format file.
 
     :param str bnd_filename: Network file
@@ -105,13 +105,18 @@ def load(bnd_filename, cfg_filename):
     :rtype: :py:class:`.Simulation`
     """
     assert bnd_filename.lower().endswith(".bnd"), "wrong extension for bnd file"
-    assert cfg_filename.lower().endswith(".cfg"), "wrong extension for cfg file"
+
+    if not cfg_filenames: 
+        cfg_filenames = [".".join([".".join(bnd_filename.split(".")[:-1]), "cfg"])]
 
     with ExitStack() as stack:
         bnd_file = stack.enter_context(open(bnd_filename, 'r'))
-        cfg_file = stack.enter_context(open(cfg_filename, 'r'))
         bnd_content = bnd_file.read()
-        cfg_content = cfg_file.read()
+
+        cfg_content = ""
+        for cfg_filename in tuple(cfg_filenames):
+            cfg_file = stack.enter_context(open(cfg_filename, 'r'))
+            cfg_content += cfg_file.read()
 
         (variables, parameters, is_internal_list,
          istate_list, refstate_list) = _read_cfg(cfg_content)
