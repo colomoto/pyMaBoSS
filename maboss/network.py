@@ -172,23 +172,18 @@ class Network(collections.OrderedDict):
         
         >>> my_network.set_istate('node1', [0.3, 0.7]) # node1 will have a probability of 0.7 of being up
         >>> my_network.set_istate(['node1', 'node2'], {(0, 0): 0.4, (1, 0): 0.6, (0, 1): 0}) # node1 and node2 can never be both up because (1, 1) is not in the dictionary
-        """
+        """ 
         if not (isinstance(nodes, list) or isinstance(nodes, tuple)):
             if not len(probDict) in [1, 2]:
                 print("Error, must provide a list or dictionary of size 1 or 2",
                       file=stderr)
                 return
 
-            if (probDict[0] < 0 or probDict[1] < 0
-                  or not probDict[0] + probDict[1] == 1):
-                print("Error, bad value for probabilites", file=stderr)
-                return
-            else:
-                if isinstance(self._attribution[nodes], tuple):
-                    self._erase_binding(nodes)
-                self._initState[nodes] = {0: probDict[0], 1: probDict[1]}
+            if isinstance(self._attribution[nodes], tuple):
+                self._erase_binding(nodes)
+            self._initState[nodes] = {0: probDict[0], 1: probDict[1]}
 
-        elif _testStateDict(probDict, len(nodes), warnings):
+        elif _testStateDict(probDict, len(nodes)):
             for node in nodes:
                 if isinstance(self._attribution[node], tuple):
                     if warnings:
@@ -251,7 +246,7 @@ class Network(collections.OrderedDict):
             self[nd].is_internal = nd not in output_list
 
 
-def _testStateDict(stDict, nbState, warnings=True):
+def _testStateDict(stDict, nbState):
     """Check if stateDict is a good parameter for set_istate."""
     def goodTuple(t):
         return len(t) == nbState and all(x == 0 or x == 1 for x in t)
@@ -261,14 +256,5 @@ def _testStateDict(stDict, nbState, warnings=True):
         print("Error, not all keys are good tuples of length %s" % nbState,
               file=stderr)
         return False
-    elif not all(x >= 0 for x in stDict.values()):
-        print("Error, the given values must be nonegative",
-              file=stderr)
-        return False
-    elif (1.0-sum(stDict.values())) > 1e-8:
-        if warnings:
-            print("Warning: the given values should sum up to 1",
-              file=stderr)
-        return True
     else:
         return True
