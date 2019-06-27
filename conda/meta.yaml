@@ -27,6 +27,7 @@ requirements:
     - python
     - matplotlib
     - ipywidgets
+    - scikit-learn
 
 about:
   home: https://github.com/colomoto/pyMaBoSS
