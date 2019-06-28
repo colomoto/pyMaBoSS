@@ -69,7 +69,7 @@ stateSet = (pp.Suppress('[') + pp.Group(pp.delimitedList(intPart))
             + pp.Suppress(']'))
 stateSet.setParseAction(lambda token: list(token))
 
-stateProb = pp.Word(pp.alphanums+'()+-*/$')('proba') + stateSet("states")
+stateProb = pp.Word(pp.alphanums+'()+-*/$.')('proba') + stateSet("states")
 stateProb.setParseAction(lambda token: (token.proba, token.states))
 
 istate_decl = pp.Group(pp.Suppress('[') + pp.delimitedList(varName)("nodes")
