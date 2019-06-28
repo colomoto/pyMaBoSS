@@ -29,5 +29,6 @@ if __name__ == "__main__":
 
     workdir = splitext(cfg_file)[0]
     maboss_model = load(bnd_file, cfg_file)
-    simulation = UpdatePopulation(maboss_model, upp_file, workdir, verbose=True)
-    simulation.save(workdir)
+    simulation = UpdatePopulation(maboss_model, upp_file, verbose=True)
+    result = simulation.run(workdir=workdir)
+    result.save(workdir)
