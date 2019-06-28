@@ -10,7 +10,7 @@ else:
     from contextlib import ExitStack
 import glob
 from ..result import StoredResult
-
+import shutil
 
 class UpdatePopulationResults:
     def __init__(self, uppModel, verbose=False, workdir=None, overwrite=False, previous_run=None):
@@ -23,7 +23,7 @@ class UpdatePopulationResults:
         self.overwrite = overwrite
         self.pop_ratio = uppModel.pop_ratio
 
-        if os.path.exists(workdir):
+        if os.path.exists(workdir) and not self.overwrite:
             # Restoring
             self.results = [None] * (self.uppModel.step_number + 1)
 
@@ -41,6 +41,8 @@ class UpdatePopulationResults:
                 _get_next_condition_from_trajectory(previous_run, self.uppModel.model)
 
         else:
+            if self.overwrite:
+                shutil.rmtree(workdir)
             os.makedirs(workdir)
             if previous_run:
                 # Load the previous run final state
