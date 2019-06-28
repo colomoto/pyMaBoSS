@@ -41,7 +41,7 @@ class UpdatePopulationResults:
                 _get_next_condition_from_trajectory(previous_run, self.uppModel.model)
 
         else:
-            if self.overwrite:
+            if self.overwrite and os.path.exists(workdir):
                 shutil.rmtree(workdir)
             os.makedirs(workdir)
             if previous_run:
@@ -265,9 +265,9 @@ def varDef_Upp(update_line, prob_traj_list):
 		lhs = lhs.replace("p[", "").replace("]", "").replace("(", "").replace(")", "")
 		rhs = rhs.replace("[", "").replace("]", "").replace("(", "").replace(")", "")
 
-		node_list = lhs.split(",")
-		boolVal_list = rhs.split(",") 
-		
+		node_list = [token.strip() for token in lhs.split(",")]
+		boolVal_list = [token.strip() for token in rhs.split(",")]
+
 		if len(node_list) != len(boolVal_list):
 			print("Wrong probability definitions for \"%s\"" % match)
 			exit()
