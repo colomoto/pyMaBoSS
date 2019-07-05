@@ -15,9 +15,9 @@ import pandas
 import matplotlib.pyplot as plt 
 
 class EnsembleResult(BaseResult):
-
-    def __init__(self, models_files, cfg_filename, prefix="res", individual_results=False):
   
+    def __init__(self, models_files, cfg_filename, prefix="res", individual_results=False, random_sampling=False):
+
         self.models_files = models_files
         self._cfg = cfg_filename
         self._path = tempfile.mkdtemp()
@@ -29,6 +29,9 @@ class EnsembleResult(BaseResult):
         options = ["--ensemble"]
         if individual_results:
             options.append("--save-individual")
+
+        if random_sampling:
+            options.append("--random-sampling")
 
         cmd_line = [
             maboss_cmd, "-c", self._cfg

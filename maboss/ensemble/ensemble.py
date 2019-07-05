@@ -33,6 +33,7 @@ class Ensemble(object):
         self.outputs = collections.OrderedDict()
         self.mutations = collections.OrderedDict()
         self.individual_results = False
+        self.random_sampling = False
         self._cfg = os.path.join(self._path, "model.cfg")
 
         if cfg_filename is not None:
@@ -61,11 +62,13 @@ class Ensemble(object):
 
             elif p == "individual_results":
                 self.individual_results = kwargs[p]
+            elif p == "random_sampling":
+                self.random_sampling = kwargs[p]
         self.write_cfg()
         self.write_mutations()
 
     def run(self):
-        return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results)
+        return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
 
     def read_nodes(self, filename):
 
