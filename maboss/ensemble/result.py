@@ -24,6 +24,7 @@ class EnsembleResult(BaseResult):
         BaseResult.__init__(self, self._path)
         self.prefix = prefix
         self.asymptotic_probtraj_distribution = None
+        self.asymptotic_nodes_probtraj_distribution = None
         maboss_cmd = "MaBoSS"
 
         options = ["--ensemble"]
@@ -87,6 +88,19 @@ class EnsembleResult(BaseResult):
             self.asymptotic_probtraj_distribution = pandas.concat(tables, axis=1, sort=False)
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
         return self.asymptotic_probtraj_distribution
+
+    def getSteadyStatesNodesDistribution(self):
+        if self.asymptotic_nodes_probtraj_distribution is None:
+
+            table = self.getSteadyStatesDistribution()
+            nodes = get_nodes(table.index.values)
+            with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
+                self.asymptotic_nodes_probtraj_distribution = pandas.concat(
+                    pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.columns]), 
+                    sort=False, axis=1
+                )
+
+        return self.asymptotic_nodes_probtraj_distribution
 
     def plotSteadyStatesDistribution(self):
 
@@ -158,3 +172,24 @@ def getSteadyStatesSingleDistribution(result, i):
         table_states.rename(index=rename_index, inplace=True)
         table_states.sort_values(by=('Proba #%d' % i), inplace=True)
         return table_states
+
+def get_nodes(states):
+    nodes = set()
+    for s in states:
+        if s != '<nil>':
+            nds = s.split(' -- ')
+            for nd in nds:
+                nodes.add(nd)
+    return nodes
+
+def getSteadyStatesNodesSingleDistribution(table, index, nodes):
+    ntable = pandas.DataFrame(np.zeros((len(nodes), 1)), index=nodes, columns=[index])
+
+    for i, row in enumerate(table.iterrows()):
+        state = table.index[i]
+        if state != "<nil>":
+            t_nodes = state.split(" -- ")
+            for node in t_nodes:
+                ntable.loc[node, index] += table.loc[state, index]
+                
+    return ntable
