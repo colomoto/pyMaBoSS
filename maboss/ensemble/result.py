@@ -109,9 +109,19 @@ class EnsembleResult(BaseResult):
         mat = np.transpose(new_table.values)
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
-        # plot principal components
-        # X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
+        self.plotPCA(pca, X_pca, arrows_raw, new_table)
+        
+    def plotSteadyStatesNodesDistribution(self):
+        pca = PCA()
+        new_table = self.getSteadyStatesNodesDistribution()
+        mat = np.transpose(new_table.values)
+        pca_res = pca.fit(mat)
+        X_pca = pca.transform(mat)
+        arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
+        self.plotPCA(pca, X_pca, arrows_raw, new_table)
+ 
+    def plotPCA(self, pca, X_pca, arrows_raw, new_table): 
         fig = plt.figure(figsize=(15, 10), dpi=500)
         plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.5)
         plt.xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
