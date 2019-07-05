@@ -101,7 +101,7 @@ class Ensemble(object):
             res += "[%s].istate = %g[0], %g[1];\n" % (node, istate[0], istate[1])
 
         for node in self.nodes:
-            if len(self.outputs) > 0 and (node in self.outputs.keys() and self.outputs[node]):
+            if len(self.outputs) == 0 or (node in self.outputs.keys() and self.outputs[node]):
                 res += "%s.is_internal = FALSE;\n" % node
             else:
                 res += "%s.is_internal = TRUE;\n" % node
