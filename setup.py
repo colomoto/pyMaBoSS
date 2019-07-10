@@ -7,7 +7,7 @@ if version_info[0] < 3:
     optional_contextlib.append("contextlib2")
 
 setup(name='maboss',
-    version="0.7.3",
+    version="0.7.4",
     packages=find_packages(exclude=["test"]),
     py_modules = ["maboss_setup"],
     author="Nicolas Levy",
