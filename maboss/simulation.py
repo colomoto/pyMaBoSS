@@ -120,7 +120,7 @@ class Simulation(object):
                 self.print_cfg(out=cfg_file)
 
             proc = subprocess.Popen(
-                ["MaBoSS", "--check", "-c", cfg_path, bnd_path],
+                [self.get_maboss_cmd(), "--check", "-c", cfg_path, bnd_path],
                 cwd=path, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             (t_stdout, t_stderr) = proc.communicate()
