@@ -112,18 +112,32 @@ class EnsembleResult(BaseResult):
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
         self.plotPCA(pca, X_pca, arrows_raw, new_table)
         
-    def plotSteadyStatesNodesDistribution(self):
+    def plotSteadyStatesNodesDistribution(self, compare=None):
+
+        
         pca = PCA()
         new_table = self.getSteadyStatesNodesDistribution()
         mat = np.transpose(new_table.values)
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, arrows_raw, new_table)
- 
-    def plotPCA(self, pca, X_pca, arrows_raw, new_table): 
+
+        if compare is not None:
+            compare_table = compare.getSteadyStatesNodesDistribution()
+            c_mat = np.transpose(compare_table.values)
+            c_pca = pca.transform(c_mat)
+            self.plotPCA(pca, X_pca, arrows_raw, new_table, compare=c_pca)
+        else:
+            self.plotPCA(pca, X_pca, arrows_raw, new_table)
+
+
+    def plotPCA(self, pca, X_pca, arrows_raw, new_table, compare=None): 
         fig = plt.figure(figsize=(15, 10), dpi=500)
-        plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.5)
+        plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
+
+        if compare is not None:
+            plt.scatter(compare[:, 0], compare[:, 1], alpha=0.1)
+
         plt.xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
         plt.ylabel("PC{} ({}%)".format(2, round(pca.explained_variance_ratio_[1] * 100, 2)))
         # for i, txt in enumerate(new_table.columns):
@@ -131,16 +145,29 @@ class EnsembleResult(BaseResult):
         
         max_x_arrows = max(arrows_raw[:, 0])
         min_x_arrows = min(arrows_raw[:, 0])
-        max_x_values = max(X_pca[:, 0])
-        min_x_values = min(X_pca[:, 0])
+
+        if compare is None:
+            max_x_values = max(X_pca[:, 0])
+            min_x_values = min(X_pca[:, 0])
+        else:
+            max_x_values = max(max(X_pca[:, 0]), max(compare[:, 0]))
+            min_x_values = min(min(X_pca[:, 0]), min(compare[:, 0]))
+
+
         min_x_ratio = min_x_values / min_x_arrows
         max_x_ratio = max_x_values / max_x_arrows
         x_ratio = min(min_x_ratio, max_x_ratio)
         
         max_y_arrows = max(arrows_raw[:, 1])
         min_y_arrows = min(arrows_raw[:, 1])
-        max_y_values = max(X_pca[:, 1])
-        min_y_values = min(X_pca[:, 1])
+
+        if compare is None:
+            max_y_values = max(X_pca[:, 1])
+            min_y_values = min(X_pca[:, 1])
+        else:
+            max_y_values = max(max(X_pca[:, 1]), max(compare[:, 1]))
+            min_y_values = min(min(X_pca[:, 1]), min(compare[:, 1]))
+
         min_y_ratio = abs(min_y_values / min_y_arrows)
         max_y_ratio = abs(max_y_values / max_y_arrows)
         y_ratio = min(min_y_ratio, max_y_ratio)
