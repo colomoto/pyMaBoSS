@@ -38,6 +38,14 @@ menu = [
                   {'name': 'Plot trajectory',
                    'snippet': ["simres.plot_trajectory()"]}]
      },
+     {'name': 'Conversion',
+     'sub-menu': [
+                  {'name': 'Convert to biolqm',
+                   'snippet': ["biolqm_model = maboss.to_biolqm(masim)"]},
+
+                  {'name': 'Convert to minibn',
+                   'snippet': ["minibn_model = maboss.to_minibn(masim)"]},
+     ]},
      "---",
      {"name": "Documentation",
         "external-link": "http://pymaboss.readthedocs.io"}
