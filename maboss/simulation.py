@@ -17,6 +17,8 @@ import uuid
 import subprocess
 import tempfile
 import shutil
+from colomoto_jupyter import import_colomoto_tool
+from colomoto_jupyter.sessionfiles import new_output_file
 
 _default_parameter_list = collections.OrderedDict([
     ('time_tick', 0.1),
@@ -200,6 +202,10 @@ class Simulation(object):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         out, err = proc.communicate()
+
+        if proc.returncode != 0:
+            raise Exception(err.decode())
+            
         rules = {}
         for line in out.decode().split("\n"):
             if ":" in line:
@@ -335,4 +341,14 @@ def copy_and_update_parameters(sim, parameters):
     new_sim = sim.copy()
     new_sim.update_parameters( **parameters )
     return new_sim
+
+def to_biolqm(maboss_model):
+    
+    biolqm = import_colomoto_tool("biolqm")
+    bnet_filename = new_output_file("bnet")
+    with open(bnet_filename, "w") as bnet_file:
+        for node, rule in maboss_model.get_logical_rules().items():
+            bnet_file.write("%s, %s\n" % (node, rule))
+
+    return biolqm.load(bnet_filename)
 
