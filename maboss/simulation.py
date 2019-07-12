@@ -352,3 +352,11 @@ def to_biolqm(maboss_model):
 
     return biolqm.load(bnet_filename)
 
+def to_minibn(maboss_model):
+    from colomoto import minibn
+    bnet_filename = new_output_file("bnet")
+    with open(bnet_filename, "w") as bnet_file:
+        for node, rule in maboss_model.get_logical_rules().items():
+            bnet_file.write("%s, %s\n" % (node, rule))
+
+    return minibn.BooleanNetwork.load(bnet_filename)
