@@ -102,22 +102,21 @@ class EnsembleResult(BaseResult):
 
         return self.asymptotic_nodes_probtraj_distribution
 
-    def plotSteadyStatesDistribution(self):
+    def plotSteadyStatesDistribution(self, figsize=None):
 
         pca = PCA()
-        new_table = self.getSteadyStatesDistribution()
-        mat = np.transpose(new_table.values)
+        table = self.getSteadyStatesDistribution()
+        mat = np.transpose(table.values)
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, arrows_raw, new_table)
+        self.plotPCA(pca, X_pca, list(table.index.values), list(table.columns.values) , figsize=figsize)
         
-    def plotSteadyStatesNodesDistribution(self, compare=None):
+    def plotSteadyStatesNodesDistribution(self, compare=None, **args):
 
-        
         pca = PCA()
-        new_table = self.getSteadyStatesNodesDistribution()
-        mat = np.transpose(new_table.values)
+        table = self.getSteadyStatesNodesDistribution()
+        mat = np.transpose(table.values)
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
@@ -126,13 +125,20 @@ class EnsembleResult(BaseResult):
             compare_table = compare.getSteadyStatesNodesDistribution()
             c_mat = np.transpose(compare_table.values)
             c_pca = pca.transform(c_mat)
-            self.plotPCA(pca, X_pca, arrows_raw, new_table, compare=c_pca)
+            self.plotPCA(
+                pca, X_pca, 
+                list(table.index.values), list(table.columns.values), 
+                compare=c_pca, **args
+            )
         else:
-            self.plotPCA(pca, X_pca, arrows_raw, new_table)
+            self.plotPCA(
+                pca, X_pca, 
+                list(table.index.values), list(table.columns.values), 
+                **args
+            )
 
-
-    def plotPCA(self, pca, X_pca, arrows_raw, new_table, compare=None): 
-        fig = plt.figure(figsize=(15, 10), dpi=500)
+    def plotPCA(self, pca, X_pca, samples, features, compare=None, figsize=None, show_samples=False, show_features=True): 
+        fig = plt.figure(figsize=figsize)
         plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
 
         if compare is not None:
@@ -140,8 +146,8 @@ class EnsembleResult(BaseResult):
 
         plt.xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
         plt.ylabel("PC{} ({}%)".format(2, round(pca.explained_variance_ratio_[1] * 100, 2)))
-        # for i, txt in enumerate(new_table.columns):
-        #     plt.annotate(txt, (X_pca[i, 0], X_pca[i, 1]))
+                
+        arrows_raw = pca.components_[0:2, :].T
         
         max_x_arrows = max(arrows_raw[:, 0])
         min_x_arrows = min(arrows_raw[:, 0])
@@ -152,11 +158,6 @@ class EnsembleResult(BaseResult):
         else:
             max_x_values = max(max(X_pca[:, 0]), max(compare[:, 0]))
             min_x_values = min(min(X_pca[:, 0]), min(compare[:, 0]))
-
-
-        min_x_ratio = min_x_values / min_x_arrows
-        max_x_ratio = max_x_values / max_x_arrows
-        x_ratio = min(min_x_ratio, max_x_ratio)
         
         max_y_arrows = max(arrows_raw[:, 1])
         min_y_arrows = min(arrows_raw[:, 1])
@@ -167,36 +168,22 @@ class EnsembleResult(BaseResult):
         else:
             max_y_values = max(max(X_pca[:, 1]), max(compare[:, 1]))
             min_y_values = min(min(X_pca[:, 1]), min(compare[:, 1]))
+  
+        if show_samples:
+            for i, txt in enumerate(features):
+                plt.annotate(txt, (X_pca[i, 0], X_pca[i, 1]))
+  
+        if show_features:
+            for i, v in enumerate(arrows_raw):
+                plt.arrow(0, 0, v[0], v[1],  linewidth=2, color='red')
+                plt.text(v[0], v[1], samples[i], color='black', ha='center', va='center', fontsize=18)
 
-        min_y_ratio = abs(min_y_values / min_y_arrows)
-        max_y_ratio = abs(max_y_values / max_y_arrows)
-        y_ratio = min(min_y_ratio, max_y_ratio)
+            plt.xlim(min(min_x_values, min_x_arrows)*1.2, max(max_x_values, max_x_arrows)*1.2)
+            plt.ylim(min(min_y_values, min_y_arrows)*1.2, max(max_y_values, max_y_arrows)*1.2)
+        else:
+            plt.xlim(min_x_values*1.2, max_x_values*1.2)
+            plt.ylim(min_y_values*1.2, max_y_values*1.2)
         
-        arrows = [list(arrow_raw) for arrow_raw in arrows_raw]
-        
-        from math import log10, floor
-        def round_sig(x, sig=2):
-            if (x == 0.0):
-                return x
-            return round(x, sig - int(floor(log10(abs(x)))) - 1)
-        
-        values = []
-        names = []
-        for i, arrow_raw in enumerate(arrows_raw):
-            as_list = [round(val, 2) for val in list(arrow_raw)]
-            if as_list not in values:
-                values.append(as_list)
-                names.append([new_table.index[i]])
-        
-            else:
-                names[values.index(as_list)].append(new_table.index[i])
-        
-        for i in range(len(values)):
-            plt.arrow(0, 0, values[i][0] * x_ratio, values[i][1] * y_ratio, color='r', alpha=0.5)
-        
-            for ii, name in enumerate(names[i]):
-                plt.text(values[i][0] * x_ratio + (0.05 * x_ratio), values[i][1] * y_ratio + (ii * 0.2 * y_ratio),
-                         name)
 def fix_order(string):
     return " -- ".join(sorted(string.split(" -- ")))
 
