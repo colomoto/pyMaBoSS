@@ -20,7 +20,7 @@
 # Authors: Eric Viara <viara@sysra.com>, Vincent Noel <contact@vincent-noel.fr>
 # Date: May 2018 - February 2019
 
-from ..baseresult import BaseResult
+from ..results.baseresult import BaseResult
 from io import StringIO
 import numpy as np
 

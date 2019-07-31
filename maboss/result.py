@@ -4,7 +4,7 @@ Class that contains the results of a MaBoSS simulation.
 
 from __future__ import print_function
 
-from .baseresult import BaseResult
+from .results.baseresult import BaseResult
 
 from sys import stderr, stdout, version_info
 if version_info[0] < 3:
@@ -107,29 +107,10 @@ class Result(BaseResult):
         if self.workdir is None and os.path.exists(self._path):
             shutil.rmtree(self._path)
 
-
-
-class StoredResult(BaseResult):
-
-    def __init__(self, path, prefix="res"):
-        
-        self._path = path
-        self._prefix = prefix
-        BaseResult.__init__(self)
-     
-    def get_fp_file(self):
-        return os.path.join(self._path, "%s_fp.csv" % self._prefix)
-
-    def get_probtraj_file(self):
-        return os.path.join(self._path, "%s_probtraj.csv" % self._prefix)
-
-    def get_statdist_file(self):
-        return os.path.join(self._path, "%s_statdist.csv" % self._prefix)
-
 def _check_prefix(prefix):
     if type(prefix) is not str:
         print('Error save method expected string')
         return False
     return True
 
-__all__ = ["Result", "StoredResult"]
+__all__ = ["Result"]

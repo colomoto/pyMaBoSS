@@ -4,7 +4,7 @@ Class that contains the results of a MaBoSS simulation.
 
 from __future__ import print_function
 from sys import stderr, stdout, version_info
-from .figures import make_plot_trajectory, plot_piechart, plot_fix_point, plot_node_prob
+from ..figures import make_plot_trajectory, plot_piechart, plot_fix_point, plot_node_prob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

@@ -10,7 +10,7 @@ if sys.version_info[0] < 3:
 else:
     from contextlib import ExitStack
 import glob
-from ..result import StoredResult
+from ..results.storedresult import StoredResult
 import shutil
 from multiprocessing import Pool
 

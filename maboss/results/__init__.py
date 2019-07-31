@@ -1,0 +1,1 @@
+from .storedresult import StoredResult

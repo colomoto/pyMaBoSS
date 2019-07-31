@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from ..baseresult import BaseResult
+from ..results.baseresult import BaseResult
 import os
 import tempfile
 import subprocess
