@@ -20,7 +20,6 @@ import subprocess
 class Result(BaseResult):
 
     def __init__(self, simul, command=None, workdir=None, overwrite=False, prefix="res"):
-        BaseResult.__init__(self, simul, command)
 
         self.workdir = workdir
         self.prefix = prefix
@@ -34,6 +33,8 @@ class Result(BaseResult):
             
             elif not os.path.exists(self._path):
                 os.mkdir(self._path)
+
+        BaseResult.__init__(self, self._path, simul, command)
 
         if workdir is None or len(os.listdir(workdir)) == 0 or overwrite:
 

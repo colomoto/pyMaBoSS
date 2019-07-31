@@ -7,7 +7,7 @@ class StoredResult(BaseResult):
         
         self._path = path
         self._prefix = prefix
-        BaseResult.__init__(self)
+        BaseResult.__init__(self, self._path)
      
     def get_fp_file(self):
         return os.path.join(self._path, "%s_fp.csv" % self._prefix)

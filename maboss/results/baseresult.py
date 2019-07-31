@@ -4,6 +4,7 @@ Class that contains the results of a MaBoSS simulation.
 
 from __future__ import print_function
 from sys import stderr, stdout, version_info
+from .statdistresult import StatDistResult
 from ..figures import make_plot_trajectory, plot_piechart, plot_fix_point, plot_node_prob
 import pandas as pd
 import numpy as np
@@ -14,7 +15,7 @@ if version_info[0] < 3:
 else:
     from io import StringIO
 
-class BaseResult(object):
+class BaseResult(StatDistResult):
     """
     Class that handles the results of MaBoSS simulation.
     
@@ -34,8 +35,10 @@ class BaseResult(object):
     in the working directory.
     """
 
-    def __init__(self, simul=None, command=None, workdir=None):
+    def __init__(self, path, simul=None, command=None, workdir=None):
         
+        StatDistResult.__init__(self, path)
+        self._path = path
         self._trajfig = None
         self._piefig = None
         self._fpfig = None
@@ -58,20 +61,13 @@ class BaseResult(object):
         self.state_probtraj_errors = None
         self.state_probtraj_full = None
         self.last_states_probtraj = None
-        self.state_statdist = None
-        self.statdist_clusters = None
-        self.statdist_clusters_summary = None
-        self.statdist_clusters_summary_error = None
-
+   
         self.nd_probtraj = None
         self.nd_probtraj_error = None
         self._nd_entropytraj = None
 
         self.raw_probtraj = None
-        self.raw_statdist = None
-        self.raw_statdist_clusters = None
-        self.raw_statdist_clusters_summary = None
-
+   
     def plot_trajectory(self, legend=True, until=None, error=False, prob_cutoff=0.01):
         """Plot the graph state probability vs time.
 
@@ -255,16 +251,6 @@ class BaseResult(object):
 
         return self.last_states_probtraj
 
-    def get_states_statdist(self):
-        if self.state_statdist is None:
-            table = self.get_raw_statdist()
-            cols = range(0, len(table.columns), 2)
-
-            if self.states is None:
-                self.states = self.get_states(table, cols)
-            self.state_statdist = self.make_statdist_table(table, self.states)
-        return self.state_statdist
-
     def get_entropy_trajectory(self):
         if self._nd_entropytraj is None:
             self._nd_entropytraj = pd.read_csv(
@@ -276,168 +262,6 @@ class BaseResult(object):
         if self.raw_probtraj is None:
             self.raw_probtraj = pd.read_csv(self.get_probtraj_file(), "\t", dtype=self.get_probtraj_dtypes())
         return self.raw_probtraj
-
-    def get_raw_statdist(self):
-        if self.raw_statdist is None:
-            statdist_traj_count = self.get_statdist_trajcount()
-
-            self.raw_statdist = pd.read_csv(
-                self.get_statdist_file(), "\t", 
-                nrows=statdist_traj_count, 
-                index_col=0,
-                dtype=self.get_statdist_dtypes()
-            )
-        return self.raw_statdist
-
-    def get_statdist_trajcount(self):
-        if self.statdist_traj_count is None:
-            with open(self.get_statdist_file(), 'r') as t_file:
-                for i, line in enumerate(t_file):
-                    if len(line) == 0:
-                        self.statdist_traj_count = i - 2
-                        break
-        return self.statdist_traj_count
-
-    def get_raw_statdist_clusters(self):
-        if self.raw_statdist_clusters is None:
-            self.raw_statdist_clusters = []
-
-            indexes = []
-            nb_lines = 0
-            nb_cols = []
-            nbs_cols = []
-            with open(self.get_statdist_file(), 'r') as t_file:
-                for i, line in enumerate(t_file):
-                    # We look for the line breaks between each cluster
-                    if line == '\n':
-                        if len(indexes) > 0:
-                            nbs_cols.append(max(nb_cols))
-                            nb_cols = []
-
-                        indexes.append(i)
-
-                    if len(indexes) > 0:
-                        nb_cols.append(len(line.split("\t")))
-                nb_lines = i+1
-
-            for i, index in enumerate(indexes):
-                if i < len(indexes)-1:
-                    start = index+2
-                    end = indexes[i+1]-1
-                
-                    new_columns = ["Trajectory", "State", "Proba"]
-                    for i in range(1, nbs_cols[i]//2):
-                        new_columns += ["State.%d" % i, "Proba.%d" % i]
-                    
-                    df = pd.read_csv(
-                        self.get_statdist_file(), 
-                        skiprows=start, nrows=(end-start+1), 
-                        header=None, sep="\t", index_col=0, names=new_columns
-                    )
-
-                    self.raw_statdist_clusters.append(df)
-        return self.raw_statdist_clusters
-
-    def get_statdist_clusters(self):
-        if self.statdist_clusters is None:
-            self.statdist_clusters = []
-
-            # Getting all states
-            all_states = set()
-            for cluster in self.get_raw_statdist_clusters():
-                for i_row, (index_row, row) in enumerate(cluster.iterrows()): 
-                    t_states = [val for _, val in row[0::2].iteritems() if type(val) is str]
-                    all_states.update(t_states)
-
-                t_statdist_cluster = pd.DataFrame(
-                    np.zeros((len(cluster.index), len(all_states))), 
-                    index=cluster.index, columns=all_states
-                )
-
-                for index_row, row in cluster.iterrows():
-                    for i_col, (_, state) in enumerate(row[0::2].iteritems()):
-                        if type(state) is str:
-                            val = row.iloc[(i_col*2)+1]
-                            t_statdist_cluster.loc[index_row, state] = val
-
-                self.statdist_clusters.append(t_statdist_cluster)
-
-        return self.statdist_clusters
-
-    def get_raw_statdist_clusters_summary(self):
-        if self.raw_statdist_clusters_summary is None:
-            start = 0
-            with open(self.get_statdist_file(), 'r') as t_file:
-                for i, line in enumerate(t_file):
-                    if line == '\n':
-                        start = i
-            max_cols = 0
-            lines = []
-            with open(self.get_statdist_file(), 'r') as t_file:
-                for i, line in enumerate(t_file):
-                    if i > start+1: 
-                        lines.append(line)
-                        if len(line.split("\t")) > max_cols:
-                            max_cols = len(line.split("\t"))
-
-            cols = ["Cluster"] + ["State", "Proba", "ErrProba"]*((max_cols-1)//3)
-            cols_tabs = "\t".join(cols) + "\n"
-            lines.insert(0, cols_tabs)
-            self.raw_statdist_clusters_summary = pd.read_csv(StringIO("".join(lines)), sep="\t", index_col=0)
-
-        return self.raw_statdist_clusters_summary
-
-    def get_statdist_clusters_summary(self):
-        if self.statdist_clusters_summary is None:
-            raw = self.get_raw_statdist_clusters_summary()
-
-            # Getting all states
-            all_states = set()
-            for i_row, (index_row, row) in enumerate(raw.iterrows()): 
-                t_states = [val for _, val in row[0::3].iteritems() if type(val) is str]
-                all_states.update(t_states)
-
-            self.statdist_clusters_summary = pd.DataFrame(
-                np.zeros((len(raw.index), len(all_states))), 
-                index=raw.index, columns=all_states
-            )
-
-            for index_row, row in raw.iterrows():
-                for i_col, (_, state) in enumerate(row[0::3].iteritems()):
-                    if type(state) is str:
-                        val = row.iloc[(i_col*3)+1]
-                        self.statdist_clusters_summary.loc[index_row, state] = val
-
-            
-
-        return self.statdist_clusters_summary
-
-
-    def get_statdist_clusters_summary_error(self):
-        if self.statdist_clusters_summary_error is None:
-            raw = self.get_raw_statdist_clusters_summary()
-
-            # Getting all states
-            all_states = set()
-            for i_row, (index_row, row) in enumerate(raw.iterrows()): 
-                t_states = [val for _, val in row[0::3].iteritems() if type(val) is str]
-                all_states.update(t_states)
-
-            self.statdist_clusters_summary_error = pd.DataFrame(
-                np.zeros((len(raw.index), len(all_states))), 
-                index=raw.index, columns=all_states
-            )
-
-            for index_row, row in raw.iterrows():
-                for i_col, (_, state) in enumerate(row[0::3].iteritems()):
-                    if type(state) is str:
-                        val = row.iloc[(i_col*3)+2]
-                        self.statdist_clusters_summary_error.loc[index_row, state] = val
-
-            
-
-        return self.statdist_clusters_summary_error
-
 
     def get_probtraj_dtypes(self):
         with open(self.get_probtraj_file(), 'r') as probtraj:
@@ -459,17 +283,6 @@ class BaseResult(object):
             dtype.update({"State": np.str, "Proba": np.float64, "ErrorProba": np.float64})
             for i in range(1, nb_states):
                 dtype.update({"State.%d" % i: np.str, "Proba.%d" % i: np.float64, "ErrorProba.%d" % i: np.float64})
-            return dtype
-
-    def get_statdist_dtypes(self):
-        with open(self.get_statdist_file(), 'r') as statdist:
-            cols = statdist.readline().split("\t")
-            dtype = {}
-            dtype.update({"State": np.str, "Proba": np.float64})
-
-            for i in range(1, len(cols)//2):
-                dtype.update({"State.%d" % i: np.str, "Proba.%d" % i: np.float64})
-            
             return dtype
 
     def get_states_parallel(self, df, cols, nb_cores):
@@ -518,32 +331,6 @@ class BaseResult(object):
                     break
 
         return self.first_state_index
-
-    def write_statdist_table(self, filename, prob_cutoff=None):
-        clusters = self.get_raw_statdist_clusters()
-        clusters_summary = self.get_raw_statdist_clusters_summary()
-        with open(filename, 'w') as statdist_table:
-
-            for i_cluster, cluster in enumerate(clusters_summary.iterrows()):
-
-                line_0 = "Probability threshold=%s\n" % (str(prob_cutoff) if prob_cutoff is not None else "") 
-                line_1 = ["Prob[Cluster %s]" % cluster[0]] 
-                line_2 = ["%g" % (len(clusters[i_cluster])/self.get_statdist_trajcount())]
-                line_3 = ["ErrorProb"]
-
-                t_cluster = cluster[1].dropna()
-
-                for i in range(0, len(t_cluster), 3):
-                    if prob_cutoff is None or t_cluster[i+1] > prob_cutoff:
-                        line_1.append("Prob[%s | Cluster %s]" % (t_cluster[i], cluster[0]))
-                        line_2.append("%g" % t_cluster[i+1])
-                        line_3.append("%g" % t_cluster[i+2])
-
-                statdist_table.write(line_0)
-                statdist_table.write("\t".join(line_1) + "\n")
-                statdist_table.write("\t".join(line_2) + "\n")
-                statdist_table.write("\t".join(line_3) + "\n")
-                statdist_table.write("\n")
 
     def make_trajectory_table(self, df, states, cols, nona=False):
         """Creates a table giving the probablilty of each state a every moment.
@@ -627,17 +414,6 @@ class BaseResult(object):
         time_table.sort_index(axis=1, inplace=True) 
         return time_table
 
-    def make_statdist_table(self, df, states):    
-        time_table = pd.DataFrame(
-            np.zeros((len(df.index), len(states))),
-            columns=states
-        )
-
-        for index, (_, row) in enumerate(time_table.iterrows()):
-            make_statdist_line(row, df, range(0, len(df.columns), 2), index)
-
-        return time_table
-
     def make_node_proba_table(self, df):
         """Same as make_trajectory_table but with nodes instead of states."""
         cols = self.get_states_cols(df)
@@ -707,12 +483,6 @@ def make_trajectory_line_parallel(row, states, cols):
             state = row[c]
             df[state][row["Time"]] = row[c+1]
     return df
-
-def make_statdist_line(row, df, cols, index):
-    for c in cols:
-        if type(df.iloc[index, c]) is str:  # Otherwise it is nan
-            state = df.iloc[index, c]
-            row[state] = df.iloc[index, c+1]
 
 def get_state_from_line(line, cols):
     t_states = set()

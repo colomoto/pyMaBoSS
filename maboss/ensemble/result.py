@@ -12,12 +12,12 @@ import shutil
 class EnsembleResult(BaseResult):
 
     def __init__(self, models_files, cfg_filename, prefix="res"):
-        BaseResult.__init__(self)
 
         self.models_files = models_files
         self._cfg = cfg_filename
         self._path = tempfile.mkdtemp()
         self.prefix = prefix
+        BaseResult.__init__(self, self._path)
 
         maboss_cmd = "MaBoSS"
         cmd_line = [maboss_cmd, "-c", self._cfg,'--ensemble',  "-o", self._path+'/'+self.prefix] + self.models_files
