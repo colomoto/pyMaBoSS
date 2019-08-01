@@ -22,8 +22,10 @@ class ProbTrajResult(object):
         self.state_probtraj = None
         self.state_probtraj_errors = None
         self.state_probtraj_full = None
+        
         self.last_states_probtraj = None
-   
+        self.last_nodes_probtraj = None
+
         self.nd_probtraj = None
         self.nd_probtraj_error = None
         self._nd_entropytraj = None
@@ -117,6 +119,38 @@ class ProbTrajResult(object):
                 self.last_states_probtraj.sort_index(axis=1, inplace=True)
              
         return self.last_states_probtraj
+
+    def get_last_nodes_probtraj(self):
+        if self.last_nodes_probtraj is None:
+            with open(self.get_probtraj_file(), 'r') as probtraj:
+                first_line = probtraj.readline()
+                first_col = next(i for i, col in enumerate(first_line.strip("\n").split("\t")) if col == "State")
+
+                last_line = probtraj.readlines()[-1]
+                data = last_line.strip("\n").split("\t")
+              
+                states = [s for s in data[first_col::3]]
+                probs = np.array([float(v) for v in data[first_col+1::3]])
+
+                if self.nodes is None:
+                    nodes = set()
+                    for state in states:
+                        if state != "<nil>":
+                            nodes.update([node for node in state.split(" -- ")])
+                else:
+                    nodes = self.nodes
+
+                all_nodes = [s.split(" -- ") for s in states]
+                n_probs = np.zeros((1, len(nodes)))
+                for i, t_nodes in enumerate(all_nodes):
+                    if states[i] != "<nil>":
+                        for node in t_nodes:
+                            n_probs[0, nodes.index(node)] += probs[i]
+              
+                self.last_nodes_probtraj = pd.DataFrame(n_probs, columns=nodes, index=[data[0]])
+                self.last_nodes_probtraj.sort_index(axis=1, inplace=True)
+
+        return self.last_nodes_probtraj
 
     def get_entropy_trajectory(self):
         if self._nd_entropytraj is None:
