@@ -2,93 +2,175 @@
 Class that contains the results of a MaBoSS simulation.
 """
 
-from __future__ import print_function
-from sys import stderr, stdout, version_info
 import pandas as pd
 import numpy as np
-from multiprocessing import Pool
-if version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 class ProbTrajResult(object):
     
-    def __init__(self, path, thread_count=1):
-        
-        self._path = path
-        self.thread_count = thread_count
-        self.first_state_index = None
+    def __init__(self):
+                
         self.state_probtraj = None
         self.state_probtraj_errors = None
         self.state_probtraj_full = None
         
-        self.last_states_probtraj = None
-        self.last_nodes_probtraj = None
-
         self.nd_probtraj = None
         self.nd_probtraj_error = None
-        self._nd_entropytraj = None
-
-        self.raw_probtraj = None
-   
-
-    def get_nodes_probtraj(self, prob_cutoff=None):
-        if self.nd_probtraj is None:
-            
-            table = self.get_raw_probtraj()
-            self.nd_probtraj = self.make_node_proba_table(table)
         
-        if prob_cutoff is not None:
-            maxs = self.nd_probtraj.max(axis=0)
-            return self.nd_probtraj[maxs[maxs>prob_cutoff].index]
-     
-        return self.nd_probtraj
+        self.entropy_probtraj = None
+        self.entropy_probtraj_error = None
+        
+        self.last_states_probtraj = None
+        self.last_nodes_probtraj = None
+        
+        self._raw_data = None
+        self._first_state_index = None
 
-    def get_nodes_probtraj_error(self):
-        if self.nd_probtraj_error is None:
-            table = self.get_raw_probtraj()
-            self.nd_probtraj_error = self.make_node_proba_error_table(table)
-        return self.nd_probtraj_error
+        self._raw_states = None
+        self._raw_probas = None
+        self._raw_errors = None
+        self._raw_entropy = None
+        self._raw_last_data = None
 
-    def get_states_probtraj(self, prob_cutoff=None, nb_cores=1):
+        self.indexes = None
+        self.states = None
+        self.nodes = None
+
+    def get_states_probtraj(self, prob_cutoff=None):
+        """
+            Returns the state probability vs time, as a pandas dataframe.
+
+            :param float prob_cutoff: returns only the states with proba > cutoff
+        """
         if self.state_probtraj is None:
-            table = self.get_raw_probtraj()
-            cols = get_states_cols(table)
-            if nb_cores == 1:
-                states = _get_states(table, cols)
-            else:
-                states = _get_states_parallel(table, cols, nb_cores)
-            if nb_cores > 1:
-                self.state_probtraj = self.make_trajectory_table_parallel(table, states, cols, nb_cores)
-            else:
-                self.state_probtraj = self.make_trajectory_table(table, states, cols)
-        
+
+            raw_states = self._get_raw_states()
+            raw_probas = self._get_raw_probas()
+            indexes, states = self._get_indexes()
+            
+            new_data = np.zeros((len(raw_probas), len(states)))
+            for i, t_probas in enumerate(raw_probas):
+                for j, proba in enumerate(t_probas):
+                    new_data[i, states.index(raw_states[i][j])] = proba    
+            
+            self.state_probtraj = pd.DataFrame(
+                data=new_data,
+                columns=states,
+                index=indexes
+
+            )
+            self.state_probtraj.sort_index(axis=1, inplace=True)
+
         if prob_cutoff is not None:
             maxs = self.state_probtraj.max(axis=0)
             return self.state_probtraj[maxs[maxs>prob_cutoff].index]
-            
+
         return self.state_probtraj
 
     def get_states_probtraj_errors(self):
+        """
+            Returns the state probability error vs time, as a pandas dataframe.
+        """
         if self.state_probtraj_errors is None:
-            table = self.get_raw_probtraj()
-            cols = get_states_cols(table)
-            states = _get_states(table, cols)
-            self.state_probtraj_errors = self.make_trajectory_error_table(table, states, cols)
+            
+            raw_states = self._get_raw_states()
+            raw_errors = self._get_raw_errors()
+            indexes, states = self._get_indexes()
+
+            new_data = np.zeros((len(raw_errors), len(states)))
+            for i, t_errors in enumerate(raw_errors):
+                for j, error in enumerate(t_errors):
+                    new_data[i, states.index(raw_states[i][j])] = error    
+            
+            self.state_probtraj_errors = pd.DataFrame(
+                data=new_data,
+                columns=states,
+                index=indexes
+
+            )
+            self.state_probtraj_errors.sort_index(axis=1, inplace=True)
+
         return self.state_probtraj_errors
+
+    def get_nodes_probtraj(self, prob_cutoff=None):
+        """
+            Returns the node probability vs time, as a pandas dataframe.
+
+            :param float prob_cutoff: returns only the nodes with proba > cutoff
+        """
+        if self.nd_probtraj is None:
+
+            raw_states = self._get_raw_states()
+            raw_probas = self._get_raw_probas()
+            indexes, states = self._get_indexes()
+            nodes = self._get_nodes()
+
+            new_probs = np.zeros((len(indexes), len(nodes)))
+            for i, t_probas in enumerate(raw_probas):
+                for j, proba in enumerate(t_probas):
+                    if raw_states[i][j] != "<nil>":
+                        for node in raw_states[i][j].split(" -- "):
+                            new_probs[i, nodes.index(node)] += proba
+
+            self.nd_probtraj = pd.DataFrame(new_probs, columns=nodes, index=indexes)
+            self.nd_probtraj.sort_index(axis=1, inplace=True)
+
+        if prob_cutoff is not None:
+            maxs = self.nd_probtraj.max(axis=0)
+            return self.nd_probtraj[maxs[maxs>prob_cutoff].index]
+
+        return self.nd_probtraj
+
+    def get_nodes_probtraj_error(self):
+        """
+            Returns the node probability error vs time, as a pandas dataframe.
+        """
+        if self.nd_probtraj_error is None:
+
+            raw_states = self._get_raw_states()
+            raw_errors = self._get_raw_errors()
+            indexes, states = self._get_indexes()
+            nodes = self._get_nodes()
+            
+            new_errors = np.zeros((len(indexes), len(nodes)))
+            for i, t_raw_errors in enumerate(raw_errors):
+                for j, error in enumerate(t_raw_errors):
+                    if raw_states[i][j] != "<nil>":
+                        for node in raw_states[i][j].split(" -- "):
+                            new_errors[i, nodes.index(node)] += error
+
+            self.nd_probtraj_error = pd.DataFrame(new_errors, columns=nodes, index=indexes)
+            self.nd_probtraj_error.sort_index(axis=1, inplace=True)
+
+        return self.nd_probtraj_error
 
     def get_states_probtraj_full(self, prob_cutoff=None):
         if self.state_probtraj_full is None:
-            table = self.get_raw_probtraj()
-            cols = get_states_cols(table)
-            full_cols = ["TH", "ErrorTH", "H"]
 
-            for col in _get_states(table, cols):
+            raw_states = self._get_raw_states()
+            raw_probas = self._get_raw_probas()
+            raw_errors = self._get_raw_errors()
+            raw_entropy = self._get_raw_entropy()
+            indexes, states = self._get_indexes()
+
+            full_cols = ["TH", "ErrorTH", "H"]
+            for col in states:
                 full_cols.append("Prob[%s]" % col)
                 full_cols.append("ErrProb[%s]" % col)
 
-            self.state_probtraj_full = self.make_trajectory_full_table(table, full_cols, cols)
+            new_data = np.zeros((len(indexes), len(full_cols)))
+
+            for i, t_entropy in enumerate(raw_entropy):
+                new_data[i, 0:3] = t_entropy
+
+            for i, t_probas in enumerate(raw_probas):
+                for j, proba in enumerate(t_probas):
+                    new_data[i, 3+(states.index(raw_states[i][j])*2)] = proba
+
+            for i, t_errors in enumerate(raw_errors):
+                for j, error in enumerate(t_errors):
+                    new_data[i, 4+(states.index(raw_states[i][j])*2)] = error
+
+            self.state_probtraj_full = pd.DataFrame(new_data, columns=full_cols, index=indexes)
 
         if prob_cutoff is not None:
             maxs = self.state_probtraj_full.max(axis=0)
@@ -104,313 +186,166 @@ class ProbTrajResult(object):
         return self.state_probtraj_full
 
     def get_last_states_probtraj(self):
+        """
+            Returns the asymptotic state probability, as a pandas dataframe.
+        """
         if self.last_states_probtraj is None:
-            with open(self.get_probtraj_file(), 'r') as probtraj:
-                first_line = probtraj.readline()
-                first_col = next(i for i, col in enumerate(first_line.strip("\n").split("\t")) if col == "State")
+            
+            data, first_col = self._get_raw_last_data()
 
-                last_line = probtraj.readlines()[-1]
-                data = last_line.strip("\n").split("\t")
-              
-                states = [s for s in data[first_col::3]]
-                probs = np.array([float(v) for v in data[first_col+1::3]])
-              
-                self.last_states_probtraj = pd.DataFrame([probs], columns=states, index=[data[0]])
-                self.last_states_probtraj.sort_index(axis=1, inplace=True)
+            states = [s for s in data[first_col::3]]
+            probs = np.array([float(v) for v in data[first_col+1::3]])
+            
+            self.last_states_probtraj = pd.DataFrame([probs], columns=states, index=[data[0]])
+            self.last_states_probtraj.sort_index(axis=1, inplace=True)
              
         return self.last_states_probtraj
 
     def get_last_nodes_probtraj(self):
+        """
+            Returns the asymptotic node probability, as a pandas dataframe.
+        """
         if self.last_nodes_probtraj is None:
-            with open(self.get_probtraj_file(), 'r') as probtraj:
-                first_line = probtraj.readline()
-                first_col = next(i for i, col in enumerate(first_line.strip("\n").split("\t")) if col == "State")
-
-                last_line = probtraj.readlines()[-1]
-                data = last_line.strip("\n").split("\t")
+            data, first_col = self._get_raw_last_data()
               
-                states = [s for s in data[first_col::3]]
-                probs = np.array([float(v) for v in data[first_col+1::3]])
+            raw_states = [s for s in data[first_col::3]]
+            raw_probs = np.array([float(v) for v in data[first_col+1::3]])
 
-                if self.nodes is None:
-                    nodes = set()
-                    for state in states:
-                        if state != "<nil>":
-                            nodes.update([node for node in state.split(" -- ")])
-                else:
-                    nodes = self.nodes
+            nodes = set()
+            for state in raw_states:
+                if state != "<nil>":
+                    nodes.update([node for node in state.split(" -- ")])
+            nodes = list(nodes) 
 
-                all_nodes = [s.split(" -- ") for s in states]
-                n_probs = np.zeros((1, len(nodes)))
-                for i, t_nodes in enumerate(all_nodes):
-                    if states[i] != "<nil>":
-                        for node in t_nodes:
-                            n_probs[0, nodes.index(node)] += probs[i]
-              
-                self.last_nodes_probtraj = pd.DataFrame(n_probs, columns=nodes, index=[data[0]])
-                self.last_nodes_probtraj.sort_index(axis=1, inplace=True)
+            new_probas = np.zeros((1, len(nodes)))
+            for i, proba in enumerate(raw_probs):
+                if raw_states[i] != "<nil>":
+                    for node in raw_states[i].split(" -- "):
+                        new_probas[0, nodes.index(node)] += proba
+
+            self.last_nodes_probtraj = pd.DataFrame(new_probas, columns=nodes, index=[data[0]])
+            self.last_nodes_probtraj.sort_index(axis=1, inplace=True)
 
         return self.last_nodes_probtraj
 
     def get_entropy_trajectory(self):
-        if self._nd_entropytraj is None:
-            self._nd_entropytraj = pd.read_csv(
-                self.get_probtraj_file(), "\t", usecols=('TH', 'H'), dtype=self.get_probtraj_dtypes()
+        """
+            Returns the entropy vs time, as a pandas dataframe.
+        """
+        if self.entropy_probtraj is None:
+
+            raw_entropy = self._get_raw_entropy()
+            indexes, _ = self._get_indexes()
+            
+            new_data = np.zeros((len(raw_entropy), 2))
+            for i, entropy in enumerate(raw_entropy):
+                new_data[i, 0] = entropy[0]
+                new_data[i, 1] = entropy[2]
+            
+            self.entropy_probtraj = pd.DataFrame(
+                data=new_data,
+                columns=["TH", "H"],
+                index=indexes
             )
-        return self._nd_entropytraj
 
-    def get_raw_probtraj(self):
-        if self.raw_probtraj is None:
-            self.raw_probtraj = pd.read_csv(self.get_probtraj_file(), "\t", dtype=self.get_probtraj_dtypes())
-        return self.raw_probtraj
+        return self.entropy_probtraj
 
-    def get_probtraj_dtypes(self):
-        with open(self.get_probtraj_file(), 'r') as probtraj:
-            cols = probtraj.readline().split("\t")
+    def get_entropy_trajectory_error(self):
+        """
+            Returns the entropy error vs time, as a pandas dataframe.
+        """
+        if self.entropy_probtraj_error is None:
 
-            first_state_index = 5
-            for i in range(first_state_index, len(cols)):
-                if cols[i].startswith("State"):
-                    first_state_index = i
-                    break
-
-            nb_states = int((len(cols) - first_state_index) / 3)
-
-            dtype = {"Time": np.float64, "TH": np.float64, "ErrorTH": np.float64, "H": np.float64, "HD=0": np.float64}
+            raw_entropy = self._get_raw_entropy()
+            indexes, _ = self._get_indexes()
             
-            for i in range(first_state_index-5):
-                dtype.update({("HD=%d" % (i+1)): np.float64})
+            new_data = np.zeros((len(raw_entropy), 2))
+            for i, entropy in enumerate(raw_entropy):
+                new_data[i, 0] = entropy[1]
+                new_data[i, 1] = entropy[2]
             
-            dtype.update({"State": np.str, "Proba": np.float64, "ErrorProba": np.float64})
-            for i in range(1, nb_states):
-                dtype.update({"State.%d" % i: np.str, "Proba.%d" % i: np.float64, "ErrorProba.%d" % i: np.float64})
-            return dtype
+            self.entropy_probtraj_error = pd.DataFrame(
+                data=new_data,
+                columns=["ErrorTH", "H"],
+                index=indexes
+            )
 
-  
-    def make_trajectory_table(self, df, states, cols, nona=False):
-        """Creates a table giving the probablilty of each state a every moment.
+        return self.entropy_probtraj_error
 
-            The rows are indexed by time points and the columns are indexed by
-            state name.
-        """
+    def _get_raw_data(self):
+    
+        if self._raw_data is None:
+            with open(self.get_probtraj_file(), 'r') as probtraj:
 
-        time_points = np.asarray(df['Time'])
+                raw_lines = probtraj.readlines()
+
+                if self._first_state_index is None:                    
+                    self._first_state_index = next(i for i, col in enumerate(raw_lines[0].strip("\n").split("\t")) if col == "State")
+
+                self._raw_data = [line.strip("\n").split("\t") for line in raw_lines[1:]]
         
-        time_table = pd.DataFrame(
-            np.zeros((len(time_points), len(states))),
-            index=time_points, columns=states
-        )
-
-        if len(time_points) > 1:
-            for index, (_, row) in enumerate(time_table.iterrows()):
-                make_trajectory_line(row, df, cols, index, nona)
+        return self._raw_data, self._first_state_index
         
-            time_table.sort_index(axis=1, inplace=True) 
-        else:
-            make_trajectory_line(time_table.iloc[0, :], df, cols, 0, nona)
-            time_table.sort_index(axis=1, inplace=True) 
+    def _get_raw_last_data(self):
+    
+        if self._raw_last_data is None:
+            with open(self.get_probtraj_file(), 'r') as probtraj:
 
-        return time_table
+                if self._first_state_index is None:
+                    first_line = probtraj.readline()
+                    self._first_state_index = next(i for i, col in enumerate(first_line.strip("\n").split("\t")) if col == "State")
 
-
-    def make_trajectory_error_table(self, df, states, cols):
-        """Creates a table giving the probablilty of each state a every moment.
-
-            The rows are indexed by time points and the columns are indexed by
-            state name.
-        """
+                last_line = probtraj.readlines()[-1]
+                self._raw_last_data = last_line.strip("\n").split("\t")
         
-        time_points = np.asarray(df['Time'])
-        time_table = pd.DataFrame(
-            np.zeros((len(time_points), len(states))),
-            index=time_points, columns=states
-        )
-        for index, (_, row) in enumerate(time_table.iterrows()):
-            make_trajectory_error_line(row, df, cols, index)
+        return self._raw_last_data, self._first_state_index
 
-        time_table.sort_index(axis=1, inplace=True) 
+    def _get_raw_states(self):
+        if self._raw_states is None:
+            data, first_state_index = self._get_raw_data()
+            self._raw_states = [[s for s in t_data[first_state_index::3]] for t_data in data]
+        return self._raw_states
 
-        return time_table
+    def _get_raw_probas(self):
+        if self._raw_probas is None:
+            data, first_state_index = self._get_raw_data()
+            self._raw_probas = [[np.float64(p) for p in t_data[first_state_index+1::3]] for t_data in data]
+        return self._raw_probas
 
-    def make_trajectory_full_table(self, df, states, cols): 
-        """
-        Creates a table with the format used in the original script MBSS_FormatTable.pl
-
-        """
-        time_points = df["Time"]
-        time_table = pd.DataFrame(
-            np.zeros((len(time_points), len(states))),
-            index=time_points, columns=states
-        )
-
-        time_table['TH'] = df['TH'].values
-        time_table['ErrorTH'] = df['ErrorTH'].values
-        time_table['H'] = df['H'].values
-
-        for index, (_, row) in enumerate(time_table.iterrows()):
-            make_trajectory_full_line(row, df, cols, index)
-
-        return time_table
-
-    def make_trajectory_table_parallel(self, df, states, cols, nb_cores):
-        # TODO : Here we should parallelize all these functions
-        """Creates a table giving the probablilty of each state a every moment.
-
-            The rows are indexed by time points and the columns are indexed by
-            state name.
-        """
-
-        with Pool(processes=nb_cores) as pool:
-            time_table = pd.concat(pool.starmap(
-                make_trajectory_line_parallel, 
-                [(df.iloc[i, :], states, cols) for i in df.index]
-            ))
+    def _get_raw_errors(self):
+        if self._raw_errors is None:
+            data, first_state_index = self._get_raw_data()
+            self._raw_errors = [[np.float64(p) for p in t_data[first_state_index+2::3]] for t_data in data]
+        return self._raw_errors
         
-        time_table.sort_index(axis=1, inplace=True) 
-        return time_table
+    def _get_raw_entropy(self):
+        if self._raw_entropy is None:
+            data, _ = self._get_raw_data()
+            self._raw_entropy = [[np.float64(p) for p in t_data[1:4]] for t_data in data]
+        return self._raw_entropy
 
-    def make_node_proba_table(self, df):
-        """Same as make_trajectory_table but with nodes instead of states."""
-        cols = get_states_cols(df)
-        nodes = _get_nodes(df, cols)
-        time_points = np.asarray(df['Time'])
-        time_table = pd.DataFrame(
-            np.zeros((len(time_points), len(nodes))),
-            index=time_points, columns=nodes
-        )
+    def _get_indexes(self):
 
-        for index, (_, row) in enumerate(time_table.iterrows()):
-            make_node_proba_line(row, df, cols, index)
+        if self.indexes is None:
+            data, _ = self._get_raw_data()
+            self.indexes = [float(t_data[0]) for t_data in data] 
+            
+        if self.states is None:
+            self.states = set()
+            for t_states in self._get_raw_states():
+                self.states.update(t_states)
+            self.states = list(self.states)
 
-        time_table.sort_index(axis=1, inplace=True)
-        return time_table
-
-    def make_node_proba_error_table(self, df):
-        """Same as make_trajectory_table but with nodes instead of states."""
-        cols = get_states_cols(df)
-        nodes = _get_nodes(df, cols)
-        time_points = np.asarray(df['Time'])
-        time_table = pd.DataFrame(
-            np.zeros((len(time_points), len(nodes))),
-            index=time_points, columns=nodes
-        )
-        for index, (_, row) in enumerate(time_table.iterrows()):
-            make_node_proba_error_line(row, df, cols, index)
-
-        time_table.sort_index(axis=1, inplace=True)
-        return time_table
-
-
-def make_trajectory_line(row, df, cols, index, nona=False):
-    if nona:
-        for c in cols:
-            state = df.iloc[index, c]
-            row[state] = df.iloc[index, c+1]
-    else:
-        for c in cols:
-            if type(df.iloc[index, c]) is str:  # Otherwise it is nan
-                state = df.iloc[index, c]
-                row[state] = df.iloc[index, c+1]
-   
-def make_trajectory_error_line(row, df, cols, index):
-    for c in cols:
-        if type(df.iloc[index, c]) is str:  # Otherwise it is nan
-            state = df.iloc[index, c]
-            row[state] = df.iloc[index, c+2]
-
-def make_trajectory_full_line(row, df, cols, index):
-    for c in cols:
-        if type(df.iloc[index, c]) is str:# Otherwise it's NaN
-            state = df.iloc[index, c]
-            row["Prob[%s]" % state] = df.iloc[index, c+1]
-            row["ErrProb[%s]" % state] = df.iloc[index, c+2]
-
-def make_trajectory_line_parallel(row, states, cols):
-    df = pd.DataFrame(np.zeros((1, len(states))), index=[row["Time"]], columns=states)
-    for c in cols:
-        if type(row[c]) is str:  # Otherwise it is nan
-            state = row[c]
-            df[state][row["Time"]] = row[c+1]
-    return df
-
-
-def make_node_proba_line(row, df, cols, index):
-    for c in cols:
-        if type(df.iloc[index, c]) is str:
-            state = df.iloc[index, c]
-            if state != '<nil>':
-                nodes = state.split(' -- ')
-                for nd in nodes:
-                    value = df.iloc[index, c+1]
-                    row[nd] += value
-
-def make_node_proba_error_line(row, df, cols, index):
-    for c in cols:
-        if type(df.iloc[index, c]) is str:
-            state = df.iloc[index, c]
-            if state != '<nil>':
-                nodes = state.split(' -- ')
-                for nd in nodes:
-                    row[nd] += df.iloc[index, c+2]
-
-
-def _get_state_from_line(line, cols):
-    t_states = set()
-    for c in cols:
-        if type(line[c]) is str:  # Otherwise it is nan
-            t_states.add(line[c])
-    return t_states
-
-def _get_states_parallel(df, cols, nb_cores):
-    states = set()
-    with Pool(processes=nb_cores) as pool:
-        states = states.union(*(pool.starmap(
-            _get_state_from_line, 
-            [(df.iloc[i, :], cols) for i in df.index]
-        )))
-    return states
-
-def _get_states(df, cols, nona=False):
-    states = set()
-    if nona:
-        for i in range(len(df.index)):
-            for c in cols:
-                states.add(df.iloc[i, c])
-    else:
-        for i in range(len(df.index)):
-            for c in cols:
-                if type(df.iloc[i, c]) is str:  # Otherwise it is nan
-                    states.add(df.iloc[i, c])
-
-    return states
-      
-def _get_nodes(df, cols):
-    states = _get_states(df, cols)
-    nodes = set()
-    for s in states:
-        if s != '<nil>':
-            nds = s.split(' -- ')
-            for nd in nds:
-                nodes.add(nd)
-    return nodes
-
-def get_first_state_index(df):
-    """Return the indice of the first column being a state
-        By default it's five, but if we specify some refstate,
-        it'll be more.
-    """
-    first_state_index = None
-    for i in range(5, len(df.columns)):
-        if df.columns[i].startswith("State"):
-            first_state_index = i
-            break
-
-    return first_state_index
-
-def get_states_cols(df):
-    if isinstance(df, pd.DataFrame):
-        return range(get_first_state_index(df), len(df.columns), 3)
-    else:
-        return range(get_first_state_index(df), len(df), 3)
-
-__all__ = ["Result", "StoredResult"]
+        return self.indexes, self.states
+    
+    def _get_nodes(self):
+        
+        if self.nodes is None:
+            self.nodes = set()
+            for t_states in self._get_raw_states():
+                for state in t_states:
+                    if state != "<nil>":
+                        self.nodes.update([node for node in state.split(" -- ")])
+            self.nodes = list(self.nodes)
+        
+        return self.nodes

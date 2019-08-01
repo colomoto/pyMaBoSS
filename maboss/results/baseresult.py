@@ -38,8 +38,8 @@ class BaseResult(ProbTrajResult, StatDistResult):
 
     def __init__(self, path, simul=None, command=None, workdir=None):
         
-        ProbTrajResult.__init__(self, path)
-        StatDistResult.__init__(self, path)
+        ProbTrajResult.__init__(self)
+        StatDistResult.__init__(self)
         self._path = path
         self._trajfig = None
         self._piefig = None
