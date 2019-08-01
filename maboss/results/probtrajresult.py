@@ -103,11 +103,19 @@ class ProbTrajResult(object):
 
     def get_last_states_probtraj(self):
         if self.last_states_probtraj is None:
-            last_table = self.get_raw_probtraj().tail(1).copy().dropna(axis='columns')
-            cols = get_states_cols(last_table)
-            last_states = _get_states(last_table, cols, nona=True)
-            self.last_states_probtraj = self.make_trajectory_table(last_table, last_states, cols, nona=True)
+            with open(self.get_probtraj_file(), 'r') as probtraj:
+                first_line = probtraj.readline()
+                first_col = next(i for i, col in enumerate(first_line.strip("\n").split("\t")) if col == "State")
 
+                last_line = probtraj.readlines()[-1]
+                data = last_line.strip("\n").split("\t")
+              
+                states = [s for s in data[first_col::3]]
+                probs = np.array([float(v) for v in data[first_col+1::3]])
+              
+                self.last_states_probtraj = pd.DataFrame([probs], columns=states, index=[data[0]])
+                self.last_states_probtraj.sort_index(axis=1, inplace=True)
+             
         return self.last_states_probtraj
 
     def get_entropy_trajectory(self):
