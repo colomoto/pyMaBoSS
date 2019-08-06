@@ -45,21 +45,6 @@ class TestProbTrajs(TestCase):
 			res_nodes_probtraj.sort_index(axis=1)
 		).all())
 
-	def test_probtraj_p53_Mdm2_parallel(self):
-
-		path = dirname(__file__)
-		sim = load(join(path, "p53_Mdm2.bnd"), join(path, "p53_Mdm2_runcfg.cfg"))
-		res = sim.run()
-
-		res_states_probtraj = pandas.read_csv(
-			join(path, "res", "p53_Mdm2_states_probtraj.csv"), index_col=0, header=0
-		)
-		
-		self.assertTrue(numpy.isclose(
-			res.get_states_probtraj(nb_cores=2).sort_index(axis=1), 
-			res_states_probtraj.sort_index(axis=1)
-		).all())
-
 	def test_probtraj_cellcycle(self):
 
 		path = dirname(__file__)
@@ -96,24 +81,3 @@ class TestProbTrajs(TestCase):
 			res.get_nodes_probtraj().sort_index(axis=1), 
 			res_nodes_probtraj.sort_index(axis=1)
 		).all())
-
-	def test_probtraj_cellcycle_parallel(self):
-
-		path = dirname(__file__)
-		sim = load(
-			join(path, "cellcycle.bnd"), 
-			join(path, "cellcycle_runcfg.cfg"), 
-			join(path, "cellcycle_runcfg-thread_1.cfg")
-		)
-		res = sim.run()
-
-		res_states_probtraj = pandas.read_csv(
-			join(path, "res", "cellcycle_states_probtraj.csv"), index_col=0, header=0
-		)
-		
-		self.assertTrue(numpy.isclose(
-			res.get_states_probtraj(nb_cores=2).sort_index(axis=1), 
-			res_states_probtraj.sort_index(axis=1)
-		).all())
-
-		
