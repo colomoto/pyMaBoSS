@@ -109,6 +109,27 @@ class EnsembleResult(BaseResult):
 
         return self.asymptotic_nodes_probtraj_distribution
 
+    def filterEnsemble(self, node_filter=None, state_filter=None):
+        if node_filter is not None:
+            data = self.getSteadyStatesNodesDistribution(node_filter)
+            return list(data.index.values)
+
+        if state_filter is not None:
+            data = self.getSteadyStatesDistribution(state_filter)
+            return list(data.index.values)
+        
+    def createSubEnsemble(self, output_directory, node_filter=None, state_filter=None):
+
+        sub_list = self.filterEnsemble(node_filter, state_filter)
+        if not os.path.exists(output_directory):
+            os.mkdir(output_directory)
+
+        for model in sub_list:
+            shutil.copyfile(
+                self.models_files[model], 
+                os.path.join(output_directory, os.path.basename(self.models_files[model]))
+            )
+    
     def plotSteadyStatesDistribution(self, figsize=None):
 
         pca = PCA()
