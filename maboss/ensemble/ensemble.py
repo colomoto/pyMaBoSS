@@ -62,6 +62,7 @@ class Ensemble(object):
 
             elif p == "individual_results":
                 self.individual_results = kwargs[p]
+
             elif p == "random_sampling":
                 self.random_sampling = kwargs[p]
         self.write_cfg()
@@ -71,7 +72,6 @@ class Ensemble(object):
         return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
 
     def read_nodes(self, filename):
-
         if os.path.splitext(filename)[1] == ".bnet":
             self.read_bnet_nodes(filename)
         elif os.path.splitext(filename)[1] == ".bnd":
@@ -143,6 +143,6 @@ class Ensemble(object):
                         print("Unknown mutation %s for node %s. Ignored" % (self.mutations[var, var]))
 
                 else:
-                    new_model_file.write("%s\n" % line)
+                    new_model_file.write("%s" % line)
 
         return new_path
