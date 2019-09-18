@@ -13,6 +13,8 @@ import numpy as np
 import multiprocessing
 import pandas
 import matplotlib.pyplot as plt 
+from re import match
+
 
 class EnsembleResult(BaseResult):
   
@@ -74,9 +76,7 @@ class EnsembleResult(BaseResult):
     def __del__(self):
         shutil.rmtree(self._path)
 
-
-    def getSteadyStatesDistribution(self):
-
+    def getSteadyStatesDistribution(self, filter=None):
         if self.asymptotic_probtraj_distribution is None:
             results = []
             for i, model in enumerate(self.models_files):
@@ -87,9 +87,13 @@ class EnsembleResult(BaseResult):
                 tables = pool.starmap(getSteadyStatesSingleDistribution, [(result, i) for i, result in enumerate(results)])
             self.asymptotic_probtraj_distribution = pandas.concat(tables, axis=0, sort=False)
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
+
+        if filter is not None:
+            return apply_filter(self.asymptotic_probtraj_distribution, filter)
+
         return self.asymptotic_probtraj_distribution
 
-    def getSteadyStatesNodesDistribution(self):
+    def getSteadyStatesNodesDistribution(self, filter=None):
         if self.asymptotic_nodes_probtraj_distribution is None:
 
             table = self.getSteadyStatesDistribution()
@@ -99,6 +103,9 @@ class EnsembleResult(BaseResult):
                     pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.index]), 
                     sort=False, axis=0
                 )
+
+        if filter is not None:
+            return apply_filter(self.asymptotic_nodes_probtraj_distribution, filter)
 
         return self.asymptotic_nodes_probtraj_distribution
 
@@ -214,3 +221,19 @@ def getSteadyStatesNodesSingleDistribution(table, index, nodes):
                 ntable.loc[index, node] += table.loc[index, state]
                 
     return ntable
+
+def apply_filter(data, filter):
+
+    res = match(r"(\w+)\s*([<|>|==|<=|>=|!=]+)\s*(\d+[\.\d+]*)", filter)
+    if res is not None:
+        (species, operator, value) = res.groups()
+        fun = {
+            '<' : data[species] < float(value),
+            '>' : data[species] > float(value),
+            '==' : data[species] == float(value),
+            '!=' : data[species] != float(value),
+            '<=' : data[species] <= float(value),
+            '>=' : data[species] >= float(value)
+        }
+        return data[fun[operator]]
+    
