@@ -19,10 +19,11 @@ class Ensemble(object):
         self.models_path = path
         self.param = _default_parameter_list
         self.models_files = [
-            os.path.join(self.models_path, file) 
-            for file in os.listdir(self.models_path)
+            os.path.join(self.models_path, filename) 
+            for filename in os.listdir(self.models_path)
+            if filename.endswith(".bnet") or filename.endswith(".bnd")
         ]
-        
+
         self.nodes = []
         self.read_nodes(self.models_files[0])
 
