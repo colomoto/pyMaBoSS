@@ -85,7 +85,7 @@ class EnsembleResult(BaseResult):
             tables = []
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
                 tables = pool.starmap(getSteadyStatesSingleDistribution, [(result, i) for i, result in enumerate(results)])
-            self.asymptotic_probtraj_distribution = pandas.concat(tables, axis=1, sort=False)
+            self.asymptotic_probtraj_distribution = pandas.concat(tables, axis=0, sort=False)
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
         return self.asymptotic_probtraj_distribution
 
@@ -93,11 +93,11 @@ class EnsembleResult(BaseResult):
         if self.asymptotic_nodes_probtraj_distribution is None:
 
             table = self.getSteadyStatesDistribution()
-            nodes = get_nodes(table.index.values)
+            nodes = get_nodes(table.columns.values)
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
                 self.asymptotic_nodes_probtraj_distribution = pandas.concat(
-                    pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.columns]), 
-                    sort=False, axis=1
+                    pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.index]), 
+                    sort=False, axis=0
                 )
 
         return self.asymptotic_nodes_probtraj_distribution
@@ -106,34 +106,33 @@ class EnsembleResult(BaseResult):
 
         pca = PCA()
         table = self.getSteadyStatesDistribution()
-        mat = np.transpose(table.values)
+        mat = table.values
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, list(table.index.values), list(table.columns.values) , figsize=figsize)
+        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values) , figsize=figsize)
         
     def plotSteadyStatesNodesDistribution(self, compare=None, **args):
 
         pca = PCA()
         table = self.getSteadyStatesNodesDistribution()
-        mat = np.transpose(table.values)
+        mat = table.values
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
 
         if compare is not None:
             compare_table = compare.getSteadyStatesNodesDistribution()
-            c_mat = np.transpose(compare_table.values)
-            c_pca = pca.transform(c_mat)
+            c_pca = pca.transform(compare_table.values)
             self.plotPCA(
                 pca, X_pca, 
-                list(table.index.values), list(table.columns.values), 
+                list(table.columns.values), list(table.index.values), 
                 compare=c_pca, **args
             )
         else:
             self.plotPCA(
                 pca, X_pca, 
-                list(table.index.values), list(table.columns.values), 
+                list(table.columns.values), list(table.index.values), 
                 **args
             )
 
@@ -190,11 +189,10 @@ def fix_order(string):
 def getSteadyStatesSingleDistribution(result, i):
     if os.path.getsize(result.get_probtraj_file()) > 0:
         raw_table_states = result.get_last_states_probtraj()
-        table_states = result.get_last_states_probtraj().transpose()
-        table_states.rename(columns={table_states.columns[0]: ('Proba #%d' % i)}, inplace=True)
-        rename_index = {index: fix_order(index) for index in table_states.index}
-        table_states.rename(index=rename_index, inplace=True)
-        table_states.sort_values(by=('Proba #%d' % i), inplace=True)
+        table_states = result.get_last_states_probtraj()
+        table_states.rename(index={table_states.index[0]: i}, inplace=True)
+        rename_columns = {col: fix_order(col) for col in table_states.columns}
+        table_states.rename(columns=rename_columns, inplace=True)
         return table_states
 
 def get_nodes(states):
@@ -207,13 +205,12 @@ def get_nodes(states):
     return nodes
 
 def getSteadyStatesNodesSingleDistribution(table, index, nodes):
-    ntable = pandas.DataFrame(np.zeros((len(nodes), 1)), index=nodes, columns=[index])
-
-    for i, row in enumerate(table.iterrows()):
-        state = table.index[i]
+    ntable = pandas.DataFrame(np.zeros((1, len(nodes))), index=[index], columns=nodes)
+    for i, row in enumerate(table):
+        state = table.columns[i]
         if state != "<nil>":
             t_nodes = state.split(" -- ")
             for node in t_nodes:
-                ntable.loc[node, index] += table.loc[state, index]
+                ntable.loc[index, node] += table.loc[index, state]
                 
     return ntable
