@@ -9,6 +9,7 @@ import sys
 from random import random
 import shutil
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import numpy as np
 import multiprocessing
 import pandas
@@ -210,7 +211,28 @@ class EnsembleResult(BaseResult):
         else:
             plt.xlim(min_x_values*1.2, max_x_values*1.2)
             plt.ylim(min_y_values*1.2, max_y_values*1.2)
+
+    def plotTSNESteadyStatesNodesDistribution(self, filter=None, perplexity=50, n_iter=2000, **args):
+
+        pca = PCA()
+        table = self.getSteadyStatesNodesDistribution()
         
+        model = TSNE(perplexity=perplexity, n_iter=n_iter, n_iter_without_progress=n_iter*0.5)   
+        res = model.fit_transform(table.values)
+
+        if filter is None:
+            fig = plt.figure(**args)
+            plt.scatter(res[:, 0], res[:, 1])
+        else:
+            fig = plt.figure(**args)
+            filtered = self.filterEnsemble(filter)
+            not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
+            
+            plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
+            plt.scatter(res[not_filtered, 0], res[not_filtered, 1], color='b')
+
+
+
 def fix_order(string):
     return " -- ".join(sorted(string.split(" -- ")))
 
