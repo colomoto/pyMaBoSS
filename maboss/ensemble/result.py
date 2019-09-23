@@ -10,6 +10,7 @@ from random import random
 import shutil
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 import numpy as np
 import multiprocessing
 import pandas
@@ -141,7 +142,7 @@ class EnsembleResult(BaseResult):
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
         self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values) , figsize=figsize)
         
-    def plotSteadyStatesNodesDistribution(self, compare=None, **args):
+    def plotSteadyStatesNodesDistribution(self, compare=None, clusters=0, **args):
 
         pca = PCA()
         table = self.getSteadyStatesNodesDistribution()
@@ -150,24 +151,36 @@ class EnsembleResult(BaseResult):
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
 
+        colors = None
+        if clusters > 0:
+            kmeans = KMeans(n_clusters=clusters).fit(X_pca)
+            print(kmeans.cluster_centers_)
+            colors=kmeans.labels_.astype(float)
+
+
+
         if compare is not None:
             compare_table = compare.getSteadyStatesNodesDistribution()
             c_pca = pca.transform(compare_table.values)
             self.plotPCA(
                 pca, X_pca, 
-                list(table.columns.values), list(table.index.values), 
+                list(table.columns.values), list(table.index.values), colors,
                 compare=c_pca, **args
             )
         else:
             self.plotPCA(
                 pca, X_pca, 
-                list(table.columns.values), list(table.index.values), 
+                list(table.columns.values), list(table.index.values), colors,
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, compare=None, figsize=None, show_samples=False, show_features=True): 
+    def plotPCA(self, pca, X_pca, samples, features, colors, compare=None, figsize=None, show_samples=False, show_features=True): 
         fig = plt.figure(figsize=figsize)
-        plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
+
+        if colors is None:
+            plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
+        else:
+            plt.scatter(X_pca[:, 0], X_pca[:, 1], c=colors, s=50, alpha=0.1)
 
         if compare is not None:
             plt.scatter(compare[:, 0], compare[:, 1], alpha=0.1)
