@@ -13,10 +13,10 @@ from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import numpy as np
 import multiprocessing
-import pandas
+import pandas as pd
 import matplotlib.pyplot as plt 
 from re import match
-
+import ast
 
 class EnsembleResult(BaseResult):
   
@@ -87,7 +87,7 @@ class EnsembleResult(BaseResult):
             tables = []
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
                 tables = pool.starmap(getSteadyStatesSingleDistribution, [(result, i) for i, result in enumerate(results)])
-            self.asymptotic_probtraj_distribution = pandas.concat(tables, axis=0, sort=False)
+            self.asymptotic_probtraj_distribution = pd.concat(tables, axis=0, sort=False)
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
 
         if filter is not None:
@@ -101,7 +101,7 @@ class EnsembleResult(BaseResult):
             table = self.getSteadyStatesDistribution()
             nodes = get_nodes(table.columns.values)
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
-                self.asymptotic_nodes_probtraj_distribution = pandas.concat(
+                self.asymptotic_nodes_probtraj_distribution = pd.concat(
                     pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.index]), 
                     sort=False, axis=0
                 )
@@ -268,7 +268,7 @@ def get_nodes(states):
     return nodes
 
 def getSteadyStatesNodesSingleDistribution(table, index, nodes):
-    ntable = pandas.DataFrame(np.zeros((1, len(nodes))), index=[index], columns=nodes)
+    ntable = pd.DataFrame(np.zeros((1, len(nodes))), index=[index], columns=nodes)
     for i, row in enumerate(table):
         state = table.columns[i]
         if state != "<nil>":
@@ -280,16 +280,50 @@ def getSteadyStatesNodesSingleDistribution(table, index, nodes):
 
 def apply_filter(data, filter):
 
-    res = match(r"(\w+)\s*([<|>|==|<=|>=|!=]+)\s*(\d+[\.\d+]*)", filter)
-    if res is not None:
-        (species, operator, value) = res.groups()
-        fun = {
-            '<' : data[species] < float(value),
-            '>' : data[species] > float(value),
-            '==' : data[species] == float(value),
-            '!=' : data[species] != float(value),
-            '<=' : data[species] <= float(value),
-            '>=' : data[species] >= float(value)
+    formula = ast.parse(filter)
+    return parse_ast(formula.body[0].value, data)
+
+
+def parse_ast(t_ast, data):
+    if isinstance(t_ast, ast.BoolOp):
+        
+        if isinstance(t_ast.op, ast.And):
+            
+            values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
+            t_data = pd.merge(values[0], values[1], how="inner", on=list(values[0].columns))
+
+            for i in range(2, len(values)):
+                t_data = pd.merge(t_data, values[i], how="inner", on=list(values[0].columns))
+
+            return t_data
+        elif isinstance(t_ast.op, ast.Or):
+            
+            values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
+            t_data = pd.merge(values[0], values[1], how="outer", on=list(values[0].columns))
+
+            for i in range(2, len(values)):
+                t_data = pd.merge(t_data, values[i], how="outer", on=list(values[0].columns))
+
+            return t_data
+        
+    elif isinstance(t_ast, ast.Compare):
+
+        res_dict = {
+            ast.Lt : data[parse_ast(t_ast.left, data) < parse_ast(t_ast.comparators[0], data)],
+            ast.Gt : data[parse_ast(t_ast.left, data) > parse_ast(t_ast.comparators[0], data)],
+            ast.LtE : data[parse_ast(t_ast.left, data) <= parse_ast(t_ast.comparators[0], data)],
+            ast.GtE : data[parse_ast(t_ast.left, data) >= parse_ast(t_ast.comparators[0], data)],
+            ast.Eq : data[parse_ast(t_ast.left, data) == parse_ast(t_ast.comparators[0], data)],
+            ast.NotEq : data[parse_ast(t_ast.left, data) != parse_ast(t_ast.comparators[0], data)],
         }
-        return data[fun[operator]]
+        return res_dict[type(t_ast.ops[0])]
+
+    elif isinstance(t_ast, ast.Num):
+        return t_ast.n
+
+    elif isinstance(t_ast, ast.Name):
+        return data[t_ast.id]
     
+        
+        
+            
