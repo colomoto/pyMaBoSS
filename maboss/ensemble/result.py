@@ -111,28 +111,62 @@ class EnsembleResult(BaseResult):
 
         return self.asymptotic_nodes_probtraj_distribution
 
-    def filterEnsemble(self, node_filter=None, state_filter=None):
+    def filterEnsembleByCondition(self, output_directory, node_filter=None, state_filter=None):
+
+        model_list = None
         if node_filter is not None:
-            data = self.getSteadyStatesNodesDistribution(node_filter)
-            return list(data.index.values)
+            model_list = self.getSteadyStatesNodesDistribution(node_filter).index.values
+              
+        elif state_filter is not None:
+            model_list = self.getSteadyStatesDistribution(state_filter).index.values
+              
+        else:
+            return None
 
-        if state_filter is not None:
-            data = self.getSteadyStatesDistribution(state_filter)
-            return list(data.index.values)
-        
-    def createSubEnsemble(self, output_directory, node_filter=None, state_filter=None):
-
-        sub_list = self.filterEnsemble(node_filter, state_filter)
         if not os.path.exists(output_directory):
             os.mkdir(output_directory)
+        else:
+            shutil.rmtree(output_directory)
+            os.mkdir(output_directory)
 
-        for model in sub_list:
+        for model in model_list:
             shutil.copyfile(
-                self.models_files[model], 
-                os.path.join(output_directory, os.path.basename(self.models_files[model]))
+                self.models_files[int(model)], 
+                os.path.join(output_directory, os.path.basename(self.models_files[int(model)]))
             )
     
-    def plotSteadyStatesDistribution(self, figsize=None):
+    def getKMeans(self, clusters=0):
+        if clusters > 0:
+            kmeans = KMeans(n_clusters=clusters).fit(self.getSteadyStatesNodesDistribution().values)
+            indices = {}
+            for i, label in enumerate(kmeans.labels_):
+                if label in indices.keys():
+                    array = indices[label]
+                    array.append(i)
+                    indices.update({label: array})
+                else:
+                    indices.update({label: [i]})
+
+            return indices, kmeans.labels_
+
+    def filterEnsembleByCluster(self, output_directory, cluster):
+
+        if cluster is not None:
+            if not os.path.exists(output_directory):
+                os.mkdir(output_directory)
+            else:
+                shutil.rmtree(output_directory)
+                os.mkdir(output_directory)
+
+            for model in cluster:
+                shutil.copyfile(
+                    self.models_files[model], 
+                self.models_files[model], 
+                    self.models_files[model], 
+                    os.path.join(output_directory, os.path.basename(self.models_files[model]))
+                )
+
+    def plotSteadyStatesDistribution(self, figsize=None, **args):
 
         pca = PCA()
         table = self.getSteadyStatesDistribution()
@@ -140,9 +174,9 @@ class EnsembleResult(BaseResult):
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values) , figsize=figsize)
-        
-    def plotSteadyStatesNodesDistribution(self, compare=None, clusters=0, **args):
+        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values) , figsize=figsize, **args)
+
+    def plotSteadyStatesNodesDistribution(self, compare=None, labels=None, **args):
 
         pca = PCA()
         table = self.getSteadyStatesNodesDistribution()
@@ -151,26 +185,18 @@ class EnsembleResult(BaseResult):
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
 
-        colors = None
-        if clusters > 0:
-            kmeans = KMeans(n_clusters=clusters).fit(X_pca)
-            print(kmeans.cluster_centers_)
-            colors=kmeans.labels_.astype(float)
-
-
-
         if compare is not None:
             compare_table = compare.getSteadyStatesNodesDistribution()
             c_pca = pca.transform(compare_table.values)
             self.plotPCA(
                 pca, X_pca, 
-                list(table.columns.values), list(table.index.values), colors,
+                list(table.columns.values), list(table.index.values), labels,
                 compare=c_pca, **args
             )
         else:
             self.plotPCA(
                 pca, X_pca, 
-                list(table.columns.values), list(table.index.values), colors,
+                list(table.columns.values), list(table.index.values), labels,
                 **args
             )
 
