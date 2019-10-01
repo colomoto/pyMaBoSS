@@ -10,7 +10,7 @@ import sys
 from random import random
 import shutil
 import collections
-
+import biolqm
 
 class Ensemble(object):
 
@@ -23,6 +23,8 @@ class Ensemble(object):
             for filename in os.listdir(self.models_path)
             if filename.endswith(".bnet") or filename.endswith(".bnd")
         ]
+        self.minibns = None
+        self.miniensemble = None
 
         self.nodes = []
         self.read_nodes(self.models_files[0])
@@ -71,6 +73,42 @@ class Ensemble(object):
 
     def run(self):
         return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
+
+    def get_mini_bns(self):
+        if self.minibns is None:
+            self.minibns = []
+            for model_file in self.models_files:
+                self.minibns.append(
+                    biolqm.to_minibn(biolqm.load(model_file))
+                )
+
+        return self.minibns
+
+    def get_mini_ensemble(self, cluster=None):
+        
+        if self.miniensemble is None or cluster is not None:
+            minibns = self.get_mini_bns()
+
+            if cluster is not None:
+                minibns = [minibn for i, minibn in enumerate(minibns) if i in cluster]
+
+            self.miniensemble = {node:set() for node in minibns[0].keys()}
+            for minibn in minibns:
+                for node in minibn.keys():
+                    self.miniensemble[node].add(minibn[node])
+
+        return self.miniensemble
+
+    def print_ensemble_stats(self, cluster=None):
+
+        mini_ensemble = self.get_mini_ensemble(cluster)
+     
+        for node, list_rules in mini_ensemble.items():
+            
+            nb_rules = len(list_rules)
+            nb_nodes = len(next(iter(list_rules)).symbols)
+
+            print("%s : %s (%d, %d)" % (node, (str(nb_rules/nb_nodes) if nb_nodes > 0 else "N/A"), nb_rules, nb_nodes))
 
     def read_nodes(self, filename):
         if os.path.splitext(filename)[1] == ".bnet":
