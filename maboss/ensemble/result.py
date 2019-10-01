@@ -62,7 +62,6 @@ class EnsembleResult(BaseResult):
         # TODO : Extracting it from the cfg
         return 6
 
-
     def get_fp_file(self):
         return os.path.join(self._path, "%s_fp.csv" % self.prefix)
 
@@ -72,17 +71,17 @@ class EnsembleResult(BaseResult):
     def get_statdist_file(self):
         return os.path.join(self._path, "%s_statdist.csv" % self.prefix)
 
-    def getResultsFromModel(self, model):
+    def load_individual_result(self, model):
         return StoredResult(self._path, self.prefix + "_model_" + str(model))
 
     def __del__(self):
         shutil.rmtree(self._path)
 
-    def getSteadyStatesDistribution(self, filter=None):
+    def get_individual_states_probtraj(self, filter=None):
         if self.asymptotic_probtraj_distribution is None:
             results = []
             for i, model in enumerate(self.models_files):
-                results.append(self.getResultsFromModel(i))
+                results.append(self.load_individual_result(i))
 
             tables = []
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
@@ -95,14 +94,14 @@ class EnsembleResult(BaseResult):
 
         return self.asymptotic_probtraj_distribution
 
-    def getSteadyStatesNodesDistribution(self, filter=None):
+    def get_individual_nodes_probtraj(self, filter=None):
         if self.asymptotic_nodes_probtraj_distribution is None:
 
-            table = self.getSteadyStatesDistribution()
+            table = self.get_individual_states_probtraj()
             nodes = get_nodes(table.columns.values)
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
                 self.asymptotic_nodes_probtraj_distribution = pd.concat(
-                    pool.starmap(getSteadyStatesNodesSingleDistribution, [(table, t_index, nodes) for t_index in table.index]), 
+                    pool.starmap(get_single_individual_nodes_distribution, [(table, t_index, nodes) for t_index in table.index]), 
                     sort=False, axis=0
                 )
 
@@ -115,10 +114,10 @@ class EnsembleResult(BaseResult):
 
         model_list = None
         if node_filter is not None:
-            model_list = self.getSteadyStatesNodesDistribution(node_filter).index.values
+            model_list = self.get_individual_nodes_probtraj(node_filter).index.values
               
         elif state_filter is not None:
-            model_list = self.getSteadyStatesDistribution(state_filter).index.values
+            model_list = self.get_individual_states_probtraj(state_filter).index.values
               
         else:
             return None
@@ -137,7 +136,7 @@ class EnsembleResult(BaseResult):
     
     def getKMeans(self, clusters=0):
         if clusters > 0:
-            kmeans = KMeans(n_clusters=clusters).fit(self.getSteadyStatesNodesDistribution().values)
+            kmeans = KMeans(n_clusters=clusters).fit(self.get_individual_nodes_probtraj().values)
             indices = {}
             for i, label in enumerate(kmeans.labels_):
                 if label in indices.keys():
@@ -169,7 +168,7 @@ class EnsembleResult(BaseResult):
     def plotSteadyStatesDistribution(self, figsize=None, **args):
 
         pca = PCA()
-        table = self.getSteadyStatesDistribution()
+        table = self.get_individual_states_probtraj()
         mat = table.values
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
@@ -179,7 +178,7 @@ class EnsembleResult(BaseResult):
     def plotSteadyStatesNodesDistribution(self, compare=None, labels=None, **args):
 
         pca = PCA()
-        table = self.getSteadyStatesNodesDistribution()
+        table = self.get_individual_nodes_probtraj()
         mat = table.values
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
@@ -200,7 +199,7 @@ class EnsembleResult(BaseResult):
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, colors, compare=None, figsize=None, show_samples=False, show_features=True): 
+    def plotPCA(self, pca, X_pca, samples, features, colors=None, compare=None, figsize=None, show_samples=False, show_features=True): 
         fig = plt.figure(figsize=figsize)
 
         if colors is None:
@@ -254,7 +253,7 @@ class EnsembleResult(BaseResult):
     def plotTSNESteadyStatesNodesDistribution(self, filter=None, perplexity=50, n_iter=2000, **args):
 
         pca = PCA()
-        table = self.getSteadyStatesNodesDistribution()
+        table = self.get_individual_nodes_probtraj()
         
         model = TSNE(perplexity=perplexity, n_iter=n_iter, n_iter_without_progress=n_iter*0.5)   
         res = model.fit_transform(table.values)
@@ -293,7 +292,7 @@ def get_nodes(states):
                 nodes.add(nd)
     return nodes
 
-def getSteadyStatesNodesSingleDistribution(table, index, nodes):
+def get_single_individual_nodes_distribution(table, index, nodes):
     ntable = pd.DataFrame(np.zeros((1, len(nodes))), index=[index], columns=nodes)
     for i, row in enumerate(table):
         state = table.columns[i]
