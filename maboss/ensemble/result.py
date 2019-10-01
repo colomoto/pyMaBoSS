@@ -20,22 +20,39 @@ import ast
 
 class EnsembleResult(BaseResult):
   
-    def __init__(self, models_files, cfg_filename, prefix="res", individual_results=False, random_sampling=False):
+    # def __init__(self, models_files, cfg_filename, prefix="res", individual_results=False, random_sampling=False):
+    def __init__(self, simulation, workdir=None, overwrite=False, prefix="res"):
 
-        self.models_files = models_files
-        self._cfg = cfg_filename
-        self._path = tempfile.mkdtemp()
-        BaseResult.__init__(self, self._path)
+        # self._cfg = cfg_filename
+        if workdir is None:
+            self._path = tempfile.mkdtemp()
+        else:
+            self._path = workdir
+            if os.path.exists(self._path) and overwrite:
+                shutil.rmtree(self._path)
+                os.mkdir(self._path)
+        
+            elif not os.path.exists(self._path):
+                os.mkdir(self._path)
+
+
+        self._cfg = os.path.join(self._path, "ensemble.cfg")
+
+        BaseResult.__init__(self, self._path, simulation)
         self.prefix = prefix
         self.asymptotic_probtraj_distribution = None
         self.asymptotic_nodes_probtraj_distribution = None
         maboss_cmd = "MaBoSS"
 
+        simulation.write_cfg(self._cfg)
+        simulation.write_mutations(self._path)
+        self.models_files = simulation.models_files
+
         options = ["--ensemble"]
-        if individual_results:
+        if simulation.individual_results:
             options.append("--save-individual")
 
-        if random_sampling:
+        if simulation.random_sampling:
             options.append("--random-sampling")
 
         cmd_line = [
@@ -85,7 +102,7 @@ class EnsembleResult(BaseResult):
 
             tables = []
             with multiprocessing.Pool(processes=self.get_thread_count()) as pool:
-                tables = pool.starmap(getSteadyStatesSingleDistribution, [(result, i) for i, result in enumerate(results)])
+                tables = pool.starmap(get_single_individual_states_distribution, [(result, i) for i, result in enumerate(results)])
             self.asymptotic_probtraj_distribution = pd.concat(tables, axis=0, sort=False)
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
 
@@ -109,6 +126,14 @@ class EnsembleResult(BaseResult):
             return apply_filter(self.asymptotic_nodes_probtraj_distribution, filter)
 
         return self.asymptotic_nodes_probtraj_distribution
+
+    def getByCondition(self, node_filter=None, state_filter=None):
+        if node_filter is not None:
+            return self.get_individual_nodes_probtraj(node_filter).index.values
+              
+        elif state_filter is not None:
+            return self.get_individual_states_probtraj(state_filter).index.values
+        
 
     def filterEnsembleByCondition(self, output_directory, node_filter=None, state_filter=None):
 
@@ -160,8 +185,6 @@ class EnsembleResult(BaseResult):
             for model in cluster:
                 shutil.copyfile(
                     self.models_files[model], 
-                self.models_files[model], 
-                    self.models_files[model], 
                     os.path.join(output_directory, os.path.basename(self.models_files[model]))
                 )
 
@@ -185,7 +208,7 @@ class EnsembleResult(BaseResult):
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
 
         if compare is not None:
-            compare_table = compare.getSteadyStatesNodesDistribution()
+            compare_table = compare.get_individual_nodes_probtraj()
             c_pca = pca.transform(compare_table.values)
             self.plotPCA(
                 pca, X_pca, 
@@ -199,13 +222,13 @@ class EnsembleResult(BaseResult):
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, colors=None, compare=None, figsize=None, show_samples=False, show_features=True): 
+    def plotPCA(self, pca, X_pca, samples, features, colors=None, compare=None, figsize=(20, 12), show_samples=False, show_features=True): 
         fig = plt.figure(figsize=figsize)
 
         if colors is None:
             plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
         else:
-            plt.scatter(X_pca[:, 0], X_pca[:, 1], c=colors, s=50, alpha=0.1)
+            plt.scatter(X_pca[:, 0], X_pca[:, 1], c=colors, s=50, alpha=0.8)
 
         if compare is not None:
             plt.scatter(compare[:, 0], compare[:, 1], alpha=0.1)
@@ -263,18 +286,36 @@ class EnsembleResult(BaseResult):
             plt.scatter(res[:, 0], res[:, 1])
         else:
             fig = plt.figure(**args)
-            filtered = self.filterEnsemble(filter)
+            filtered = self.getByCondition(filter)
+            not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
+            
+            plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
+            plt.scatter(res[not_filtered, 0], res[not_filtered, 1], color='b')
+
+    def plotTSNESteadyStatesDistribution(self, filter=None, perplexity=50, n_iter=2000, **args):
+
+        pca = PCA()
+        table = self.get_individual_states_probtraj()
+        
+        model = TSNE(perplexity=perplexity, n_iter=n_iter, n_iter_without_progress=n_iter*0.5)   
+        res = model.fit_transform(table.values)
+
+        if filter is None:
+            fig = plt.figure(**args)
+            plt.scatter(res[:, 0], res[:, 1])
+        else:
+            fig = plt.figure(**args)
+            filtered = self.getByCondition(filter)
             not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
             
             plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
             plt.scatter(res[not_filtered, 0], res[not_filtered, 1], color='b')
 
 
-
 def fix_order(string):
     return " -- ".join(sorted(string.split(" -- ")))
 
-def getSteadyStatesSingleDistribution(result, i):
+def get_single_individual_states_distribution(result, i):
     if os.path.getsize(result.get_probtraj_file()) > 0:
         raw_table_states = result.get_last_states_probtraj()
         table_states = result.get_last_states_probtraj()

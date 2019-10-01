@@ -18,6 +18,7 @@ class Ensemble(object):
 
         self.models_path = path
         self.param = _default_parameter_list
+        self.param["use_physrandgen"] = 0
         self.models_files = [
             os.path.join(self.models_path, filename) 
             for filename in os.listdir(self.models_path)
@@ -38,12 +39,14 @@ class Ensemble(object):
         self.individual_results = False
         self.random_sampling = False
         self._cfg = os.path.join(self._path, "model.cfg")
+        self.palette = {}
 
         if cfg_filename is not None:
             with open(cfg_filename, 'r') as cfg_file:
                 variables, params, internals, istates, refstates = _read_cfg(cfg_file.read())
                 self.outputs.update({node:not value for node, value in internals.items()})
                 self.istates = istates
+                self.param = params
 
         for p in kwargs:
             if p in self.param:
@@ -52,7 +55,7 @@ class Ensemble(object):
             
             elif p == "istate":
                 # Here we reset it in case we have bound states
-                self.istates.clear()
+                self.istates.update({node: {0:1, 1:0} for node in self.nodes})
                 self.istates.update({node: {0:val0, 1:val1} for node, (val0, val1) in kwargs[p].items()})
         
             elif p == "outputs":
@@ -68,11 +71,90 @@ class Ensemble(object):
 
             elif p == "random_sampling":
                 self.random_sampling = kwargs[p]
-        self.write_cfg()
-        self.write_mutations()
+        # self.write_cfg()
+        # self.write_mutations()
 
-    def run(self):
-        return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
+    def copy(self):
+        ensemble = Ensemble(self.models_path)
+        ensemble.param = self.param.copy()
+        ensemble.variables = self.variables.copy()
+        ensemble.istates = self.istates.copy()
+        ensemble.outputs = self.outputs.copy()
+        ensemble.individual_results = self.individual_results
+        ensemble.random_sampling = self.random_sampling
+        ensemble.palette = self.palette
+        return ensemble
+
+    def run(self, workdir=None, overwrite=False, prefix="res"):
+        return EnsembleResult(self, workdir, overwrite, prefix)
+        # return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
+
+    def set_models_path(self, path):
+        self.models_path = path
+        self.models_files = [
+            os.path.join(self.models_path, filename) 
+            for filename in os.listdir(self.models_path)
+            if filename.endswith(".bnet") or filename.endswith(".bnd")
+        ]
+
+    def mutate(self, node, state):
+        """
+        Trigger or untrigger mutation for a node.
+
+        :param node: The identifier of the node to be modified
+        :type node: :py:str:
+        :param str State:
+
+            * ``'ON'`` (always up)
+            * ``'OFF'`` (always down)
+            * ``'WT'`` (mutable but with normal behaviour)
+
+
+        The node will appear as a mutable node in the bnd file.
+        This means that its rate will be of the form:
+
+        ``rate_up = $LowNode ? 0 :($HighNode ? 1: (@logic ? rt_up : 0))``
+
+        If the node is already mutable, this method will simply set $HighNode
+        and $LowNode accordingly to the desired mutation.
+        """
+        if node not in self.nodes:
+            print("Error, unknown node %s" % node, file=sys.stderr)
+            return
+
+        self.mutations.update({node: state})
+
+    def set_istate(self, nodes, probDict, warnings=True):
+        """
+        Change the inital states probability of one or several nodes.
+
+        :param nodes: the node(s) whose initial states are to be modified
+        :type nodes: a :py:class:`Node` or a list or tuple of :py:class:`Node`
+        :param dict probDict: the probability distribution of intial states
+
+        If nodes is a Node object or a singleton, probDict must be a probability
+        distribution over {0, 1}, it can be expressed by a list [P(0), P(1)] or a
+        dictionary: {0: P(0), 1: P(1)}.
+
+        If nodes is a tuple or a list of several Node objects, the Node object 
+        will be bound, and probDict must be a probability distribution over a part
+        of {0, 1}^n. It must be expressed in the form of a dictionary
+        {(b1, ..., bn): P(b1,..,bn),...}. States that do not appear in the 
+        dictionary will be considered to be impossible. If a state has a 0 probability of
+        being an intial state but might be reached later, it must explicitly appear 
+        as a key in probDict.
+        
+        **Example**
+        
+        >>> my_network.set_istate('node1', [0.3, 0.7]) # node1 will have a probability of 0.7 of being up
+        >>> my_network.set_istate(['node1', 'node2'], {(0, 0): 0.4, (1, 0): 0.6, (0, 1): 0}) # node1 and node2 can never be both up because (1, 1) is not in the dictionary
+        """ 
+        self.istates.update({nodes: {i:val for i, val in enumerate(probDict)}})
+
+
+
+    def set_outputs(self, outputs):
+        self.outputs.update({node: node in outputs for node in self.nodes})
 
     def get_mini_bns(self):
         if self.minibns is None:
@@ -149,23 +231,23 @@ class Ensemble(object):
     def print_cfg(self):
         print(self.str_cfg())
 
-    def write_cfg(self):
-        with open(self._cfg, 'w+') as cfg_file:
+    def write_cfg(self, filename):
+        with open(filename, 'w+') as cfg_file:
             cfg_file.write(self.str_cfg())
             
 
-    def write_mutations(self):
+    def write_mutations(self, path):
         if len(self.mutations) > 0:
             new_models = []
 
-            os.mkdir(os.path.join(self._path, "models"))
+            os.mkdir(os.path.join(path, "models"))
             for model in self.models_files:
                 if os.path.splitext(model)[1] == ".bnet":
-                    new_models.append(self.mutate_bnet(model))
+                    new_models.append(self.mutate_bnet(model, path))
             self.models_files = new_models
 
-    def mutate_bnet(self, model_path):
-        new_path = os.path.join(self._path, "models", os.path.basename(model_path))
+    def mutate_bnet(self, model_path, path):
+        new_path = os.path.join(path, "models", os.path.basename(model_path))
         with open(model_path, 'r') as model_file, open(new_path, 'w+') as new_model_file:
             for line in model_file:
                 var, _ = line.split(",")
