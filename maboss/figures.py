@@ -7,8 +7,12 @@ import matplotlib.pylab as plt
 import numpy as np
 
 def persistent_color(palette, state):
+
+    reordered = " -- ".join(sorted(state.split(" -- ")))
     if state in palette:
         return palette[state]
+    if reordered in palette:
+        return palette[reordered]
     if state == "Others":
         color = "lightgray"
     else:
@@ -17,6 +21,7 @@ def persistent_color(palette, state):
             count += 1
         color = "C%d" % (count % 10)
     palette[state] = color
+    palette[reordered] = color
     return color
 
 def register_states_for_color(palette, collection):
