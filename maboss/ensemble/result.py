@@ -129,10 +129,13 @@ class EnsembleResult(BaseResult):
 
     def getByCondition(self, node_filter=None, state_filter=None):
         if node_filter is not None:
-            return self.get_individual_nodes_probtraj(node_filter).index.values
-              
+            indexes = self.get_individual_nodes_probtraj(node_filter).index.values
+            labels = [0 if i not in indexes else 1 for i in range(len(self.models_files))]
+            return indexes, labels
         elif state_filter is not None:
-            return self.get_individual_states_probtraj(state_filter).index.values
+            indexes = self.get_individual_states_probtraj(state_filter).index.values
+            labels = [0 if i not in indexes else 1 for i in range(len(self.models_files))]
+            return indexes, labels
         
 
     def filterEnsembleByCondition(self, output_directory, node_filter=None, state_filter=None):
@@ -286,7 +289,7 @@ class EnsembleResult(BaseResult):
             plt.scatter(res[:, 0], res[:, 1])
         else:
             fig = plt.figure(**args)
-            filtered = self.getByCondition(filter)
+            filtered, _ = self.getByCondition(filter)
             not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
             
             plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
@@ -305,7 +308,7 @@ class EnsembleResult(BaseResult):
             plt.scatter(res[:, 0], res[:, 1])
         else:
             fig = plt.figure(**args)
-            filtered = self.getByCondition(filter)
+            filtered, _ = self.getByCondition(filter)
             not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
             
             plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
