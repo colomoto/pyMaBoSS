@@ -359,19 +359,19 @@ def parse_ast(t_ast, data):
         if isinstance(t_ast.op, ast.And):
             
             values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
-            t_data = pd.merge(values[0], values[1], how="inner", on=list(values[0].columns))
+            t_data = pd.merge(values[0], values[1], how="inner", on=list(values[0].columns), left_index=True, right_index=True)
 
             for i in range(2, len(values)):
-                t_data = pd.merge(t_data, values[i], how="inner", on=list(values[0].columns))
+                t_data = pd.merge(t_data, values[i], how="inner", on=list(values[0].columns), left_index=True, right_index=True)
 
             return t_data
         elif isinstance(t_ast.op, ast.Or):
             
             values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
-            t_data = pd.merge(values[0], values[1], how="outer", on=list(values[0].columns))
+            t_data = pd.merge(values[0], values[1], how="outer", on=list(values[0].columns), left_index=True, right_index=True)
 
             for i in range(2, len(values)):
-                t_data = pd.merge(t_data, values[i], how="outer", on=list(values[0].columns))
+                t_data = pd.merge(t_data, values[i], how="outer", on=list(values[0].columns), left_index=True, right_index=True)
 
             return t_data
         
