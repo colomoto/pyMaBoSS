@@ -94,7 +94,7 @@ class EnsembleResult(BaseResult):
     def __del__(self):
         shutil.rmtree(self._path)
 
-    def get_individual_states_probtraj(self, filter=None):
+    def get_individual_states_probtraj(self, filter=None, cluster=None):
         if self.asymptotic_probtraj_distribution is None:
             results = []
             for i, model in enumerate(self.models_files):
@@ -109,9 +109,12 @@ class EnsembleResult(BaseResult):
         if filter is not None:
             return apply_filter(self.asymptotic_probtraj_distribution, filter)
 
+        if cluster is not None:
+            return self.asymptotic_probtraj_distribution.iloc[cluster, :]
+        
         return self.asymptotic_probtraj_distribution
 
-    def get_individual_nodes_probtraj(self, filter=None):
+    def get_individual_nodes_probtraj(self, filter=None, cluster=None):
         if self.asymptotic_nodes_probtraj_distribution is None:
 
             table = self.get_individual_states_probtraj()
@@ -125,6 +128,9 @@ class EnsembleResult(BaseResult):
         if filter is not None:
             return apply_filter(self.asymptotic_nodes_probtraj_distribution, filter)
 
+        if cluster is not None:
+            return self.asymptotic_nodes_probtraj_distribution.iloc[cluster, :]
+        
         return self.asymptotic_nodes_probtraj_distribution
 
     def getByCondition(self, node_filter=None, state_filter=None):
