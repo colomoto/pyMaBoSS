@@ -11,7 +11,7 @@ from random import random
 import shutil
 import collections
 import biolqm
-
+import math
 class Ensemble(object):
 
     def __init__(self, path, cfg_filename=None, *args, **kwargs):
@@ -168,29 +168,54 @@ class Ensemble(object):
 
     def get_mini_ensemble(self, cluster=None):
         
-        if self.miniensemble is None or cluster is not None:
-            minibns = self.get_mini_bns()
+        minibns = self.get_mini_bns()
 
-            if cluster is not None:
-                minibns = [minibn for i, minibn in enumerate(minibns) if i in cluster]
+        if cluster is not None:
+            minibns = [minibn for i, minibn in enumerate(minibns) if i in cluster]
 
-            self.miniensemble = {node:set() for node in minibns[0].keys()}
-            for minibn in minibns:
-                for node in minibn.keys():
-                    self.miniensemble[node].add(minibn[node])
+        miniensemble = {node:set() for node in minibns[0].keys()}
+        for minibn in minibns:
+            for node in minibn.keys():
+                miniensemble[node].add(minibn[node])
 
-        return self.miniensemble
+        return miniensemble
 
     def print_ensemble_stats(self, cluster=None):
 
         mini_ensemble = self.get_mini_ensemble(cluster)
-     
+        nodes_selection_rate = {}
+
         for node, list_rules in mini_ensemble.items():
             
             nb_rules = len(list_rules)
             nb_nodes = len(next(iter(list_rules)).symbols)
+            
+            nodes_selection_rate.update({
+                node: (nb_rules/(pow(2, pow(2, nb_nodes-1)-1))) if nb_nodes > 0 else math.nan
+            })
+            print("%s : %g (%d, %d)" % (node, nodes_selection_rate[node] , nb_rules, nb_nodes))
 
-            print("%s : %s (%d, %d)" % (node, (str(nb_rules/nb_nodes) if nb_nodes > 0 else "N/A"), nb_rules, nb_nodes))
+    def get_nodes_selection_rate(self, cluster=None):
+        mini_ensemble = self.get_mini_ensemble(cluster)
+        nodes_selection_rate = {}
+        
+        for node, list_rules in mini_ensemble.items():
+            nb_rules = len(list_rules)
+            nb_nodes = len(next(iter(list_rules)).symbols)
+
+            nodes_selection_rate.update({
+                node: (nb_rules/(pow(2, pow(2, nb_nodes-1)-1))) if nb_nodes > 0 else math.nan
+            })
+
+        
+        return collections.OrderedDict(sorted(nodes_selection_rate.items(), key=lambda kv: kv[1]))
+
+    def compare_nodes_selection_rate(self, cluster):
+        rate_wt = self.get_nodes_selection_rate()
+        rate_cluster = self.get_nodes_selection_rate(cluster)
+
+        res = {node: rate_cluster[node]/value for node, value in rate_wt.items()}
+        return collections.OrderedDict(sorted(res.items(), key=lambda kv: kv[1]))
 
     def read_nodes(self, filename):
         if os.path.splitext(filename)[1] == ".bnet":
