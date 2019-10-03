@@ -182,6 +182,20 @@ class EnsembleResult(BaseResult):
 
             return indices, kmeans.labels_
 
+    def getStatesKMeans(self, clusters=0):
+        if clusters > 0:
+            kmeans = KMeans(n_clusters=clusters).fit(self.get_individual_states_probtraj().values)
+            indices = {}
+            for i, label in enumerate(kmeans.labels_):
+                if label in indices.keys():
+                    array = indices[label]
+                    array.append(i)
+                    indices.update({label: array})
+                else:
+                    indices.update({label: [i]})
+
+            return indices, kmeans.labels_
+
     def filterEnsembleByCluster(self, output_directory, cluster):
 
         if cluster is not None:
@@ -282,7 +296,7 @@ class EnsembleResult(BaseResult):
             plt.xlim(min_x_values*1.2, max_x_values*1.2)
             plt.ylim(min_y_values*1.2, max_y_values*1.2)
 
-    def plotTSNESteadyStatesNodesDistribution(self, filter=None, perplexity=50, n_iter=2000, **args):
+    def plotTSNESteadyStatesNodesDistribution(self, node_filter=None, state_filter=None, clusters={}, perplexity=50, n_iter=2000, **args):
 
         pca = PCA()
         table = self.get_individual_nodes_probtraj()
@@ -290,18 +304,24 @@ class EnsembleResult(BaseResult):
         model = TSNE(perplexity=perplexity, n_iter=n_iter, n_iter_without_progress=n_iter*0.5)   
         res = model.fit_transform(table.values)
 
-        if filter is None:
-            fig = plt.figure(**args)
-            plt.scatter(res[:, 0], res[:, 1])
+        if node_filter is None and state_filter is None:
+            if len(clusters) == 0:
+                fig = plt.figure(**args)
+                plt.scatter(res[:, 0], res[:, 1])
+            else:
+                fig = plt.figure(**args)
+                for i, cluster in clusters.items():
+                    plt.scatter(res[cluster, 0], res[cluster, 1], color="C%d" % i)
+
         else:
             fig = plt.figure(**args)
-            filtered, _ = self.getByCondition(filter)
+            filtered, _ = self.getByCondition(node_filter=node_filter, state_filter=state_filter)
             not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
             
             plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
             plt.scatter(res[not_filtered, 0], res[not_filtered, 1], color='b')
 
-    def plotTSNESteadyStatesDistribution(self, filter=None, perplexity=50, n_iter=2000, **args):
+    def plotTSNESteadyStatesDistribution(self, node_filter=None, state_filter=None, clusters={}, perplexity=50, n_iter=2000, **args):
 
         pca = PCA()
         table = self.get_individual_states_probtraj()
@@ -309,12 +329,20 @@ class EnsembleResult(BaseResult):
         model = TSNE(perplexity=perplexity, n_iter=n_iter, n_iter_without_progress=n_iter*0.5)   
         res = model.fit_transform(table.values)
 
-        if filter is None:
-            fig = plt.figure(**args)
-            plt.scatter(res[:, 0], res[:, 1])
+
+
+        if node_filter is None or state_filter is None:
+            if len(clusters) == 0:
+                fig = plt.figure(**args)
+                plt.scatter(res[:, 0], res[:, 1])
+            else:
+                fig = plt.figure(**args)
+                for i, cluster in clusters.items():
+                    plt.scatter(res[cluster, 0], res[cluster, 1], color="C%d" % i)
+
         else:
             fig = plt.figure(**args)
-            filtered, _ = self.getByCondition(filter)
+            filtered, _ = self.getByCondition(node_filter=node_filter, state_filter=state_filter)
             not_filtered = list(set(range(len(self.models_files))).difference(set(filtered)))
             
             plt.scatter(res[filtered, 0], res[filtered, 1], color='r')
