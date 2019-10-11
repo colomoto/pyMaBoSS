@@ -27,6 +27,7 @@ class TestEnsembleMaBoSS(TestCase):
 			outputs=['AHR', 'BCL6', 'CEBPB'],
 			individual_results=True
 		)
+		self.assertEqual(len(ensemble_model.get_mini_bns()), 5)
 		results = ensemble_model.run()
 
 		results.plotSteadyStatesDistribution()
