@@ -10,8 +10,10 @@ import sys
 from random import random
 import shutil
 import collections
-import biolqm
 import math
+
+from colomoto import minibn
+
 class Ensemble(object):
 
     def __init__(self, path, cfg_filename=None, *args, **kwargs):
@@ -160,9 +162,10 @@ class Ensemble(object):
         if self.minibns is None:
             self.minibns = []
             for model_file in self.models_files:
-                self.minibns.append(
-                    biolqm.to_minibn(biolqm.load(model_file))
-                )
+                assert model_file.lower().endswith(".bnet"), \
+                        "Only .bnet files are supported as input"
+                bn = minibn.BooleanNetwork.load(model_file)
+                self.minibns.append(bn)
 
         return self.minibns
 
