@@ -151,8 +151,12 @@ class Simulation(object):
             pass
         elif l <= 128:
             maboss_cmd = "MaBoSS_128n"
-        else:
+        elif l <= 256:
             maboss_cmd = "MaBoSS_256n"
+        elif l <= 512:
+            maboss_cmd = "MaBoSS_512n"
+        else:
+            maboss_cmd = "MaBoSS_1024n"
 
         return maboss_cmd
 
