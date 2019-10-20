@@ -16,7 +16,7 @@ from colomoto import minibn
 
 class Ensemble(object):
 
-    def __init__(self, path, cfg_filename=None, individual_istates=None, models=None, *args, **kwargs):
+    def __init__(self, path, cfg_filename=None, individual_istates=None, individual_mutations={}, models=None, *args, **kwargs):
 
         self.models_path = path
         self.param = _default_parameter_list
@@ -43,6 +43,7 @@ class Ensemble(object):
         self.variables = collections.OrderedDict()
         self.istates = collections.OrderedDict()
         self.individual_istates = individual_istates
+        self.individual_mutations = individual_mutations
         self.individual_cfgs = None
         self.outputs = collections.OrderedDict()
         self.mutations = collections.OrderedDict()
@@ -379,3 +380,14 @@ class Ensemble(object):
                     new_model_file.write("%s, %s\n" % (var, formula))
 
         return new_path
+
+def state2bool(state, nodes):
+    res = [0] * len(nodes)
+
+    if state == "<nil>":
+        return tuple(res)
+
+    for t_node in state.split(" -- "):
+        res[nodes.index(t_node)] = 1
+
+    return tuple(res)
