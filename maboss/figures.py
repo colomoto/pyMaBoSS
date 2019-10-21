@@ -33,7 +33,7 @@ def make_plot_trajectory(time_table, ax, palette, legend=True, error_table=None)
                     for idx in time_table.columns.values]
     time_table.plot(ax=ax, color=color_list, legend=legend, yerr=error_table)
     if legend:
-        plt.legend(loc='upper right')
+        plt.legend(loc=(1.1, 0))
 
 
 def plot_node_prob(time_table, ax, palette, legend=True, error_table=None):

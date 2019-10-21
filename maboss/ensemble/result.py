@@ -221,7 +221,7 @@ class EnsembleResult(BaseResult):
                     os.path.join(output_directory, os.path.basename(self.models_files[model]))
                 )
 
-    def plotSteadyStatesDistribution(self, figsize=None, **args):
+    def plotSteadyStatesDistribution(self, figsize=None, labels=None, alpha=1, **args):
 
         pca = PCA()
         table = self.get_individual_states_probtraj()
@@ -229,9 +229,9 @@ class EnsembleResult(BaseResult):
         pca_res = pca.fit(mat)
         X_pca = pca.transform(mat)
         arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values) , figsize=figsize, **args)
+        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values), labels, alpha, figsize=figsize, **args)
 
-    def plotSteadyStatesNodesDistribution(self, compare=None, labels=None, **args):
+    def plotSteadyStatesNodesDistribution(self, compare=None, labels=None, alpha=1, **args):
 
         pca = PCA()
         table = self.get_individual_nodes_probtraj()
@@ -244,27 +244,41 @@ class EnsembleResult(BaseResult):
             compare_table = compare.get_individual_nodes_probtraj()
             c_pca = pca.transform(compare_table.values)
             self.plotPCA(
-                pca, X_pca, 
-                list(table.columns.values), list(table.index.values), labels,
+                pca, X_pca,
+                list(table.columns.values), list(table.index.values), labels, alpha,
                 compare=c_pca, **args
             )
         else:
             self.plotPCA(
-                pca, X_pca, 
-                list(table.columns.values), list(table.index.values), labels,
+                pca, X_pca,
+                list(table.columns.values), list(table.index.values), labels, alpha,
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, colors=None, compare=None, figsize=(20, 12), show_samples=False, show_features=True): 
+    def plotPCA(self, pca, X_pca, samples, features, colors=None, alpha=1, compare=None, figsize=(20, 12), show_samples=False, show_features=True):
         fig = plt.figure(figsize=figsize)
 
         if colors is None:
-            plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=0.1)
+            plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=alpha)
         else:
-            plt.scatter(X_pca[:, 0], X_pca[:, 1], c=colors, s=50, alpha=0.8)
+            legend = ["Cluster #%d" % (i + 1) for i in colors]
+
+            c_colors = ["C%d" % color for color in colors]
+
+            scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=c_colors, s=50, alpha=alpha, label=colors)
+            import matplotlib.patches as mpatches
+            # build the legend
+
+            patches = []
+            for cluster in set(colors):
+                patches.append(
+                    mpatches.Patch(color="C%d" % list(set(colors))[cluster], label='Cluster #%d' % (cluster + 1))
+                )
+
+            legend = plt.legend(handles=patches)
 
         if compare is not None:
-            plt.scatter(compare[:, 0], compare[:, 1], alpha=0.1)
+            plt.scatter(compare[:, 0], compare[:, 1], alpha=alpha)
 
         plt.xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
         plt.ylabel("PC{} ({}%)".format(2, round(pca.explained_variance_ratio_[1] * 100, 2)))
@@ -297,8 +311,8 @@ class EnsembleResult(BaseResult):
   
         if show_features:
             for i, v in enumerate(arrows_raw):
-                plt.arrow(0, 0, v[0], v[1],  linewidth=2, color='red')
-                plt.text(v[0], v[1], samples[i], color='black', ha='center', va='center', fontsize=18)
+                plt.arrow(0, 0, v[0], v[1], linewidth=2, color='red')
+                plt.text(v[0], v[1], samples[i], color='black', ha='right', va='top', fontsize=18)
 
             plt.xlim(min(min_x_values, min_x_arrows)*1.2, max(max_x_values, max_x_arrows)*1.2)
             plt.ylim(min(min_y_values, min_y_arrows)*1.2, max(max_y_values, max_y_arrows)*1.2)
