@@ -7,8 +7,10 @@ import numpy as np
 
 class ProbTrajResult(object):
     
-    def __init__(self):
-                
+    def __init__(self, output_nodes=None):
+
+        self.output_nodes = output_nodes    
+        
         self.state_probtraj = None
         self.state_probtraj_errors = None
         self.state_probtraj_full = None
@@ -106,7 +108,7 @@ class ProbTrajResult(object):
             raw_states = self._get_raw_states()
             raw_probas = self._get_raw_probas()
             indexes, states = self._get_indexes()
-            nodes = self._get_nodes()
+            nodes = self.output_nodes if self.output_nodes is not None else self._get_nodes()
             nodes_indexes = self._get_nodes_indexes()
 
             new_probs = np.zeros((len(indexes), len(nodes)))
@@ -134,7 +136,7 @@ class ProbTrajResult(object):
             raw_states = self._get_raw_states()
             raw_errors = self._get_raw_errors()
             indexes, states = self._get_indexes()
-            nodes = self._get_nodes()
+            nodes = self.output_nodes if self.output_nodes is not None else self._get_nodes()
             nodes_indexes = self._get_nodes_indexes()
             
             new_errors = np.zeros((len(indexes), len(nodes)))
@@ -369,7 +371,7 @@ class ProbTrajResult(object):
 
     def _get_nodes_indexes(self):
         if self.nodes_indexes is None:
-            nodes = self._get_nodes()
+            nodes = self.output_nodes if self.output_nodes is not None else self._get_nodes()
             self.nodes_indexes = {node:index for index, node in enumerate(nodes)}
         return self.nodes_indexes
 

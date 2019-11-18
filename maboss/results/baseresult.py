@@ -36,9 +36,9 @@ class BaseResult(ProbTrajResult, StatDistResult):
     in the working directory.
     """
 
-    def __init__(self, path, simul=None, command=None, workdir=None):
+    def __init__(self, path, simul=None, command=None, workdir=None, output_nodes=None):
         
-        ProbTrajResult.__init__(self)
+        ProbTrajResult.__init__(self, output_nodes)
         StatDistResult.__init__(self)
         self._path = path
         self._trajfig = None

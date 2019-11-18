@@ -34,7 +34,8 @@ class Result(BaseResult):
             elif not os.path.exists(self._path):
                 os.mkdir(self._path)
 
-        BaseResult.__init__(self, self._path, simul, command)
+        self.output_nodes = [name for name, node in simul.network.items() if not node.is_internal]
+        BaseResult.__init__(self, self._path, simul, command, output_nodes=self.output_nodes)
 
         if workdir is None or len(os.listdir(workdir)) == 0 or overwrite:
 
