@@ -2,7 +2,7 @@ from .network import *
 from .simulation import *
 from .result import *
 from .results import *
-from .gsparser import load
+from .gsparser import load, loadBNet
 from .server import MaBoSSClient
 from .upp import UpdatePopulation
 from .ensemble import EnsembleResult, Ensemble

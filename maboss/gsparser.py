@@ -95,6 +95,16 @@ cfg_decl = (var_decl | istate_decl | param_decl | internal_decl
 cfg_grammar = pp.ZeroOrMore(cfg_decl)
 cfg_grammar.ignore('//' + pp.restOfLine)
 
+def loadBNet(bnet_filename):
+    assert bnet_filename.lower().endswith(".bnet"), "wrong extension for BNet file"
+
+    if "://" in bnet_filename:
+        from colomoto_jupyter.io import ensure_localfile
+        bnet_filename = ensure_localfile(bnet_filename)
+
+    from colomoto_jupyter import import_colomoto_tool
+    biolqm = import_colomoto_tool("biolqm")
+    return biolqm.to_maboss(biolqm.load(bnet_filename))
 
 def load(bnd_filename, *cfg_filenames, **extra_args):
     """Loads a network from a MaBoSS format file.
