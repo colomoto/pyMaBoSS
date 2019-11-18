@@ -5,9 +5,9 @@ import matplotlib
 matplotlib.use('Agg')
 
 from unittest import TestCase
-from maboss import load, set_nodes_istate
+from maboss import load, loadBNet, set_nodes_istate
 from os.path import dirname, join, exists
-
+import shutil
 
 class TestLoadModels(TestCase):
 
@@ -51,7 +51,9 @@ class TestLoadModels(TestCase):
 
 		for i, proba in enumerate(probas):
 			self.assertAlmostEqual(proba, expected_probas[i], delta=proba*1e-6)
-			
+
+		if exists("saved_sim"):
+			shutil.rmtree("saved_sim")
 		res.save("saved_sim")
 		self.assertTrue(exists("saved_sim"))
 		self.assertTrue(exists("saved_sim/saved_sim.bnd"))
@@ -88,3 +90,20 @@ class TestLoadModels(TestCase):
 		self.assertEqual([type(value) for value in istate[("TCR_b1", "TCR_b2", "CD28")].values()], [str, str, str])
 		self.assertEqual([type(value) for value in istate[("PI3K_b1", "PI3K_b2")].values()], [float, float, float])
 		self.assertEqual([type(value) for value in istate["TGFB"].values()], [str, str])
+
+	def test_loadbnet(self):
+
+		sim = loadBNet(
+			join(dirname(__file__), "ensemble", "TC2_BN_0.bnet")
+		)
+
+		self.assertEqual(
+			list(sim.network.keys()), 
+			[
+				'AHR', 'BCL6', 'CEBPB', 'CTCF', 'E2F3', 'E2F7', 'EBF1', 'EGR3', 'ESRRA', 'ETV5', 
+				'FOSL1', 'FOSL2', 'FOXM1', 'FOXO3', 'HEY1', 'HIF1A', 'HMGA2', 'HSF1', 'HSF2', 
+				'KLF15', 'KLF9', 'MAX', 'NFAT5', 'NFATC3', 'NFE2L2', 'NR1H3', 'NR2F1', 'NR2F2',
+				'NR3C1', 'PPARG', 'RARA', 'RBPJ', 'RUNX2', 'SMAD3', 'SNAI1', 'SP3', 'STAT5A', 
+				'TCF12', 'THAP11', 'TP53', 'TP63', 'VDR', 'XBP1', 'YBX1', 'YY1', 'ZNF143'
+			]
+		)

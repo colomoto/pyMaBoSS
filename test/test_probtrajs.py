@@ -81,3 +81,24 @@ class TestProbTrajs(TestCase):
 			res.get_nodes_probtraj().sort_index(axis=1), 
 			res_nodes_probtraj.sort_index(axis=1)
 		).all())
+
+	def test_toyexample(self):
+
+		path = dirname(__file__)
+		sim = load(join(path, "Four_cycle.bnd"), join(path, "Four_cycle_FEscape.cfg"))
+		set_nodes_istate(sim, ["A", "B", "C"], [1, 0])
+		res = sim.run()
+		self.assertEqual(
+			list(res.get_nodes_probtraj().columns.values),
+			['A', 'B', 'C']
+		)
+
+		sim.network.set_output(['A', 'B'])
+		res = sim.run()
+		self.assertEqual(
+			list(res.get_nodes_probtraj().columns.values),
+			['A', 'B']
+		)
+
+		with self.assertRaises(AssertionError, msg="Node(s) 'D' not defined !"):
+			sim.network.set_output(['A', 'B', 'C', 'E'])
