@@ -242,6 +242,7 @@ class Network(collections.OrderedDict):
         :param output_list: the nodes to remain external
         :type output_list: list of :py:class:`Node`
         """
+        assert len(set(output_list) - set(self.keys())) == 0, "Node(s) %s not defined !" % str(set(output_list) - set(self.keys()))[1:-1]
         for nd in self:
             self[nd].is_internal = nd not in output_list
 
