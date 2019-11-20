@@ -95,7 +95,9 @@ class UpdatePopulationResults:
             #
             # Update pop ratio and construct the new version of model
             #
-            modelStep = self._buildUpdateCfg(modelStep, result.get_probtraj_file(), stepIndex)
+            with result._get_probtraj_fd() as result_probtraj_fd:
+                modelStep = self._buildUpdateCfg(modelStep, result_probtraj_fd, stepIndex)
+            
             if modelStep is None:
                 if self.verbose:
                     print("No cells left")
@@ -210,7 +212,7 @@ class UpdatePopulationResults:
         nb_cores = int(self.uppModel.model.param["thread_count"])
         self.get_stepwise_probability_distribution(nb_cores=nb_cores).to_csv(path, index_label="Step")
 
-    def _buildUpdateCfg(self, simulation, traj_file, stepIndex):
+    def _buildUpdateCfg(self, simulation, traj_fd, stepIndex):
         """Configure the MaBoSS model for the next run of UppMaBoss.
         In practice, _buildUpdateCfg uses the previous simulation result
         to compute pop ratio, death, division, parameters, nodes formulas 
@@ -222,7 +224,7 @@ class UpdatePopulationResults:
         #
         # Read first and last line, extract last states with respective probs
         #
-        first_line, last_line = read_first_last_lines_from_trajectory (traj_file)
+        first_line, last_line = read_first_last_lines_from_trajectory (traj_fd)
         states, probs = get_states_probs_from_trajectory_line (first_line, last_line)                                                            
         #
         # Update pop ratio
@@ -491,8 +493,9 @@ def _get_next_condition_from_trajectory(self, next_model, step=-1):
     #
     # Extract states and probs from trajectory
     #
-    trajfile = self.results[step].get_probtraj_file()
-    first_line, last_line = read_first_last_lines_from_trajectory (trajfile)
+    
+    with self.results[step]._get_probtraj_fd() as trajfd:
+        first_line, last_line = read_first_last_lines_from_trajectory (trajfd)
     states, probs = get_states_probs_from_trajectory_line (first_line, last_line)
     #
     # Compute formulas for nodes 
@@ -520,11 +523,10 @@ def _get_next_condition_from_trajectory(self, next_model, step=-1):
             if self.verbose:
                 print("Starting init of node:", a_node, "=", new_val)
 
-def read_first_last_lines_from_trajectory (traj_file):
+def read_first_last_lines_from_trajectory (f):
     """Read first and last lines of a trajectory file
     :param traj_file: trajectory file
     """
-    f = open (traj_file, 'r')
     first_line = ""
     last_line = ""
     first_pass = True
