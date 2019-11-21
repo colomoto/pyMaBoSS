@@ -17,7 +17,7 @@ from multiprocessing import Pool
 
 
 class UpdatePopulationResults:
-    def __init__(self, uppModel, verbose=False, workdir=None, overwrite=False, previous_run=None, previous_run_step=-1, host=None, port=7777):
+    def __init__(self, uppModel, verbose=False, workdir=None, overwrite=False, previous_run=None, previous_run_step=-1, host=None, port=7777, nodes_init=None):
         """UpdatePopulationResults class
         :param uppModel: UppMaBoSS model
         :param verbose: boolean to activate verbose mode, default to False        
@@ -34,6 +34,7 @@ class UpdatePopulationResults:
         self.nodes_stepwise_probability_distribution = None
         self.nodes_list_stepwise_probability_distribution = None
 
+        self.nodes_init = nodes_init
         self.results = []
         self.verbose = verbose
         self.workdir = workdir
@@ -363,7 +364,7 @@ class UpdatePopulationResults:
                 print("Updated node:", node_upd, "=", new_value)
         return all_node_upd
 
-    def _initCond_Trajline(self, states, probs, nodes_init=None):
+    def _initCond_Trajline(self, states, probs):
         """
         Return the list of states to be initialized from states and probs
         The function excludes from states the nodes with formulas
@@ -378,8 +379,8 @@ class UpdatePopulationResults:
         # Remove from the list of nodes the ones having a rule or an init value
         #
         nodes_to_exclude = set(self.uppModel.nodes_formula.keys()) 
-        if nodes_init:
-            nodes_to_exclude= nodes_to_exclude | set(nodes_init.keys())
+        if self.nodes_init:
+            nodes_to_exclude= nodes_to_exclude | set(self.nodes_init.keys())
 
         list_nodes_to_set = list( set(self.uppModel.node_list) - nodes_to_exclude )
         # Not necessary for MaBoss, only to have visually an ouput always in the same order
@@ -504,8 +505,7 @@ def _get_next_condition_from_trajectory(self, next_model, step=-1):
     #
     # Init states
     #
-    nodes_to_set, new_istate = self._initCond_Trajline \
-        (states, probs, nodes_init=nodes_init)        
+    nodes_to_set, new_istate = self._initCond_Trajline(states, probs)        
     next_model.network.set_istate (nodes_to_set, new_istate, warnings=False)    
     #
     # Init nodes having a formula
@@ -516,9 +516,8 @@ def _get_next_condition_from_trajectory(self, next_model, step=-1):
     #
     # Init nodes having an init value
     #
-    if nodes_init:
-        for a_node in nodes_init.keys():
-            new_val = nodes_init[a_node]
+    if self.nodes_init:
+        for a_node, new_val in self.nodes_init.items():
             next_model.network.set_istate(a_node, [1-new_val,new_val], warnings=False)
             if self.verbose:
                 print("Starting init of node:", a_node, "=", new_val)
