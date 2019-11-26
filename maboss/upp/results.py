@@ -163,7 +163,6 @@ class UpdatePopulationResults:
     def get_nodes_stepwise_probability_distribution(self, nodes=None, nb_cores=1):
         if self.nodes_stepwise_probability_distribution is None or set(nodes) != self.nodes_list_stepwise_probability_distribution:
             
-            self.nodes_list_stepwise_probability_distribution = set(nodes)
             table = self.get_stepwise_probability_distribution(nb_cores=nb_cores)
             
             states = table.columns.values[1:].tolist()
@@ -174,6 +173,8 @@ class UpdatePopulationResults:
                 nodes = get_nodes(states)
             else:
                 nodes = set(nodes)
+            
+            self.nodes_list_stepwise_probability_distribution = nodes
 
             node_dict = {}
             for state in states:
