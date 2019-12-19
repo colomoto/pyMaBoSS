@@ -246,6 +246,8 @@ class Network(collections.OrderedDict):
         for nd in self:
             self[nd].is_internal = nd not in output_list
 
+    def get_output(self):
+        return [name for name, node in self.items() if not node.is_internal]
 
 def _testStateDict(stDict, nbState):
     """Check if stateDict is a good parameter for set_istate."""

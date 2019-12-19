@@ -12,6 +12,7 @@ else:
 from colomoto import ModelState
 
 from .result import Result
+from .cmabossresult import CMaBoSSResult
 import os
 import uuid
 import subprocess
@@ -162,6 +163,20 @@ class Simulation(object):
 
         return maboss_cmd
 
+    def get_cmaboss(self):
+        l = len(self.network)
+        assert l <= 1024, "Models with more than 1024 nodes are not compatible with this version of MaBoSS"
+
+        if l <= 64:
+            return __import__("cmaboss")
+        elif l <= 128:
+            return __import__("cmaboss_128n")
+        elif l <= 256:
+            return __import__("cmaboss_256n")
+        elif l <= 512:
+            return __import__("cmaboss_512n")
+        else:
+            return __import__("cmaboss_1024n")
 
     def print_bnd(self, out=stdout):
         """Produce the content of the bnd file associated to the simulation."""
@@ -226,12 +241,14 @@ class Simulation(object):
 
 
 
-    def run(self, command=None, workdir=None, overwrite=False, prefix="res"):
+    def run(self, command=None, workdir=None, overwrite=False, prefix="res", cmaboss=False):
         """Run the simulation with MaBoSS and return a Result object.
 
         :param command: specify a MaBoSS command, default to None for automatic selection
         :rtype: :py:class:`Result`
         """
+        if cmaboss:
+            return CMaBoSSResult(self)
 
         if workdir is not None:
             self.workdir = workdir
