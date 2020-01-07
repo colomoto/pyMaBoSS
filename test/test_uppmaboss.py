@@ -18,9 +18,9 @@ class TestUpPMaBoSS(TestCase):
 		uppmaboss_sim = uppmaboss_model.run('WT')
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.6899230000000027, 0.6332961899289637, 0.6106773832094052, 0.596996988470672, 0.5764113383141323, 
-			0.5451779135361446, 0.5052152821180231, 0.4627322342599125, 0.4215351834436775, 0.3854876022314294, 
-			0.3557684355373424, 0.33079633751005605
+			1.0, 0.690834999999995, 0.635651791034972, 0.614520818545569, 0.600487006612414,
+			0.57990771640874, 0.54809687862508, 0.5080600459321, 0.465662943159059, 0.424567257099338,
+			0.388475643707788, 0.357325335741412, 0.331254521920362
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
@@ -33,9 +33,9 @@ class TestUpPMaBoSS(TestCase):
 		uppmaboss_sim = uppmaboss_model.run(cmaboss=True)
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.6899230000000027, 0.6332961899289637, 0.6106773832094052, 0.596996988470672, 0.5764113383141323, 
-			0.5451779135361446, 0.5052152821180231, 0.4627322342599125, 0.4215351834436775, 0.3854876022314294, 
-			0.3557684355373424, 0.33079633751005605
+			1.0, 0.690834999999995, 0.635651791034972, 0.614520818545569, 0.600487006612414,
+			0.57990771640874, 0.54809687862508, 0.5080600459321, 0.465662943159059, 0.424567257099338,
+			0.388475643707788, 0.357325335741412, 0.331254521920362
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
@@ -50,13 +50,13 @@ class TestUpPMaBoSSServer(TestCase):
 		uppmaboss_sim = uppmaboss_model.run(host='localhost', port=7777)
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.6899230000000027, 0.6332961899289637, 0.6106773832094052, 0.596996988470672, 0.5764113383141323, 
-			0.5451779135361446, 0.5052152821180231, 0.4627322342599125, 0.4215351834436775, 0.3854876022314294, 
-			0.3557684355373424, 0.33079633751005605
+			1.0, 0.690834999999995, 0.635651791034972, 0.614520818545569, 0.600487006612414,
+			0.57990771640874, 0.54809687862508, 0.5080600459321, 0.465662943159059, 0.424567257099338,
+			0.388475643707788, 0.357325335741412, 0.331254521920362
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio/1e-6)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio*1e-2)
 
 
 
@@ -69,9 +69,9 @@ class TestUpPMaBoSSOverwrite(TestCase):
 		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
 		sim.param["max_time"] = 2
 		expected_pop_ratios = [
-			1.0, 0.6284629999999846, 0.5871421862129369, 0.5177736854805769, 0.4238583410870101, 0.34499186727759734,
-			0.29076190567646526, 0.2539398179415862, 0.2271176786113088, 0.20601231409098322, 0.18811025602109335,
-			0.1740761022603733, 0.16198947625212115
+			1.0, 0.633796999999985, 0.598606055371957, 0.54249152652923, 0.458010406085837, 
+			0.38210388347478, 0.328686142668866, 0.292135586231785, 0.263436186240358, 
+			0.24011233661918, 0.220724465998851, 0.204628134315873, 0.190872007986478
 		]
 
 		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
@@ -79,7 +79,7 @@ class TestUpPMaBoSSOverwrite(TestCase):
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio / 1e-6)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio * 1e-2)
 
 
 class TestUpPMaBoSSRestore(TestCase):
@@ -87,9 +87,9 @@ class TestUpPMaBoSSRestore(TestCase):
 	def test_uppmaboss_restore(self):
 		# Now again, but with save results (from the overwrite run)
 		expected_pop_ratios = [
-			1.0, 0.6284629999999846, 0.5871421862129369, 0.5177736854805769, 0.4238583410870101, 0.34499186727759734,
-			0.29076190567646526, 0.2539398179415862, 0.2271176786113088, 0.20601231409098322, 0.18811025602109335,
-			0.1740761022603733, 0.16198947625212115
+			1.0, 0.633796999999985, 0.598606055371957, 0.54249152652923, 0.458010406085837, 
+			0.38210388347478, 0.328686142668866, 0.292135586231785, 0.263436186240358, 
+			0.24011233661918, 0.220724465998851, 0.204628134315873, 0.190872007986478
 		]
 
 		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
@@ -98,7 +98,7 @@ class TestUpPMaBoSSRestore(TestCase):
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio / 1e-6)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio * 1e-2)
 
 		uppmaboss_sim.save('results')
 		uppmaboss_sim.results[0].plot_piechart()
@@ -159,13 +159,13 @@ class TestUpPMaBoSSWrite(TestCase):
 		uppmaboss_sim = uppmaboss_model.run('defined')
 
 		expected_pop_ratios = [
-			1.0, 0.6284629999999846, 0.5871421862129369, 0.5177736854805769, 0.4238583410870101, 0.34499186727759734,
-			0.29076190567646526, 0.2539398179415862, 0.2271176786113088, 0.20601231409098322, 0.18811025602109335,
-			0.1740761022603733, 0.16198947625212115
+			1.0, 0.9222239999999876, 0.8469705215999628, 0.8183861134664442, 0.8001352847499952, 
+			0.7711007756721909, 0.7281836198005307, 0.6754238038114395, 0.6175764567101379, 
+			0.5633804171750202, 0.5159595607005033, 0.4753169101445297, 0.4409985539151523
 		]
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio / 1e-6)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio * 1e-2)
 
 
