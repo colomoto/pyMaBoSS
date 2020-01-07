@@ -27,6 +27,8 @@ _default_parameter_list = collections.OrderedDict([
     ('sample_count', 10000),
     ('discrete_time', 0),
     ('use_physrandgen', 1),
+    ('use_glibcrandgen', 0),
+    ('use_mtrandgen', 0),
     ('seed_pseudorandom', 0),
     ('display_traj', 0),
     ('statdist_traj_count', 0),
