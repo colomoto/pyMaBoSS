@@ -41,13 +41,12 @@ class TestLoadModels(TestCase):
 	def test_modifications_p53_Mdm2(self):
 		sim = load(join(dirname(__file__), "p53_Mdm2.bnd"), join(dirname(__file__), "p53_Mdm2_runcfg.cfg"))
 		sim.update_parameters(sample_count=100)
-		sim.update_parameters(**{"$fast": 1})
 		sim.network.set_output(['Mdm2C', 'Mdm2N'])
 		sim.mutate("Dam", "ON")
 		res = sim.run()
 		probas = res.get_last_states_probtraj().values[0]
 
-		expected_probas = [0.437374, 0.041544, 0.210043, 0.31104]
+		expected_probas = [0.539638, 0.06727,  0.158831, 0.234261]
 
 		for i, proba in enumerate(probas):
 			self.assertAlmostEqual(proba, expected_probas[i], delta=proba*1e-6)
