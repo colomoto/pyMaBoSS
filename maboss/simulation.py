@@ -250,7 +250,7 @@ class Simulation(object):
         :rtype: :py:class:`Result`
         """
         if cmaboss:
-            return CMaBoSSResult(self, only_final_state=only_final_state)
+            return CMaBoSSResult(self, workdir=workdir, overwrite=overwrite, only_final_state=only_final_state)
 
         if workdir is not None:
             self.workdir = workdir
