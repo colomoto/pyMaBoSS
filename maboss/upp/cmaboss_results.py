@@ -17,7 +17,7 @@ from multiprocessing import Pool
 
 
 class CMaBoSSUpdatePopulationResults:
-    def __init__(self, uppModel, verbose=False, previous_run=None, previous_run_step=-1, nodes_init=None):
+    def __init__(self, uppModel, verbose=False, previous_run=None, previous_run_step=-1, nodes_init=None, only_final_state=False):
         """UpdatePopulationResults class
         :param uppModel: UppMaBoSS model
         :param verbose: boolean to activate verbose mode, default to False        
@@ -34,6 +34,7 @@ class CMaBoSSUpdatePopulationResults:
 
         self.verbose = verbose
         self.nodes_init = nodes_init
+        self.only_final_state = only_final_state
         self.results = []
         self.pop_ratio = uppModel.pop_ratio
  
@@ -72,7 +73,7 @@ class CMaBoSSUpdatePopulationResults:
                 if self.verbose:
                     print("Running MaBoSS for step %d" % stepIndex)
 
-                result = modelStep.run(cmaboss=True)
+                result = modelStep.run(cmaboss=True, only_final_state=self.only_final_state)
                 
                 self.results.append(result)
 

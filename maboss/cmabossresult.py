@@ -10,10 +10,11 @@ from contextlib import ExitStack
 
 class CMaBoSSResult(BaseResult):
 
-    def __init__(self, simul):
+    def __init__(self, simul, only_final_state=False):
 
         self.simul = simul
         self.output_nodes = simul.network.get_output()
+        self.only_final_state = only_final_state
         BaseResult.__init__(self, simul, output_nodes=self.output_nodes)
 
         self._path = tempfile.mkdtemp()
@@ -33,7 +34,7 @@ class CMaBoSSResult(BaseResult):
         cmaboss_module = simul.get_cmaboss()
         cmaboss_sim = cmaboss_module.MaBoSSSim(network=self._bnd, config=self._cfg)
 
-        self.cmaboss_result = cmaboss_sim.run()
+        self.cmaboss_result = cmaboss_sim.run(self.only_final_state)
 
     def get_last_states_probtraj(self):
         raw_res = self.cmaboss_result.get_last_states_probtraj()

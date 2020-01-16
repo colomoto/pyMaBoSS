@@ -18,13 +18,13 @@ class TestUpPMaBoSS(TestCase):
 		uppmaboss_sim = uppmaboss_model.run('WT')
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.690834999999995, 0.635651791034972, 0.614520818545569, 0.600487006612414,
-			0.57990771640874, 0.54809687862508, 0.5080600459321, 0.465662943159059, 0.424567257099338,
-			0.388475643707788, 0.357325335741412, 0.331254521920362
+			1.0, 0.6909369999999935, 0.6350215414009746, 0.6131799754844611, 0.5993067785390911, 
+			0.5779660634620294, 0.5462068282747353, 0.5068007366487994, 0.4642603896151877, 
+			0.42336833449783184, 0.3872067515749944, 0.3563835453225929, 0.3305927809146634
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio*1e-2)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
 
 	def test_uppmaboss_cmaboss(self):
 
@@ -33,13 +33,28 @@ class TestUpPMaBoSS(TestCase):
 		uppmaboss_sim = uppmaboss_model.run(cmaboss=True)
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.690834999999995, 0.635651791034972, 0.614520818545569, 0.600487006612414,
-			0.57990771640874, 0.54809687862508, 0.5080600459321, 0.465662943159059, 0.424567257099338,
-			0.388475643707788, 0.357325335741412, 0.331254521920362
+			1.0, 0.6909624069153775, 0.6347461970589986, 0.6131250925776203, 0.5990134964913663, 
+			0.5785572670573754, 0.5463914294271375, 0.5064555411237545, 0.46382951892601226, 
+			0.42236715831924404, 0.386175790847125, 0.3559156567262494, 0.3308129907084962
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
-			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i], delta=pop_ratio*1e-2)
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
+
+	def test_uppmaboss_cmaboss_only_final_state(self):
+
+		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
+		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
+		uppmaboss_sim = uppmaboss_model.run(cmaboss=True, only_final_state=True)
+		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
+		expected_pop_ratios = [
+			1.0, 0.6909624069153775, 0.6330873957121255, 0.6120499015525873, 0.5971403659507549, 
+			0.572884524285811, 0.5366610358151735, 0.4932075917451659, 0.44834049712406043, 
+			0.4069855696692941, 0.37123188737382146, 0.34174865087858486, 0.31723160266455447
+		]
+
+		for i, pop_ratio in enumerate(pop_ratios):
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
 
 class TestUpPMaBoSSServer(TestCase):
 

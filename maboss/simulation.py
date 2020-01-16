@@ -243,14 +243,14 @@ class Simulation(object):
 
 
 
-    def run(self, command=None, workdir=None, overwrite=False, prefix="res", cmaboss=False):
+    def run(self, command=None, workdir=None, overwrite=False, prefix="res", cmaboss=False, only_final_state=False):
         """Run the simulation with MaBoSS and return a Result object.
 
         :param command: specify a MaBoSS command, default to None for automatic selection
         :rtype: :py:class:`Result`
         """
         if cmaboss:
-            return CMaBoSSResult(self)
+            return CMaBoSSResult(self, only_final_state=only_final_state)
 
         if workdir is not None:
             self.workdir = workdir
