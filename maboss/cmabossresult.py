@@ -17,22 +17,11 @@ class CMaBoSSResult(BaseResult):
         self.only_final_state = only_final_state
         BaseResult.__init__(self, simul, output_nodes=self.output_nodes)
 
-        self._path = tempfile.mkdtemp()
-
-        cfg_fd, self._cfg = tempfile.mkstemp(dir=self._path, suffix='.cfg')
-        os.close(cfg_fd)
-        
-        bnd_fd, self._bnd = tempfile.mkstemp(dir=self._path, suffix='.bnd')
-        os.close(bnd_fd)
-            
-        with ExitStack() as stack:
-            bnd_file = stack.enter_context(open(self._bnd, 'w'))
-            cfg_file = stack.enter_context(open(self._cfg, 'w'))
-            simul.print_bnd(out=bnd_file)
-            simul.print_cfg(out=cfg_file)
-
         cmaboss_module = simul.get_cmaboss()
-        cmaboss_sim = cmaboss_module.MaBoSSSim(network=self._bnd, config=self._cfg)
+        cmaboss_sim = cmaboss_module.MaBoSSSim(
+            network_str=str(simul.network), 
+            config_str=simul.str_cfg()
+        )
 
         self.cmaboss_result = cmaboss_sim.run(self.only_final_state)
 
