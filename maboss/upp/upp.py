@@ -53,7 +53,7 @@ class UpdatePopulation:
 
     def run(self, workdir=None, overwrite=None, verbose=False, host=None, port=7777, cmaboss=False, only_final_state=False):
         if cmaboss:
-            return CMaBoSSUpdatePopulationResults(self, verbose, self.previous_run, nodes_init=self.nodes_init, only_final_state=only_final_state)
+            return CMaBoSSUpdatePopulationResults(self, verbose, workdir, overwrite, self.previous_run, nodes_init=self.nodes_init, only_final_state=only_final_state)
         else:
             return UpdatePopulationResults(self, verbose, workdir, overwrite, self.previous_run, host=host, port=port, nodes_init=self.nodes_init)
 

@@ -17,7 +17,7 @@ from multiprocessing import Pool
 
 
 class CMaBoSSUpdatePopulationResults:
-    def __init__(self, uppModel, verbose=False, previous_run=None, previous_run_step=-1, nodes_init=None, only_final_state=False):
+    def __init__(self, uppModel, verbose=False, workdir=None, overwrite=False, previous_run=None, previous_run_step=-1, nodes_init=None, only_final_state=False):
         """UpdatePopulationResults class
         :param uppModel: UppMaBoSS model
         :param verbose: boolean to activate verbose mode, default to False        
@@ -32,25 +32,55 @@ class CMaBoSSUpdatePopulationResults:
         self.nodes_stepwise_probability_distribution = None
         self.nodes_list_stepwise_probability_distribution = None
 
+        self.workdir = workdir
+        self.overwrite = overwrite
         self.verbose = verbose
         self.nodes_init = nodes_init
         self.only_final_state = only_final_state
         self.results = []
         self.pop_ratio = uppModel.pop_ratio
  
+        if self.workdir is not None and os.path.exists(self.workdir) and not self.overwrite:
+            # Restoring
+            self.results = [None] * (self.uppModel.step_number + 1)
 
-        if previous_run:
-            # Load the previous run final state
-            _get_next_condition_from_trajectory(previous_run, self.uppModel.model, step=previous_run_step)
+            for folder in sorted(glob.glob("%s/Step_*_probtraj.csv/" % self.workdir)):
+                step = os.path.basename(folder[0:-1]).split("_")[-1]
+                self.results[int(step)] = StoredResult(folder)
 
-        self._run()
+            for folder in sorted(glob.glob("%s/Step_*_finalprob.csv/" % self.workdir)):
+                step = os.path.basename(folder[0:-1]).split("_")[-1]
+                self.results[int(step)] = StoredResult(folder)
+
+            self.pop_ratios = pd.read_csv(
+                os.path.join(self.workdir, "PopRatios.csv"),
+                index_col=0, squeeze=True
+            ) / self.uppModel.base_ratio
+
+            if previous_run:
+                # Load the previous run final state
+                _get_next_condition_from_trajectory(previous_run, self.uppModel.model, step=previous_run_step)
+
+        else:
+            if workdir is not None:
+                if os.path.exists(workdir):
+                    shutil.rmtree(workdir)
+                os.makedirs(workdir)
+
+            if previous_run:
+                # Load the previous run final state
+                _get_next_condition_from_trajectory(previous_run, self.uppModel.model, step=previous_run_step)
+
+            self._run()
 
     def _run(self):
         
         if self.verbose:
             print("Run MaBoSS step 0")
         
-        result = self.uppModel.model.run(cmaboss=True)
+        sim_workdir = os.path.join(self.workdir, "Step_0") if self.workdir is not None else None
+
+        result = self.uppModel.model.run(workdir=sim_workdir, cmaboss=True, only_final_state=self.only_final_state)
         
         self.results.append(result)
         self.pop_ratios[self.uppModel.time_shift] = self.pop_ratio
@@ -73,12 +103,14 @@ class CMaBoSSUpdatePopulationResults:
                 if self.verbose:
                     print("Running MaBoSS for step %d" % stepIndex)
 
-                result = modelStep.run(cmaboss=True, only_final_state=self.only_final_state)
+                sim_workdir = os.path.join(self.workdir, "Step_%d" % stepIndex) if self.workdir is not None else None
+
+                result = modelStep.run(workdir=sim_workdir, cmaboss=True, only_final_state=self.only_final_state)
                 
                 self.results.append(result)
 
-        # if self.workdir is not None:
-        #     self.save_population_ratios(os.path.join(self.workdir, "PopRatios.csv"))
+        if self.workdir is not None:
+            self.save_population_ratios(os.path.join(self.workdir, "PopRatios.csv"))
 
     def get_population_ratios(self, name=None):
         if name:
@@ -458,10 +490,12 @@ def _get_next_condition_from_trajectory(self, next_model, step=-1):
     #
     # Extract states and probs from trajectory
     #
-    
-    with self.results[step]._get_probtraj_fd() as trajfd:
-        first_line, last_line = read_first_last_lines_from_trajectory (trajfd)
-    states, probs = get_states_probs_from_trajectory_line (first_line, last_line)
+    last_state = result.cmaboss_result.get_last_states_probtraj()
+    states = []
+    probs = []
+    for state, prob in last_state.items():
+        states.append(state.split(" -- "))
+        probs.append(prob)
     #
     # Compute formulas for nodes 
     # 

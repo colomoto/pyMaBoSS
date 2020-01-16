@@ -30,7 +30,7 @@ class TestUpPMaBoSS(TestCase):
 
 		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
 		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
-		uppmaboss_sim = uppmaboss_model.run(cmaboss=True)
+		uppmaboss_sim = uppmaboss_model.run('WT_cmaboss', cmaboss=True)
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
 			1.0, 0.6909624069153775, 0.6347461970589986, 0.6131250925776203, 0.5990134964913663, 
@@ -45,12 +45,12 @@ class TestUpPMaBoSS(TestCase):
 
 		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"))
 		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
-		uppmaboss_sim = uppmaboss_model.run(cmaboss=True, only_final_state=True)
+		uppmaboss_sim = uppmaboss_model.run('WT_cmaboss_final', cmaboss=True, only_final_state=True)
 		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
 		expected_pop_ratios = [
-			1.0, 0.6909624069153775, 0.6330873957121255, 0.6120499015525873, 0.5971403659507549, 
-			0.572884524285811, 0.5366610358151735, 0.4932075917451659, 0.44834049712406043, 
-			0.4069855696692941, 0.37123188737382146, 0.34174865087858486, 0.31723160266455447
+			1.0, 0.6786400000000071, 0.6277080679999886, 0.6094166548984455, 0.593084288547135, 
+			0.5673740846386145, 0.5301600184271414, 0.48600829209250723, 0.4415190930343338, 
+			0.4009832251028442, 0.3666951495242785, 0.33794624980155913, 0.31464485587773855
 		]
 
 		for i, pop_ratio in enumerate(pop_ratios):
