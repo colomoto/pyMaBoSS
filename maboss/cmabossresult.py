@@ -16,7 +16,7 @@ class CMaBoSSResult(BaseResult):
         self.output_nodes = simul.network.get_output()
         self.only_final_state = only_final_state
         BaseResult.__init__(self, simul, output_nodes=self.output_nodes)
-
+        
         cmaboss_module = simul.get_cmaboss()
         cmaboss_sim = cmaboss_module.MaBoSSSim(
             network_str=str(simul.network), 
@@ -24,10 +24,12 @@ class CMaBoSSResult(BaseResult):
         )
 
         self.cmaboss_result = cmaboss_sim.run(self.only_final_state)
+
         if workdir is not None:
-            
             if not os.path.exists(workdir):
                 os.makedirs(workdir)
+
+            self.cmaboss_result.display_run(os.path.join(workdir, "%s_run.txt" % prefix))
 
             if self.only_final_state:
                 self.cmaboss_result.display_final_states(os.path.join(workdir, "%s_finalprob.csv" % prefix))
