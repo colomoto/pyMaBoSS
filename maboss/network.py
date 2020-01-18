@@ -224,10 +224,11 @@ class Network(collections.OrderedDict):
         stringList = []
         for binding in self._initState:
             string = ''
-            if isinstance(binding, tuple):
+            if isinstance(binding, tuple):   
                 string += '[' + ", ".join(list(binding)) + '].istate = '
-                string += ' , '.join([str(self._initState[binding][t]) + ' '
-                                      + str(list(t)) for t in self._initState[binding]])
+                string += ' , '.join(
+                    [str(self._initState[binding][t]) + ' ' + str(list(t)) for t in sorted(self._initState[binding])]
+                )
                 string += ';'
             else:
                 string += '[' + binding + '].istate = '
