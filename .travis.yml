@@ -1,42 +1,255 @@
-dist: xenial
-services: docker
-language: python
+jobs:
+  include:
+    - stage: test
+      name: Python 3.5 Linux Unittest
+    
+      os: linux
+      dist: xenial
+      services: docker
+      language: python
+      python: 3.5
 
-python:
-- 3.5
-- 3.6
-- 3.7
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        - bash miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda info -a
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.5 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        - docker run -p 7777:7777 --network host -d sysbiocurie/maboss-server
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest discover -v;
+        
+      after_script:
+        - coveralls
 
-env:
-- TEST=python
-- TEST=script
+    - stage: test
+      name: Python 3.6 Linux Unittest
+    
+      os: linux
+      dist: xenial
+      services: docker
+      language: python
+      python: 3.6
 
-before_install:
-# Conda install for Travis, taken from https://conda.io/docs/user-guide/tasks/use-conda-with-travis-ci.html
-- wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-- bash miniconda.sh -b -p $HOME/miniconda
-- export PATH="$HOME/miniconda/bin:$PATH"
-- hash -r
-- conda config --set always_yes yes --set changeps1 no
-- conda update -q conda
-# Useful for debugging any issues with conda
-- conda info -a
-- conda install --no-update-deps -y -c vincent-noel maboss
-- conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=$TRAVIS_PYTHON_VERSION ginsim-python
-- source activate test-environment
-- pip install coveralls
-- docker run -p 7777:7777 --network host -d sysbiocurie/maboss-server
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        - bash miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda info -a
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.6 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        - docker run -p 7777:7777 --network host -d sysbiocurie/maboss-server
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest discover -v;
+        
+      after_script:
+        - coveralls
 
-install:
-- pip install .
+    - stage: test
+      name: Python 3.7 Linux Unittest
+    
+      os: linux
+      dist: xenial
+      services: docker
+      language: python
+      python: 3.7
 
-script:
-- if [ $TEST = "python" ]; then
-    coverage run -m unittest discover -v;
-  elif [ $TEST = "script" ]; then
-    coverage run -a scripts/MBSS_FormatTable.py test/p53_Mdm2.bnd test/p53_Mdm2_runcfg.cfg;
-    coverage run -a scripts/UpPMaBoSS.py test/CellFateModel.bnd test/CellFateModel_1h.cfg test/CellFate_1h.upp;
-  fi
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        - bash miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda info -a
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.7 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        - docker run -p 7777:7777 --network host -d sysbiocurie/maboss-server
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest discover -v;
+        
+      after_script:
+        - coveralls
 
-after_script:
-- coveralls
+    - stage: test
+      name: Python Script Linux Unittest
+    
+      os: linux
+      dist: xenial
+      language: python
+      python: 3.7
+
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        - bash miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda info -a
+        - conda install --no-update-deps -y -c vincent-noel -c colomoto -c potassco/label/dev maboss ginsim-python
+        - pip install coveralls
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -a scripts/MBSS_FormatTable.py test/p53_Mdm2.bnd test/p53_Mdm2_runcfg.cfg;
+        - coverage run -a scripts/UpPMaBoSS.py test/CellFateModel.bnd test/CellFateModel_1h.cfg test/CellFate_1h.upp;
+        
+      after_script:
+        - coveralls
+
+
+    - stage: test
+      name: Python 3.5 MacOSX Unittest
+    
+      os: osx
+      python: 3.5
+
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+        - bash ~/miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.5 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest test.test_conversion;
+        - coverage run -m unittest test.test_ensemble;
+        - coverage run -m unittest test.test_loadmodels;
+        - coverage run -m unittest test.test_probtrajs;
+        - coverage run -m unittest test.test_statdist;
+        - coverage run -m unittest test.test_types;
+        - coverage run -m unittest test.test_uppmaboss;
+        
+      after_script:
+        - coveralls
+
+    - stage: test
+      name: Python 3.6 MacOSX Unittest
+    
+      os: osx
+      python: 3.6
+
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+        - bash ~/miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.6 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest test.test_conversion;
+        - coverage run -m unittest test.test_ensemble;
+        - coverage run -m unittest test.test_loadmodels;
+        - coverage run -m unittest test.test_probtrajs;
+        - coverage run -m unittest test.test_statdist;
+        - coverage run -m unittest test.test_types;
+        - coverage run -m unittest test.test_uppmaboss;
+        
+      after_script:
+        - coveralls
+
+    - stage: test
+      name: Python 3.7 MacOSX Unittest
+    
+      os: osx
+      python: 3.7
+
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+        - bash ~/miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.7 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -m unittest test.test_conversion;
+        - coverage run -m unittest test.test_ensemble;
+        - coverage run -m unittest test.test_loadmodels;
+        - coverage run -m unittest test.test_probtrajs;
+        - coverage run -m unittest test.test_statdist;
+        - coverage run -m unittest test.test_types;
+        - coverage run -m unittest test.test_uppmaboss;
+        
+      after_script:
+        - coveralls
+
+
+    - stage: test
+      name: Python Script MacOSX Unittest
+    
+      os: osx
+      python: 3.7
+
+      before_install: 
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+        - bash ~/miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda install --no-update-deps -y -c vincent-noel maboss
+        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.7 ginsim-python
+        - source activate test-environment
+        - pip install coveralls
+        
+      install:
+        - pip install .
+          
+      script:
+        - coverage run -a scripts/MBSS_FormatTable.py test/p53_Mdm2.bnd test/p53_Mdm2_runcfg.cfg;
+        - coverage run -a scripts/UpPMaBoSS.py test/CellFateModel.bnd test/CellFateModel_1h.cfg test/CellFate_1h.upp;
+        
+      after_script:
+        - coveralls
