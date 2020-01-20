@@ -32,17 +32,20 @@ class TestProbTrajs(TestCase):
 
 		self.assertTrue(numpy.isclose(
 			res.get_states_probtraj().sort_index(axis=1), 
-			res_states_probtraj.sort_index(axis=1)
+			res_states_probtraj.sort_index(axis=1),
+			atol=1e-5
 		).all())
 
 		self.assertTrue(numpy.isclose(
 			res.get_last_states_probtraj().sort_index(axis=1), 
-			res_last_states_probtraj.sort_index(axis=1)
+			res_last_states_probtraj.sort_index(axis=1),
+			atol=1e-5
 		).all())
 
 		self.assertTrue(numpy.isclose(
 			res.get_nodes_probtraj().sort_index(axis=1), 
-			res_nodes_probtraj.sort_index(axis=1)
+			res_nodes_probtraj.sort_index(axis=1),
+			atol=1e-5
 		).all())
 
 	def test_probtraj_p53_Mdm2_cmaboss(self):
