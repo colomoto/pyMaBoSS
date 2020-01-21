@@ -1,3 +1,9 @@
+env:
+  global:
+    - secure: "C2q+hdZT5spjDC7mG5OL4nnJnxNzDzzWWSen3Y+QHbvb8Py9lZYZfRxplg357GgpYuwd649ZNDwp9QrQlsl13VegK/YDaJ67FOYJ/JFUgsLAX7JqEVaMSf2NV7uTK+Nsp/Fj+BeBynQ3g1kS+M6mEVVSps1i3xdYEh8SM0SfG06ooSgF1ouhNr4C4r5JdFtVnAy2roH3EGTQWjZWDReGWky13I3Y/5dy+6r84RJp8+tPb4EGgZKSrl/w4V+NEbefeM6Ds/BecenutTrmBCYlRb4KH1AWcaJrNLhpbsyFHtQDw74o6LEbOf294H4yPMQx0N+5wEdb3f9VeY00nKulpK2hdtKU9ivqsjiIjtGn44YQWYJ3vaucJ8SLAjaHlzRLhMnBjNo9xHO6JtiHPy9/6M3ZdF1KLWHF0Du1Yc63GcaqLWkDHzkdJKyclw/e3tcbXMRoEPDaE1Dl2MVVuUsQk+uw8HEnM6tMMMCGAOze+5tslgSdgsS6tm2EzNvzzh2YKNPScyJfyMN6Rd8PQpYpLJex3VLO5SgU0j/YsKjDSW9ULfrDRKQjeF8CZodcxaMA+b07jf2oe2QvHDChTBfXinvSgSAfpEkGb7NHVRHdEnYeT1OapPJVa1sXSOZPfK8GtEiQijshQDKo035Xu5bcQBcZcKbN/VJqWYdNYdDNFt4="
+    - secure: "Gpj1jKHRGz0tQCUanjIn7fpENhcvRrOEDcNJ8MENsBmAqU7ygQwFCYzMgoMwg4VFaE2s+baS/SR2bvivUl+Sz5Ravk9Ow102RmLrc/ybFi0cQy2Ums0nOoOtY6VMp9kubGuzZg384JQgiw3Xs9XtHukS15dkaGgnDUoZjdpKw9QyciQer+PGJS67Qwrz5IG0RSMDea9ya0sXc6ElHSZ9cXvK6VGlh8J533Jc0zMFZjmp6LFsdIEoAlVynQX6kkk9j1/d1C0BF1W8cRPS1yuDoVTSoUoh6HD48DImCJmreeMd2VkZRTY1PkF7iMiHuYLJOCjFySfTua7satJ39CXruVs0U3aDVnIukVjgGBkhFXUBYd45LvgfxVP93fBV2rg5yeAMoHZ6XU3voIWQ0tmsbiDYR7RYXDZotI6p4cIC+qm14lnzPoExjAacPcHHqsEDrLZ2Y+cmoxifR/1yDf3rQdqL8fJ2yIxJyNQvD3lrnicjGYl2BQjS+jtcECSWKIsj0YQ1LmlEwmuRW01E5qR1omf0IuAMKu9Br0KAtYUQYKwfKlth2Mc7n1fW3Ne4JGa4zRJdipQfMx5VKkd7PM0+CikufAybfSjw7FY1JQBYoXqDNbdxMla9t2OQQKpIomvjwvFfwE6QfN5zkiMd5a22sqQUX0XjjbZzcHV0z+pRNcc="
+    - secure: "Omt/3NvF3doypETfdDOqTgB/WtjDSySEqTDyfMGO6FVqoIfY+xEPj6ABmAt6paA21/7TitC6lMU9rimjLooIIEbal9jMJ6bWjb/WuJCz8RyFtsiqstC2pMfkYA6zD/lHw5lf80BEUHOCYE1rRUBbD9Pr7GHuo9DR+f8SRivP7L5Q3pLllpjN6Cvy+DpfhoYgiGVW0gjlJ/j1cg5r1lvw1IETVrCVDtYi1KVOrFUELae3GqLF0sBERgZIk34NkW0NJDgq3zE+gCYLApidPffPEZN808Zk/0RSIGKvrQ05u2zqs6p3I8CyHcvNR7sBhZKjQjqcMEjU9yPRQlMACv2E+70AH6XzshgM5GpHv0XL6nH4uhQlFRX1/QZfkooezWBDWjaYskvFXJEFA3UOV2eH6+67rtj36ffLbh9SPIFw7yW/vlXODTFvXhQGXikVA77AFxJfNCYoSowqpXVfX/7f8HNmcP5O/97NwYm1smFBeurwVn4rdVikqwuxp7PKyT2yUJF8N6tmnyebtODJW04j8FH9sWdQauUyg9Eha7t14i3uml1uluBUWtxi1dGdAcOh56w+nUtbhi61I0/icf55wg7H+AWSqXquBFSP+MSZiP4rIEPrCgkRyTMIsWhoc1+thLoztGfBlgy+Lv5buAGceGLL8SVWJ3XuvUMUCMxNrsk="
+
 jobs:
   include:
     - stage: test
@@ -253,3 +259,55 @@ jobs:
         
       after_script:
         - coveralls
+
+
+    - stage: deploy
+      if: type != pull_request
+      name: pyMaBoSS upload on Anaconda cloud
+
+      os: linux
+      dist: xenial
+      
+      install:
+        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+        - bash miniconda.sh -b -p $HOME/miniconda
+        - export PATH="$HOME/miniconda/bin:$PATH"
+        - hash -r
+        - conda config --set always_yes yes --set changeps1 no
+        - conda update -q conda
+        - conda install conda-build
+        - conda install anaconda-client
+
+      script:
+        - if [ $TRAVIS_REPO_SLUG = 'vincent-noel/pyMaBoSS' ]; then
+            sed -i "s|/colomoto/|/vincent-noel/|" conda/meta.yaml;
+            sed -ie "s|v{{\sversion\s}}|$TRAVIS_BRANCH|" conda/meta.yaml;
+            sed -i "s|git_rev|git_tag|" conda/meta.yaml;
+            conda build conda -c vincent-noel -c colomoto;
+            anaconda -t $CONDA_UPLOAD_TOKEN upload -u vincent-noel $HOME/miniconda/conda-bld/noarch/*.tar.bz2 --force;
+
+          elif [[ $TRAVIS_REPO_SLUG = 'colomoto/pyMaBoSS' && $TRAVIS_TAG != '' ]]; then
+            conda build conda -c vincent-noel -c colomoto;
+            anaconda -t $CONDA_UPLOAD_TOKEN_COLOMOTO upload -u colomoto $HOME/miniconda/conda-bld/noarch/*.tar.bz2 --force;
+            
+          fi
+
+
+    - stage: deploy
+      if: type != pull_request
+      name: PyPI upload 
+
+      os: linux
+      dist: xenial
+      language: python
+      python: 3.7
+      
+      install: 
+        - pip3 install twine
+
+      script:
+        - if [[ $TRAVIS_REPO_SLUG = 'colomoto/pyMaBoSS' && $TRAVIS_TAG != '' ]]; then
+            python setup.py sdist;
+            twine upload -u __token__ -p $PYPI_UPLOAD_TOKEN dist/*;
+          
+          fi
