@@ -19,7 +19,7 @@ jobs:
         - pip3 install twine
 
       script:
-        - if [[ $TRAVIS_REPO_SLUG = 'colomoto/pyMaBoSS' && $TRAVIS_TAG != '' ]]; then
+        - if [[ $TRAVIS_REPO_SLUG = 'colomoto/pyMaBoSS' && $TRAVIS_TAG = '' ]]; then
             python setup.py sdist;
             twine upload -u __token__ -p $PYPI_UPLOAD_TOKEN dist/*;
           
