@@ -18,6 +18,7 @@ import pyparsing as pp
 from .logic import varName
 from .network import Node, Network
 from .simulation import Simulation
+from .cmabosssimulation import CMaBoSSSimulation
 externVar = pp.Suppress('$') + ~pp.White() + varName
 externVar.setParseAction(lambda token: token[0])
 import uuid
@@ -126,7 +127,10 @@ def load(bnd_filename, *cfg_filenames, **extra_args):
     elif "://" in " ".join(cfg_filenames):
         from colomoto_jupyter.io import ensure_localfile
         cfg_filenames = [ensure_localfile(cfg_filename) if "://" in cfg_filename else cfg_filename for cfg_filename in cfg_filenames]
-    
+
+    if extra_args.get("cmaboss"):
+        return CMaBoSSSimulation(bnd_filename, cfg_filenames[0])
+
     command = extra_args.get("command")
 
     with ExitStack() as stack:

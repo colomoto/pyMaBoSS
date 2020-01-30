@@ -7,23 +7,17 @@ import tempfile
 import os
 from .results.baseresult import BaseResult
 from contextlib import ExitStack
+from time import time
+class CMaBoSSResult2(BaseResult):
 
-class CMaBoSSResult(BaseResult):
+    def __init__(self, sim, workdir=None, only_final_state=False):
 
-    def __init__(self, simul, workdir=None, overwrite=False, prefix="res", only_final_state=False):
+        BaseResult.__init__(self, "truc")
+        self.cmaboss_simulation = sim.cmaboss.MaBoSSSim(net=sim.cmaboss_net, cfg=sim.cmaboss_cfg)
+        self.cmaboss_result = self.cmaboss_simulation.run(only_last_state=only_final_state)
 
-        self.simul = simul
-        self.output_nodes = simul.network.get_output()
+        self.workdir = workdir
         self.only_final_state = only_final_state
-        BaseResult.__init__(self, simul, output_nodes=self.output_nodes)
-        
-        cmaboss_module = simul.get_cmaboss()
-        cmaboss_sim = cmaboss_module.MaBoSSSim(
-            network_str=str(simul.network), 
-            config_str=simul.str_cfg()
-        )
-
-        self.cmaboss_result = cmaboss_sim.run(self.only_final_state)
 
         if workdir is not None:
             if not os.path.exists(workdir):
@@ -37,7 +31,6 @@ class CMaBoSSResult(BaseResult):
                 self.cmaboss_result.display_probtraj(os.path.join(workdir, "%s_probtraj.csv" % prefix))
                 self.cmaboss_result.display_fp(os.path.join(workdir, "%s_fp.csv" % prefix))
                 self.cmaboss_result.display_statdist(os.path.join(workdir, "%s_statdist.csv" % prefix))
-
 
 
     def get_last_states_probtraj(self):
@@ -79,7 +72,6 @@ class CMaBoSSResult(BaseResult):
         return df
 
 
-
     def get_fptable(self):
         if not self.only_final_state:
             raw_res = self.cmaboss_result.get_fp_table()
@@ -95,4 +87,4 @@ class CMaBoSSResult(BaseResult):
             return df
 
 
-__all__ = ["CMaBoSSResult"]
+__all__ = ["CMaBoSSResult2"]
