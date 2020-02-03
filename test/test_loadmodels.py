@@ -46,7 +46,7 @@ class TestLoadModels(TestCase):
 		res = sim.run()
 		probas = res.get_last_states_probtraj().values[0]
 
-		expected_probas = [0.539638, 0.06727,  0.158831, 0.234261]
+		expected_probas = [0.442395, 0.018827, 0.157108, 0.381669]
 
 		for i, proba in enumerate(probas):
 			self.assertAlmostEqual(proba, expected_probas[i], delta=proba*1e-6)
