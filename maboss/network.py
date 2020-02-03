@@ -231,9 +231,14 @@ class Network(collections.OrderedDict):
                 )
                 string += ';'
             else:
-                string += '[' + binding + '].istate = '
-                string += str(self._initState[binding][0]) + '[0] , '
-                string += str(self._initState[binding][1]) + '[1];'
+                if self._initState[binding][0] == 1:
+                    string += binding + ".istate = FALSE;"
+                elif self._initState[binding][1] == 1:
+                    string += binding + ".istate = TRUE;"
+                else: 
+                    string += '[' + binding + '].istate = '
+                    string += str(self._initState[binding][0]) + '[0] , '
+                    string += str(self._initState[binding][1]) + '[1];'
             stringList.append(string)
         return '\n'.join(stringList)
 
