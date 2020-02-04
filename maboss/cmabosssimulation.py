@@ -5,16 +5,16 @@ from .cmabossresult2 import CMaBoSSResult2
 
 class CMaBoSSSimulation(object):
 
-    def __init__(self, bnd, cfg):
+    def __init__(self, bnd, cfgs):
 
         self.bnd = bnd
-        self.cfg = cfg
+        self.cfgs = cfgs
 
         self.nb_nodes = self.count_nodes()
         self.cmaboss = self.get_cmaboss()
 
         self.cmaboss_net = self.cmaboss.MaBoSSNet(self.bnd)
-        self.cmaboss_cfg = self.cmaboss.MaBoSSCfg(self.cmaboss_net, self.cfg)
+        self.cmaboss_cfg = self.cmaboss.MaBoSSCfg(self.cmaboss_net, self.cfgs)
         
     def count_nodes(self):
         

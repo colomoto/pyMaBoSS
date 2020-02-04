@@ -129,7 +129,7 @@ def load(bnd_filename, *cfg_filenames, **extra_args):
         cfg_filenames = [ensure_localfile(cfg_filename) if "://" in cfg_filename else cfg_filename for cfg_filename in cfg_filenames]
 
     if extra_args.get("cmaboss"):
-        return CMaBoSSSimulation(bnd_filename, cfg_filenames[0])
+        return CMaBoSSSimulation(bnd_filename, *cfg_filenames)
 
     command = extra_args.get("command")
 
