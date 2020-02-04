@@ -218,11 +218,12 @@ class CMaBoSSUpdatePopulationResults:
         #
         # first_line, last_line = read_first_last_lines_from_trajectory (traj_fd)
         # states, probs = get_states_probs_from_trajectory_line (first_line, last_line)
-        last_state = result.cmaboss_result.get_last_states_probtraj()
+        last_state, raw_states, timepoint = result.cmaboss_result.get_last_probtraj()
+        
         states = []
         probs = []
-        for state, prob in last_state.items():
-            states.append(state.split(" -- "))
+        for i_state, prob in enumerate(last_state[0]):
+            states.append(raw_states[i_state].split(" -- "))
             probs.append(prob)
         #
         # Update pop ratio
