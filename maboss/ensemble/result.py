@@ -101,7 +101,7 @@ class EnsembleResult(BaseResult):
         return StoredResult(self._path, self.prefix + "_model_" + str(model))
 
     def __del__(self):
-        if self.workdir is None:
+        if self.workdir is None and os.path.exists(self._path):
             shutil.rmtree(self._path)
 
     def get_individual_states_probtraj(self, filter=None, cluster=None):
