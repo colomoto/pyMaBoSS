@@ -14,6 +14,7 @@ from ..results.storedresult import StoredResult
 from ..server import MaBoSSClient
 import shutil
 from multiprocessing import Pool
+from collections import OrderedDict
 
 
 class CMaBoSSUpdatePopulationResults:
@@ -370,7 +371,7 @@ class CMaBoSSUpdatePopulationResults:
         :param nodes_init: dict of nodes values of the form { "NODE1" : TrueValue1, "NODE2" : TrueValue2, ... }.
         Nodes to exclude from InitCond as these nodes have a specific init value
         """
-        new_istate = {}
+        new_istate = OrderedDict()
         #
         # Remove from the list of nodes the ones having a rule or an init value
         #

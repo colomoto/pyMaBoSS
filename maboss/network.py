@@ -235,6 +235,8 @@ class Network(collections.OrderedDict):
                     string += binding + ".istate = FALSE;"
                 elif self._initState[binding][1] == 1:
                     string += binding + ".istate = TRUE;"
+                elif self._initState[binding][0] == 0.5 and self._initState[binding][1] == 0.5:
+                    pass
                 else: 
                     string += '[' + binding + '].istate = '
                     string += str(self._initState[binding][0]) + '[0] , '

@@ -162,7 +162,7 @@ def _read_cfg(string):
         variables = OrderedDict()
         parameters = OrderedDict()
         is_internal_list = {}
-        istate_list = {}
+        istate_list = OrderedDict()
         refstate_list = {}
         parse_cfg = cfg_grammar.parseString(string)
         for token in parse_cfg:
@@ -180,12 +180,12 @@ def _read_cfg(string):
             if token.attrib:  # True if token is istate_decl
                 # TODO check if lens are consistent
                 if len(token.nodes) == 1:
-                    t_istate_list = {}
+                    t_istate_list = OrderedDict()
                     for t in token.attrib:
                         try:
-                            t_istate_list.update({int(t[1][0]): float(str(t[0]))})
+                            t_istate_list[int(t[1][0])] = float(str(t[0]))
                         except ValueError:
-                            t_istate_list.update({int(t[1][0]): str(t[0])})
+                            t_istate_list[int(t[1][0])] = str(t[0])
 
                     istate_list[token.nodes[0]] = t_istate_list
 
@@ -194,9 +194,9 @@ def _read_cfg(string):
                     t_istate_list = {}
                     for t in token.attrib:
                         try:
-                            t_istate_list.update({tuple(t[1]): float(str(t[0]))})
+                            t_istate_list[tuple(t[1])] = float(str(t[0]))
                         except ValueError:
-                            t_istate_list.update({tuple(t[1]): str(t[0])})
+                            t_istate_list[tuple(t[1])] = str(t[0])
 
                     istate_list[nodes] = t_istate_list
 
