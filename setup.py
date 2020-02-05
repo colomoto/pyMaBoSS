@@ -20,7 +20,7 @@ setup(name='maboss',
         "matplotlib",
         "pandas",
         "sklearn",
-        "cmaboss"
+        "cmaboss==1.0.0b6"
     ] + optional_contextlib,
     scripts=['scripts/MBSS_FormatTable.py', 'scripts/UpPMaBoSS.py']
 )
