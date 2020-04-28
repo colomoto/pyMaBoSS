@@ -16,7 +16,7 @@ from colomoto import minibn
 
 class Ensemble(object):
 
-    def __init__(self, path, cfg_filename=None, individual_istates=None, individual_mutations={}, models=None, *args, **kwargs):
+    def __init__(self, path, cfg_filename=None, individual_istates=collections.OrderedDict(), individual_mutations=collections.OrderedDict(), models=None, *args, **kwargs):
 
         self.models_path = path
         self.param = _default_parameter_list
@@ -44,7 +44,7 @@ class Ensemble(object):
         self.istates = collections.OrderedDict()
         self.individual_istates = individual_istates
         self.individual_mutations = individual_mutations
-        self.individual_cfgs = None
+        self.individual_cfgs = collections.OrderedDict()
         self.outputs = collections.OrderedDict()
         self.mutations = collections.OrderedDict()
         self.individual_results = False
@@ -332,11 +332,11 @@ class Ensemble(object):
 
         os.mkdir(os.path.join(path, "models"))
 
-        if self.individual_istates is None:
+        if len(self.individual_istates) == 0:
             with open(os.path.join(path, filename), 'w+') as cfg_file:
                 cfg_file.write(self.str_cfg())
         else:
-            self.individual_cfgs = {}
+            self.individual_cfgs = collections.OrderedDict()
             for individual in self.individual_istates.keys():
                 t_filename = "%s.cfg" % ".".join(individual.split(".")[0:-1])
                 self.individual_cfgs.update({individual: t_filename})

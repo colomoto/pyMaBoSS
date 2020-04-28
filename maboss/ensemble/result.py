@@ -58,7 +58,7 @@ class EnsembleResult(BaseResult):
 
         cmd_line = [maboss_cmd] + options
 
-        if simulation.individual_cfgs is not None:
+        if len(simulation.individual_cfgs) > 0:
             cmd_line.append("--ensemble-istates")
             for model_file in self.models_files:
                 cmd_line += ["-c", os.path.join(self._path, "models", simulation.individual_cfgs[os.path.basename(model_file)])]
