@@ -6,37 +6,6 @@ env:
 
 jobs:
   include:
-    - stage: test
-      name: Python 3.5 Linux Unittest
-    
-      os: linux
-      dist: xenial
-      services: docker
-      language: python
-      python: 3.5
-
-      before_install: 
-        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-        - bash miniconda.sh -b -p $HOME/miniconda
-        - export PATH="$HOME/miniconda/bin:$PATH"
-        - hash -r
-        - conda config --set always_yes yes --set changeps1 no
-        - conda update -q conda
-        - conda info -a
-        - conda install --no-update-deps -y -c vincent-noel maboss
-        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.5 ginsim-python
-        - source activate test-environment
-        - pip install coveralls
-        - docker run -p 7777:7777 --network host -d sysbiocurie/maboss-server
-        
-      install:
-        - pip install .
-          
-      script:
-        - coverage run -m unittest discover -v;
-        
-      after_script:
-        - coveralls
 
     - stage: test
       name: Python 3.6 Linux Unittest
@@ -131,39 +100,6 @@ jobs:
       after_script:
         - coveralls
 
-
-    - stage: test
-      name: Python 3.5 MacOSX Unittest
-    
-      os: osx
-      python: 3.5
-
-      before_install: 
-        - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
-        - bash ~/miniconda.sh -b -p $HOME/miniconda
-        - export PATH="$HOME/miniconda/bin:$PATH"
-        - hash -r
-        - conda config --set always_yes yes --set changeps1 no
-        - conda update -q conda
-        - conda install --no-update-deps -y -c vincent-noel maboss
-        - conda create -q -n test-environment -c colomoto -c potassco/label/dev -c conda-forge python=3.5 ginsim-python
-        - source activate test-environment
-        - pip install coveralls
-        
-      install:
-        - pip install .
-          
-      script:
-        - coverage run -m unittest test.test_conversion;
-        - coverage run -m unittest test.test_ensemble;
-        - coverage run -m unittest test.test_loadmodels;
-        - coverage run -m unittest test.test_probtrajs;
-        - coverage run -m unittest test.test_statdist;
-        - coverage run -m unittest test.test_types;
-        - coverage run -m unittest test.test_uppmaboss;
-        
-      after_script:
-        - coveralls
 
     - stage: test
       name: Python 3.6 MacOSX Unittest
