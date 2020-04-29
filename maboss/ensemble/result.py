@@ -117,7 +117,7 @@ class EnsembleResult(BaseResult):
             self.asymptotic_probtraj_distribution.fillna(0, inplace=True)
 
         if filter is not None:
-            return apply_filter(self.asymptotic_probtraj_distribution, filter)
+            return apply_filter(self.asymptotic_probtraj_distribution, filter, state=True)
 
         if cluster is not None:
             return self.asymptotic_probtraj_distribution.iloc[cluster, :]
@@ -264,7 +264,7 @@ class EnsembleResult(BaseResult):
             legend = ["Cluster #%d" % (i + 1) for i in colors]
 
             c_colors = ["C%d" % color for color in colors]
-
+            
             scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=c_colors, s=50, alpha=alpha, label=colors)
             import matplotlib.patches as mpatches
             # build the legend
@@ -405,18 +405,23 @@ def get_single_individual_nodes_distribution(table, index, nodes):
                 
     return ntable
 
-def apply_filter(data, filter):
+def apply_filter(data, filter, state=False):
 
-    formula = ast.parse(filter)
-    return parse_ast(formula.body[0].value, data)
+    if state: 
+        filter = filter.replace(" -- ", "")
+        dict_states = {column.replace(" -- ", ""): column for column in list(data.columns)}
+        formula = ast.parse(filter)
+        return parse_ast(formula.body[0].value, data, dict_states)
+    else:
+        formula = ast.parse(filter)
+        return parse_ast(formula.body[0].value, data)
 
-
-def parse_ast(t_ast, data):
+def parse_ast(t_ast, data, ds=None):
     if isinstance(t_ast, ast.BoolOp):
         
         if isinstance(t_ast.op, ast.And):
             
-            values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
+            values = [parse_ast(tt_ast, data, ds) for tt_ast in t_ast.values]
             t_data = pd.merge(values[0], values[1], how="inner", on=list(values[0].columns), left_index=True, right_index=True)
 
             for i in range(2, len(values)):
@@ -425,7 +430,7 @@ def parse_ast(t_ast, data):
             return t_data
         elif isinstance(t_ast.op, ast.Or):
             
-            values = [parse_ast(tt_ast, data) for tt_ast in t_ast.values]
+            values = [parse_ast(tt_ast, data, ds) for tt_ast in t_ast.values]
             t_data = pd.merge(values[0], values[1], how="outer", on=list(values[0].columns), left_index=True, right_index=True)
 
             for i in range(2, len(values)):
@@ -436,12 +441,12 @@ def parse_ast(t_ast, data):
     elif isinstance(t_ast, ast.Compare):
 
         res_dict = {
-            ast.Lt : data[parse_ast(t_ast.left, data) < parse_ast(t_ast.comparators[0], data)],
-            ast.Gt : data[parse_ast(t_ast.left, data) > parse_ast(t_ast.comparators[0], data)],
-            ast.LtE : data[parse_ast(t_ast.left, data) <= parse_ast(t_ast.comparators[0], data)],
-            ast.GtE : data[parse_ast(t_ast.left, data) >= parse_ast(t_ast.comparators[0], data)],
-            ast.Eq : data[parse_ast(t_ast.left, data) == parse_ast(t_ast.comparators[0], data)],
-            ast.NotEq : data[parse_ast(t_ast.left, data) != parse_ast(t_ast.comparators[0], data)],
+            ast.Lt : data[parse_ast(t_ast.left, data, ds) < parse_ast(t_ast.comparators[0], data, ds)],
+            ast.Gt : data[parse_ast(t_ast.left, data, ds) > parse_ast(t_ast.comparators[0], data, ds)],
+            ast.LtE : data[parse_ast(t_ast.left, data, ds) <= parse_ast(t_ast.comparators[0], data, ds)],
+            ast.GtE : data[parse_ast(t_ast.left, data, ds) >= parse_ast(t_ast.comparators[0], data, ds)],
+            ast.Eq : data[parse_ast(t_ast.left, data, ds) == parse_ast(t_ast.comparators[0], data, ds)],
+            ast.NotEq : data[parse_ast(t_ast.left, data, ds) != parse_ast(t_ast.comparators[0], data, ds)],
         }
         return res_dict[type(t_ast.ops[0])]
 
@@ -449,7 +454,10 @@ def parse_ast(t_ast, data):
         return t_ast.n
 
     elif isinstance(t_ast, ast.Name):
-        return data[t_ast.id]
+        if ds is not None:
+            return data[ds[t_ast.id]]
+        else:
+            return data[t_ast.id]
     
         
         
