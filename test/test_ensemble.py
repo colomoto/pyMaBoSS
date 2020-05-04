@@ -19,6 +19,12 @@ class TestEnsembleMaBoSS(TestCase):
 		results.get_fptable()
 		results.get_states_probtraj()
 
+	def test_ensemble_zip(self):
+
+		ensemble_model = Ensemble(join(dirname(__file__), "ensemble.zip"), join(dirname(__file__), "simple_config.cfg"))
+		results = ensemble_model.run()
+		results.get_fptable()
+		results.get_states_probtraj()
 
 	def test_ensemble_individual(self):
 
