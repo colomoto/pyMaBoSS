@@ -22,25 +22,12 @@ class Ensemble(object):
 
     def __init__(self, path, cfg_filename=None, individual_istates=collections.OrderedDict(), individual_mutations=collections.OrderedDict(), models=None, *args, **kwargs):
 
-        if path.lower().endswith(".zip"):
-            self.models_path = tempfile.mkdtemp(prefix="maboss-ensemble")
-            def cleanup(d):
-                shutil.rmtree(d)
-            atexit.register(cleanup, self.models_path)
-            with ZipFile(path) as zin:
-                zin.extractall(self.models_path)
-        else:
-            self.models_path = path
+        self.set_models_path(path)
+        
         self.param = _default_parameter_list
         self.param["use_physrandgen"] = 0
 
-        if models is None:
-            self.models_files = [
-                os.path.join(self.models_path, filename)
-                for filename in os.listdir(self.models_path)
-                if filename.endswith(".bnet") or filename.endswith(".bnd")
-            ]
-        else:
+        if models is not None:
             self.models_files = [
                 os.path.join(self.models_path, filename)
                 for filename in models
