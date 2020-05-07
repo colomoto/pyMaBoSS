@@ -132,7 +132,16 @@ class Ensemble(object):
         # return EnsembleResult(self.models_files, self._cfg, "res", self.individual_results, self.random_sampling)
 
     def set_models_path(self, path):
-        self.models_path = path
+        if path.lower().endswith(".zip"):
+            self.models_path = tempfile.mkdtemp(prefix="maboss-ensemble")
+            def cleanup(d):
+                shutil.rmtree(d)
+            atexit.register(cleanup, self.models_path)
+            with ZipFile(path) as zin:
+                zin.extractall(self.models_path)
+        else:
+            self.models_path = path
+        
         self.models_files = [
             os.path.join(self.models_path, filename) 
             for filename in os.listdir(self.models_path)
