@@ -283,17 +283,20 @@ class EnsembleResult(BaseResult):
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, colors=None, alpha=1, compare=None, figsize=(20, 12), show_samples=False, show_features=True):
-        fig = plt.figure(figsize=figsize)
+    def plotPCA(self, pca, X_pca, samples, features, colors=None, alpha=1, compare=None, figsize=(20, 12), show_samples=False, show_features=True, ax=None):
+        
+        if ax is None:
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(1,1,1)
 
         if colors is None:
-            plt.scatter(X_pca[:, 0], X_pca[:, 1], alpha=alpha)
+            ax.scatter(X_pca[:, 0], X_pca[:, 1], alpha=alpha)
         else:
             legend = ["Cluster #%d" % (i + 1) for i in colors]
 
             c_colors = ["C%d" % color for color in colors]
             
-            scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=c_colors, s=50, alpha=alpha, label=colors)
+            scatter = ax.scatter(X_pca[:, 0], X_pca[:, 1], c=c_colors, s=50, alpha=alpha, label=colors)
             import matplotlib.patches as mpatches
             # build the legend
 
@@ -306,10 +309,10 @@ class EnsembleResult(BaseResult):
             legend = plt.legend(handles=patches)
 
         if compare is not None:
-            plt.scatter(compare[:, 0], compare[:, 1], alpha=alpha)
+            ax.scatter(compare[:, 0], compare[:, 1], alpha=alpha)
 
-        plt.xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
-        plt.ylabel("PC{} ({}%)".format(2, round(pca.explained_variance_ratio_[1] * 100, 2)))
+        ax.set_xlabel("PC{} ({}%)".format(1, round(pca.explained_variance_ratio_[0] * 100, 2)))
+        ax.set_ylabel("PC{} ({}%)".format(2, round(pca.explained_variance_ratio_[1] * 100, 2)))
                 
         arrows_raw = pca.components_[0:2, :].T
         
@@ -335,18 +338,18 @@ class EnsembleResult(BaseResult):
   
         if show_samples:
             for i, txt in enumerate(features):
-                plt.annotate(txt, (X_pca[i, 0], X_pca[i, 1]))
+                ax.annotate(txt, (X_pca[i, 0], X_pca[i, 1]))
   
         if show_features:
             for i, v in enumerate(arrows_raw):
-                plt.arrow(0, 0, v[0], v[1], linewidth=2, color='red')
-                plt.text(v[0], v[1], samples[i], color='black', ha='right', va='top', fontsize=18)
+                ax.arrow(0, 0, v[0], v[1], linewidth=2, color='red')
+                ax.text(v[0], v[1], samples[i], color='black', ha='right', va='top', fontsize=18)
 
-            plt.xlim(min(min_x_values, min_x_arrows)*1.2, max(max_x_values, max_x_arrows)*1.2)
-            plt.ylim(min(min_y_values, min_y_arrows)*1.2, max(max_y_values, max_y_arrows)*1.2)
+            ax.set_xlim(min(min_x_values, min_x_arrows)*1.2, max(max_x_values, max_x_arrows)*1.2)
+            ax.set_ylim(min(min_y_values, min_y_arrows)*1.2, max(max_y_values, max_y_arrows)*1.2)
         else:
-            plt.xlim(min_x_values*1.2, max_x_values*1.2)
-            plt.ylim(min_y_values*1.2, max_y_values*1.2)
+            ax.set_xlim(min_x_values*1.2, max_x_values*1.2)
+            ax.set_ylim(min_y_values*1.2, max_y_values*1.2)
 
     def plotTSNESteadyStatesNodesDistribution(self, node_filter=None, state_filter=None, clusters={}, perplexity=50, n_iter=2000, **args):
 
