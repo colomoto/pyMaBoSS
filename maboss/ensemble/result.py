@@ -221,15 +221,43 @@ class EnsembleResult(BaseResult):
                     os.path.join(output_directory, os.path.basename(self.models_files[model]))
                 )
 
-    def plotSteadyStatesDistribution(self, figsize=None, labels=None, alpha=1, **args):
+    def plotSteadyStatesDistribution(self, figsize=None, compare=None, labels=None, alpha=1, **args):
 
         pca = PCA()
         table = self.get_individual_states_probtraj()
-        mat = table.values
-        pca_res = pca.fit(mat)
-        X_pca = pca.transform(mat)
-        arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
-        self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values), labels, alpha, figsize=figsize, **args)
+        if compare is not None:
+            compare_table = compare.get_individual_states_probtraj()
+            
+            # Here we need to make sure all tables have the same columns
+            all_columns = set(list(table.columns) + list(compare_table.columns))
+            for column in all_columns:
+                if column not in table.columns.values:
+                    table[column] = 0
+                if column not in compare_table.columns.values:
+                    compare_table[column] = 0
+            
+            table = table[all_columns]
+            compare_table = compare_table[all_columns]
+    
+            mat = table.values
+            pca_res = pca.fit(mat)
+            X_pca = pca.transform(mat)
+            arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
+        
+            c_pca = pca.transform(compare_table.values)
+            
+            self.plotPCA(
+                pca, X_pca, 
+                list(table.columns.values), list(table.index.values), labels, alpha,
+                compare=c_pca, **args
+            )
+        else:
+            mat = table.values
+            pca_res = pca.fit(mat)
+            X_pca = pca.transform(mat)
+            arrows_raw = (np.transpose(pca_res.components_[0:2, :]))
+        
+            self.plotPCA(pca, X_pca, list(table.columns.values), list(table.index.values), labels, alpha, figsize=figsize, **args)
 
     def plotSteadyStatesNodesDistribution(self, compare=None, labels=None, alpha=1, **args):
 
