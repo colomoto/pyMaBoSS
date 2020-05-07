@@ -18,6 +18,8 @@ import matplotlib.pyplot as plt
 from re import match
 import ast
 import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class EnsembleResult(BaseResult):
   
@@ -221,6 +223,46 @@ class EnsembleResult(BaseResult):
                     self.models_files[model], 
                     os.path.join(output_directory, os.path.basename(self.models_files[model]))
                 )
+
+    def plotStates3D(self, dims, figsize=None, compare=None, ax=None, **args):
+        if len(dims) == 3:
+            table = self.get_individual_states_probtraj()
+            
+            if ax is None:
+                fig = plt.figure()
+                ax = fig.add_subplot(111, projection='3d')
+                
+            
+            if compare is not None:
+                
+                m_table = compare.get_individual_states_probtraj()
+                
+                # Here we need to make sure all tables have the same columns
+                all_columns = set(list(table.columns) + list(m_table.columns) + dims)
+                
+                for column in all_columns:
+                    if column not in table.columns.values:
+                        table[column] = 0
+                    if column not in m_table.columns.values:
+                        m_table[column] = 0
+                
+                table = table[all_columns]
+                m_table = m_table[all_columns]
+                    
+                values = table[dims].values
+                m_values = m_table[dims].values
+                ax.scatter(values[:, 0], values[:, 1], values[:, 2], **args)
+                ax.scatter(m_values[:, 0], m_values[:, 1], m_values[:, 2], **args)
+            else:
+                values = table[dims].values
+                ax.scatter(values[:, 0], values[:, 1], values[:, 2], **args)
+
+                
+                
+                
+            ax.set_xlabel(dims[0])
+            ax.set_ylabel(dims[1])
+            ax.set_zlabel(dims[2])
 
     def plotSteadyStatesDistribution(self, figsize=None, compare=None, labels=None, alpha=1, **args):
 
