@@ -17,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt 
 from re import match
 import ast
+import math
 
 class EnsembleResult(BaseResult):
   
@@ -283,7 +284,7 @@ class EnsembleResult(BaseResult):
                 **args
             )
 
-    def plotPCA(self, pca, X_pca, samples, features, colors=None, alpha=1, compare=None, figsize=(20, 12), show_samples=False, show_features=True, ax=None):
+    def plotPCA(self, pca, X_pca, samples, features, colors=None, alpha=1, compare=None, figsize=(20, 12), show_samples=False, show_features=True, ax=None, cutoff_arrows=None):
         
         if ax is None:
             fig = plt.figure(figsize=figsize)
@@ -342,8 +343,9 @@ class EnsembleResult(BaseResult):
   
         if show_features:
             for i, v in enumerate(arrows_raw):
-                ax.arrow(0, 0, v[0], v[1], linewidth=2, color='red')
-                ax.text(v[0], v[1], samples[i], color='black', ha='right', va='top', fontsize=18)
+                if cutoff_arrows is None or math.sqrt(math.pow(v[0], 2) + math.pow(v[1], 2)) > cutoff_arrows:
+                    ax.arrow(0, 0, v[0], v[1], linewidth=2, color='red')
+                    ax.text(v[0], v[1], samples[i], color='black', ha='right', va='top', fontsize=18)
 
             ax.set_xlim(min(min_x_values, min_x_arrows)*1.2, max(max_x_values, max_x_arrows)*1.2)
             ax.set_ylim(min(min_y_values, min_y_arrows)*1.2, max(max_y_values, max_y_arrows)*1.2)
