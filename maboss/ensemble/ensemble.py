@@ -106,6 +106,7 @@ class Ensemble(object):
         ensemble.individual_istates = self.individual_istates.copy()
         ensemble.models_files = self.models_files.copy()
         ensemble.nodes = self.nodes.copy()
+        ensemble.mutations = self.mutations.copy()
         return ensemble
 
     def get_maboss_cmd(self):
