@@ -229,7 +229,7 @@ class EnsembleResult(BaseResult):
             table = self.get_individual_states_probtraj()
             
             if ax is None:
-                fig = plt.figure()
+                fig = plt.figure(figsize=figsize)
                 ax = fig.add_subplot(111, projection='3d')
                 
             
