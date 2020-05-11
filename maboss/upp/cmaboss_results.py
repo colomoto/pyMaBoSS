@@ -28,7 +28,7 @@ class CMaBoSSUpdatePopulationResults:
         distribution from previous run, default to -1 (last)
         """
         self.uppModel = uppModel
-        self.pop_ratios = pd.Series()
+        self.pop_ratios = pd.Series(dtype='float64')
         self.stepwise_probability_distribution = None
         self.nodes_stepwise_probability_distribution = None
         self.nodes_list_stepwise_probability_distribution = None
