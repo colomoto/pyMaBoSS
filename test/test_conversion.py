@@ -35,3 +35,13 @@ class TestConvertModels(TestCase):
 				'ZEB1', 'SNAI1', 'DKK1'
 			])
 		)
+
+	def test_initial_state(self):
+		model = load(join(dirname(__file__), "reprod_all.bnd"), join(dirname(__file__), "reprod_all.cfg"))
+		i1 = model.get_initial_state()
+		model = load(join(dirname(__file__), "reprod_all.bnd"), join(dirname(__file__), "reprod_joined_init.cfg"))
+		i2 = model.get_initial_state()
+		self.assertEqual(set(i1.keys()), set(i2.keys()))
+		self.assertEqual(i2["p63"], 1)
+		self.assertEqual(i2["p53"], 1)
+		self.assertEqual(i2["GF"], [0,1])

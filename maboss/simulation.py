@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 import collections
+from functools import reduce
 from sys import stderr, stdout, version_info
 if version_info[0] < 3:
     from contextlib2 import ExitStack
@@ -324,12 +325,26 @@ class Simulation(object):
         TODO
         """
         istate = ModelState()
-        for nd in self.network.keys():
-            states = set()
-            for state in [0, 1]:
-                if self.network._initState[nd][state]:
-                    states.add(state)
-            istate[nd] = states.pop() if len(states) == 1 else states
+        def _simplify(states):
+            if len(states) == 1:
+                return states.pop()
+            return list(sorted(states))
+        for key, val in self.network.get_istate().items():
+            if str in map(type, val.values()):
+                raise NotImplementedError("This MaBoSS initial state contains macros which is not supported yet")
+            states = [i for i, prob in val.items() if prob > 0]
+            if isinstance(key, tuple):
+                pre = {i: set() for i in key}
+                for subs in states:
+                    for (i,state) in zip(key, subs):
+                        pre[i].add(state)
+                count = reduce(int.__mul__, map(len, pre.values()))
+                if count != len(states):
+                    raise ValueError("This MaBoSS initial state cannot be converted to a single hypercube")
+                for key, states in pre.items():
+                    istate[key] = _simplify(states)
+            else:
+                istate[key] = _simplify(states)
         return istate
 
     def get_mutations(self):
