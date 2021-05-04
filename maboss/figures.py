@@ -84,7 +84,7 @@ def plot_piechart(plot_table, ax, palette, embed_labels=False, autopct=4, \
         plot_line = plot_line.rename({"Others": "Others (%1.2f%%)" % (others*100)})
 
     ax.pie(plot_line, labels=plotting_labels, radius=1.2,
-           startangle=90, colors=color_list, normalize=True, **opts)
+           startangle=90, colors=color_list, **opts)
     ax.axis('equal')
     if legend:
         if nil_label is not None:
@@ -110,7 +110,7 @@ def plot_fix_point(table, ax, palette):
         prob_list.append(prob_ns)
         color_list.append(persistent_color(palette, "no_fp"))
         labels.append('no_fp')
-    ax.pie(prob_list, labels=labels, colors=color_list, normalize=True)
+    ax.pie(prob_list, labels=labels, colors=color_list)
 
 
 
