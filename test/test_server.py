@@ -26,7 +26,7 @@ class TestServer(TestCase):
 
 		res.get_states_probtraj()
 		res.get_statdist_clusters()
-		
+		res.get_fptable()
 		mbcli.close()
 
 
@@ -46,4 +46,3 @@ class TestUpPMaBoSSServer(TestCase):
 
 		for i, pop_ratio in enumerate(pop_ratios):
 			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
-

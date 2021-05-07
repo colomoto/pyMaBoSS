@@ -23,6 +23,7 @@
 from ..results.baseresult import BaseResult
 from io import StringIO
 import numpy as np
+import pandas as pd
 
 
 class Result(BaseResult):
@@ -101,3 +102,14 @@ class Result(BaseResult):
         for i in range(1, nb_states):
             dtype.update({"State.%d" % i: np.str, "Proba.%d" % i: np.float64, "ErrorProba.%d" % i: np.float64})
         return dtype
+
+    def get_fptable(self):
+        """Return the content of fp.csv as a pandas dataframe."""
+        if self._FP is not None:
+            try:
+                self.fptable = pd.read_csv(self._get_fp_fd(), "\t", skiprows=[0])
+
+            except pd.errors.EmptyDataError:
+                pass
+
+        return self.fptable
