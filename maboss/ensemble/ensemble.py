@@ -30,7 +30,10 @@ class Ensemble(object):
         
     """
         
-    def __init__(self, path, cfg_filename=None, individual_istates=collections.OrderedDict(), individual_mutations=collections.OrderedDict(), models=None, *args, **kwargs):
+    def __init__(self, path, cfg_filename=None, individual_istates=collections.OrderedDict(), individual_mutations=collections.OrderedDict(), individual_cfgs=None, models=None, *args, **kwargs):
+
+        self.individual_cfgs = collections.OrderedDict() if individual_cfgs is None else individual_cfgs
+        self.models_files = []
 
         self.set_models_path(path)
         
@@ -53,7 +56,6 @@ class Ensemble(object):
         self.istates = collections.OrderedDict()
         self.individual_istates = individual_istates
         self.individual_mutations = individual_mutations
-        self.individual_cfgs = collections.OrderedDict()
         self.outputs = collections.OrderedDict()
         self.mutations = collections.OrderedDict()
         self.individual_results = False
@@ -105,6 +107,7 @@ class Ensemble(object):
         ensemble.random_sampling = self.random_sampling
         ensemble.palette = self.palette.copy()
         ensemble.individual_istates = self.individual_istates.copy()
+        ensemble.individual_cfgs = self.individual_cfgs.copy()
         ensemble.models_files = self.models_files.copy()
         ensemble.nodes = self.nodes.copy()
         ensemble.mutations = self.mutations.copy()
@@ -157,11 +160,13 @@ class Ensemble(object):
         else:
             self.models_path = path
         
-        self.models_files = [
-            os.path.join(self.models_path, filename) 
-            for filename in os.listdir(self.models_path)
-            if filename.endswith(".bnet") or filename.endswith(".bnd")
-        ]
+        for filename in os.listdir(self.models_path):
+            if filename.endswith(".bnet") or filename.endswith(".bnd"):
+                self.models_files.append(os.path.join(self.models_path, filename))
+                if (os.path.splitext(filename)[0] + ".cfg") in os.listdir(self.models_path):
+                    self.individual_cfgs.update({
+                        os.path.join(self.models_path, filename) : os.path.join(self.models_path, os.path.splitext(filename)[0] + ".cfg")
+                    })
 
     def mutate(self, node, state):
         """
@@ -299,7 +304,7 @@ class Ensemble(object):
             print("Unknown model type")
 
     def read_maboss_nodes(self, filename):
-        model = load(filename, self._cfg)
+        model = load(filename)
         self.nodes = list(model.network.keys())
 
     def read_bnet_nodes(self, filename):

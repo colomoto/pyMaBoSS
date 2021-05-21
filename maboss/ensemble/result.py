@@ -51,10 +51,6 @@ class EnsembleResult(BaseResult):
         self._3dfig = None
         maboss_cmd = simulation.get_maboss_cmd()
 
-        simulation.write_cfg(self._path, "ensemble.cfg")
-        simulation.write_models(self._path)
-        self.models_files = simulation.models_files
-
         options = ["--ensemble"]
         if simulation.individual_results:
             options.append("--save-individual")
@@ -63,14 +59,31 @@ class EnsembleResult(BaseResult):
             options.append("--random-sampling")
 
         cmd_line = [maboss_cmd] + options
-
+                
         if len(simulation.individual_cfgs) > 0:
+            os.mkdir(os.path.join(self._path, "models"))
+            self.models_files = simulation.models_files
             cmd_line.append("--ensemble-istates")
             for model_file in self.models_files:
-                cmd_line += ["-c", os.path.join(self._path, "models", simulation.individual_cfgs[os.path.basename(model_file)])]
+                cmd_line += ["-c", os.path.join(self._path, "models", os.path.basename(simulation.individual_cfgs[model_file]))]
+                shutil.copyfile(model_file, os.path.join(self._path, "models", os.path.basename(model_file)))
+                shutil.copyfile(simulation.individual_cfgs[model_file], os.path.join(self._path, "models", os.path.basename(simulation.individual_cfgs[model_file])))
+        
+        elif len(simulation.individual_istates) > 0:
+            os.mkdir(os.path.join(self._path, "models"))
+            cmd_line.append("--ensemble-istates")
+            simulation.write_cfg(self._path, "ensemble.cfg")
+            simulation.write_models(self._path)
+            self.models_files = simulation.models_files
 
+            for model_file in self.models_files:
+                cmd_line += ["-c", os.path.join(self._path, "models", os.path.basename(simulation.individual_cfgs[os.path.basename(model_file)]))]
+        
         else:
-            cmd_line += ["-c", self._cfg]
+            simulation.write_cfg(self._path, "ensemble.cfg")
+            simulation.write_models(self._path)
+            self.models_files = simulation.models_files
+            cmd_line += ["-c", self._cfg]     
 
         cmd_line += [
             "-o", self._path+'/'+self.prefix
