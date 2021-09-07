@@ -27,7 +27,7 @@ requirements:
     - matplotlib
     - ipywidgets
     - scikit-learn
-    - cmaboss
+    - cmaboss >= 1.0.0b14
 
 about:
   home: https://github.com/colomoto/pyMaBoSS

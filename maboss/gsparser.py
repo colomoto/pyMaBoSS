@@ -17,8 +17,10 @@ from os.path import isfile
 import pyparsing as pp
 from .logic import varName
 from .network import Node, Network
-from .simulation import Simulation
+from .simulation import Simulation, sbml_to_maboss
 from .cmabosssimulation import CMaBoSSSimulation
+from .sbmlsimulation import SBMLSSimulation
+from .bnetsimulation import BNetSimulation
 externVar = pp.Suppress('$') + ~pp.White() + varName
 externVar.setParseAction(lambda token: token[0])
 import uuid
@@ -96,16 +98,44 @@ cfg_decl = (var_decl | istate_decl | param_decl | internal_decl
 cfg_grammar = pp.ZeroOrMore(cfg_decl)
 cfg_grammar.ignore('//' + pp.restOfLine)
 
-def loadBNet(bnet_filename):
+def loadBNet(bnet_filename, cmaboss=False):
+    """Loads a network from a MaBoSS format file.
+
+    :param str bnet_filename: Network file
+    :keyword str simulation_name: name of the returned :py:class:`.Simulation` object
+    :rtype: :py:class:`.Simulation`
+    """
     assert bnet_filename.lower().endswith(".bnet"), "wrong extension for BNet file"
 
     if "://" in bnet_filename:
         from colomoto_jupyter.io import ensure_localfile
         bnet_filename = ensure_localfile(bnet_filename)
 
+    if cmaboss:
+        return BNetSimulation(bnet_filename, cfg_filename)
+
     from colomoto_jupyter import import_colomoto_tool
     biolqm = import_colomoto_tool("biolqm")
     return biolqm.to_maboss(biolqm.load(bnet_filename))
+
+def loadSBML(sbml_filename, cfg_filename=None, use_sbml_names=False, cmaboss=False):
+    """Loads a network from a SBML format file.
+
+    :param str sbml_filename: Network file
+    :param str cfg_filename: Configuraton file
+    :keyword str simulation_name: name of the returned :py:class:`.Simulation` object
+    :rtype: :py:class:`.Simulation`
+    """
+    assert sbml_filename.lower().endswith(".xml") or sbml_filename.lower().endswith(".sbml")
+
+    if "://" in sbml_filename:
+        from colomoto_jupyter.io import ensure_localfile
+        sbml_filename = ensure_localfile(sbml_filename)
+        
+    if cmaboss:
+        return SBMLSSimulation(sbml_filename, cfg_filename, use_sbml_names)
+        
+    return sbml_to_maboss(sbml_filename, use_sbml_names)
 
 def load(bnd_filename, *cfg_filenames, **extra_args):
     """Loads a network from a MaBoSS format file.
