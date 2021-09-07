@@ -12,7 +12,7 @@ class CMaBoSSResult2(BaseResult):
 
     def __init__(self, sim, workdir=None, only_final_state=False):
 
-        BaseResult.__init__(self, "truc")
+        BaseResult.__init__(self, "some_path")
         self.cmaboss_simulation = sim.cmaboss.MaBoSSSim(net=sim.cmaboss_net, cfg=sim.cmaboss_cfg)
         self.cmaboss_result = self.cmaboss_simulation.run(only_last_state=only_final_state)
 
