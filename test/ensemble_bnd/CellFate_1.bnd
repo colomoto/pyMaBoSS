@@ -1,0 +1,112 @@
+node MPT {
+  logic = (NOT BCL2 AND ROS);
+}
+
+node ATP {
+  logic = NOT MPT;
+}
+
+node CASP3 {
+  logic = (NOT XIAP AND apoptosome);
+}
+
+node Apoptosis {
+  logic = CASP3;
+}
+
+node BCL2 {
+  logic = NFkB;
+}
+
+node CASP8 {
+  logic = ((((CASP3 AND DISC_FAS) AND DISC_TNF)) OR (((CASP3 AND DISC_FAS) AND NOT cFLIP)));
+}
+
+node BAX {
+  logic = (NOT BCL2 AND CASP8);
+}
+
+node NFkB {
+  logic = (NOT CASP3 AND IKK);
+}
+
+node XIAP {
+  logic = (NFkB AND NOT SMAC);
+}
+
+node apoptosome {
+  logic = ((NOT XIAP AND Cyt_c) AND ATP);
+}
+
+node DISC_FAS {
+  logic = (FADD OR FASL);
+}
+
+node DISC_TNF {
+  logic = (FADD AND TNFR);
+}
+
+node cFLIP {
+  logic = NFkB;
+}
+
+node MOMP {
+  logic = (BAX OR MPT);
+}
+
+node Cyt_c {
+  logic = MOMP;
+}
+
+node FADD {
+  logic = FADD;
+}
+
+node FASL {
+  logic = FASL;
+}
+
+node TNFR {
+  logic = TNF;
+}
+
+node RIP1ub {
+  logic = (RIP1 AND cIAP);
+}
+
+node IKK {
+  logic = RIP1ub;
+}
+
+node ROS {
+  logic = (RIP1K OR ((MPT AND NOT NFkB)));
+}
+
+node NonACD {
+  logic = NOT ATP;
+}
+
+node RIP1 {
+  logic = (TNFR OR ((NOT CASP8 AND DISC_FAS)));
+}
+
+node RIP1K {
+  logic = RIP1;
+}
+
+node cIAP {
+  logic = ((NFkB OR NOT SMAC) OR cIAP);
+}
+
+node SMAC {
+  logic = MOMP;
+}
+
+node Survival {
+  logic = NFkB;
+}
+
+node TNF {
+  logic = TNF;
+}
+

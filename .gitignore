@@ -3,6 +3,8 @@
 *.cfg
 !test/*.bnd
 !test/*.cfg
+!test/**/*.bnd
+!test/**/*.cfg
 *~
 \#*\#
 __pycache__

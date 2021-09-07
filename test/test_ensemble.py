@@ -134,3 +134,14 @@ class TestEnsembleMaBoSS(TestCase):
 		results.plotSteadyStatesDistribution()
 		results.plotSteadyStatesNodesDistribution()
 
+	def test_maboss_ensemble(self):
+		
+		root_path = join(dirname(__file__), "ensemble_bnd")
+		
+		ensemble_model = Ensemble(root_path, individual_results=True)
+		ensemble_res = ensemble_model.run()
+		
+		self.assertEqual(list(ensemble_res.get_fptable()['State'].sort_values().values), 
+			['ATP -- cIAP', 'BCL2 -- ROS -- ATP -- XIAP -- NFkB -- DISC_FAS -- DISC_TNF -- cFLIP -- IKK -- FADD -- TNFR -- TNF -- RIP1 -- cIAP -- RIP1ub -- RIP1K -- Survival']
+		)
+		self.assertEqual(list(ensemble_res.get_fptable()['Proba'].sort_values().values), [0.5, 0.5])
