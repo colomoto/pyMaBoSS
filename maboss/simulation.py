@@ -419,13 +419,34 @@ def sbml_to_bnd_and_cfg(sbml_filename, bnd_filename, cfg_filename, use_sbml_name
     with open(cfg_filename, "w") as cfg_file:
         model.print_cfg(cfg_file)
 
-def sbml_to_maboss(sbml_filename, use_sbml_names=False):
+def bnet_to_bnd_and_cfg(bnet_filename, bnd_filename, cfg_filename):
+    
+    from .gsparser import loadBNet
+    model = loadBNet(bnet_filename, cmaboss=True)
+    with open(bnd_filename, "w") as bnd_file:
+        model.print_bnd(bnd_file)
+    with open(cfg_filename, "w") as cfg_file:
+        model.print_cfg(cfg_file)
+
+def sbml_to_maboss(sbml_filename, cfg_filename=None, use_sbml_names=False):
     from .gsparser import load
     bnd_filename = new_output_file("bnd")
-    cfg_filename = new_output_file("cfg")
-    sbml_to_bnd_and_cfg(sbml_filename, bnd_filename, cfg_filename, use_sbml_names)
-    sim = load(bnd_filename, cfg_filename)
-    for node in sim.network:
-        sim.network.set_istate(node, [1, 0])
+    default_cfg_filename = new_output_file("cfg")
+    sbml_to_bnd_and_cfg(sbml_filename, bnd_filename, default_cfg_filename, use_sbml_names)
+    sim = load(bnd_filename, cfg_filename if cfg_filename is not None else default_cfg_filename)
+    if cfg_filename is None:
+        for node in sim.network:
+            sim.network.set_istate(node, [1, 0])
+    return sim
+    
+def bnet_to_maboss(sbml_filename, cfg_filename=None):
+    from .gsparser import load
+    bnd_filename = new_output_file("bnd")
+    default_cfg_filename = new_output_file("cfg")
+    bnet_to_bnd_and_cfg(sbml_filename, bnd_filename, default_cfg_filename)
+    sim = load(bnd_filename, cfg_filename if cfg_filename is not None else default_cfg_filename)
+    if cfg_filename is None:
+        for node in sim.network:
+            sim.network.set_istate(node, [1, 0])
     return sim
     

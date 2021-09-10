@@ -17,7 +17,7 @@ from os.path import isfile
 import pyparsing as pp
 from .logic import varName
 from .network import Node, Network
-from .simulation import Simulation, sbml_to_maboss
+from .simulation import Simulation, sbml_to_maboss, bnet_to_maboss
 from .cmabosssimulation import CMaBoSSSimulation
 from .sbmlsimulation import SBMLSSimulation
 from .bnetsimulation import BNetSimulation
@@ -98,10 +98,11 @@ cfg_decl = (var_decl | istate_decl | param_decl | internal_decl
 cfg_grammar = pp.ZeroOrMore(cfg_decl)
 cfg_grammar.ignore('//' + pp.restOfLine)
 
-def loadBNet(bnet_filename, cmaboss=False):
+def loadBNet(bnet_filename, cfg_filename=None, cmaboss=False):
     """Loads a network from a MaBoSS format file.
 
     :param str bnet_filename: Network file
+    :param str cfg_filename: Configuration file
     :keyword str simulation_name: name of the returned :py:class:`.Simulation` object
     :rtype: :py:class:`.Simulation`
     """
@@ -114,9 +115,7 @@ def loadBNet(bnet_filename, cmaboss=False):
     if cmaboss:
         return BNetSimulation(bnet_filename, cfg_filename)
 
-    from colomoto_jupyter import import_colomoto_tool
-    biolqm = import_colomoto_tool("biolqm")
-    return biolqm.to_maboss(biolqm.load(bnet_filename))
+    return bnet_to_maboss(bnet_filename, cfg_filename)
 
 def loadSBML(sbml_filename, cfg_filename=None, use_sbml_names=False, cmaboss=False):
     """Loads a network from a SBML format file.
@@ -135,7 +134,7 @@ def loadSBML(sbml_filename, cfg_filename=None, use_sbml_names=False, cmaboss=Fal
     if cmaboss:
         return SBMLSSimulation(sbml_filename, cfg_filename, use_sbml_names)
         
-    return sbml_to_maboss(sbml_filename, use_sbml_names)
+    return sbml_to_maboss(sbml_filename, cfg_filename, use_sbml_names)
 
 def load(bnd_filename, *cfg_filenames, **extra_args):
     """Loads a network from a MaBoSS format file.

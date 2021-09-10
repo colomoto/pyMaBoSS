@@ -98,7 +98,7 @@ class TestLoadModels(TestCase):
 		)
 
 		self.assertEqual(
-			list(sim.network.keys()), 
+			sorted(list(sim.network.keys())), 
 			[
 				'AHR', 'BCL6', 'CEBPB', 'CTCF', 'E2F3', 'E2F7', 'EBF1', 'EGR3', 'ESRRA', 'ETV5', 
 				'FOSL1', 'FOSL2', 'FOXM1', 'FOXO3', 'HEY1', 'HIF1A', 'HMGA2', 'HSF1', 'HSF2', 
