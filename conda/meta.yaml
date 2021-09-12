@@ -1,5 +1,5 @@
 {% set name = "pyMaBoSS" %}
-{% set version = "0.7.19" %}
+{% set version = "0.8.0" %}
 package:
   name: '{{ name|lower }}'
   version: '{{ version }}'
