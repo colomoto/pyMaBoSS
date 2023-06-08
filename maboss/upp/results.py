@@ -186,7 +186,7 @@ class UpdatePopulationResults:
                 if nodes is None:
                     nodes = get_nodes(states)
                 else:
-                    nodes = set(nodes)
+                    nodes = list(set(nodes))
                 
                 self.nodes_list_stepwise_probability_distribution = nodes
 
@@ -613,7 +613,7 @@ def get_nodes(states):
             nds = s.split(' -- ')
             for nd in nds:
                 nodes.add(nd)
-    return nodes
+    return list(nodes)
 
 def make_node_line(row, states_table, index, node_dict):
     for state, nd_state in node_dict.items():
