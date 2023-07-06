@@ -62,7 +62,7 @@ class Simulation(object):
     """
 
 
-    def __init__(self, nt, parameters=collections.OrderedDict({}), command=None, **kwargs):
+    def __init__(self, nt, parameters=collections.OrderedDict({}), command=None, mutations=[], mutationsTypes={}, **kwargs):
         """
         Initialize the Simulation object.
 
@@ -82,8 +82,8 @@ class Simulation(object):
                     print("Warning: unused parameter %s" % p, file=stderr)
 
         self.network = nt
-        self.mutations = []
-        self.mutationTypes = {}
+        self.mutations = mutations
+        self.mutationTypes = mutationsTypes
         self.refstate = {}
 
         self.workdir = None
@@ -103,10 +103,7 @@ class Simulation(object):
 
     def copy(self):
         new_network = self.network.copy()
-        result = Simulation(new_network, self.param, palette=self.palette)
-        if self.mutations:
-            result.mutations = self.mutations.copy()
-            result.mutationTypes = self.mutationTypes.copy()
+        result = Simulation(new_network, self.param, mutations=self.mutations.copy(), mutationsTypes=self.mutationTypes.copy(), palette=self.palette)
         return result
 
     def check(self, command=None):
