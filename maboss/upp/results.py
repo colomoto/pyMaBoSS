@@ -175,6 +175,7 @@ class UpdatePopulationResults:
                 self.nodes_stepwise_probability_distribution.insert(
                     0, column='PopRatio', value=(self.pop_ratios*self.uppModel.base_ratio).values
                 )
+                self.nodes_list_stepwise_probability_distribution = list(set(nodes))
                 
             else:
                 table = self.get_stepwise_probability_distribution(nb_cores=nb_cores)
