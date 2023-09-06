@@ -24,7 +24,7 @@ from .bnetsimulation import BNetSimulation
 externVar = pp.Suppress('$') + ~pp.White() + varName
 externVar.setParseAction(lambda token: token[0])
 import uuid
-
+import re
 # ====================
 # bnd grammar
 # ====================
@@ -175,15 +175,24 @@ def load(bnd_filename, *cfg_filenames, **extra_args):
         (variables, parameters, is_internal_list,
          istate_list, refstate_list) = _read_cfg(cfg_content)
 
-        nodes = _read_bnd(bnd_content, is_internal_list)
-
+        nodes, mutations = _read_bnd(bnd_content, is_internal_list)
+        mutationTypes = {}
+        for mutation in mutations:
+            
+            if ("High_%s" % mutation) in variables and int(variables["High_%s" % mutation]) == 1:
+                mutationTypes[mutation] = "ON"
+            elif ("Low_%s" % mutation) in variables and int(variables["Low_%s" % mutation]) == 1:
+                mutationTypes[mutation] = "OFF"
+                
+        mutations = list(mutationTypes.keys())
+        
         net = Network(nodes)
         for istate in istate_list:
             net.set_istate(istate, istate_list[istate])
         for v in variables:
             lhs = '$'+v
             parameters[lhs] = variables[v]
-        ret = Simulation(net, parameters, command=command)
+        ret = Simulation(net, parameters, command=command, mutations=mutations, mutationsTypes=mutationTypes)
         ret.refstate = refstate_list
         return ret
 
@@ -237,16 +246,23 @@ def _read_cfg(string):
 def _read_bnd(string, is_internal_list):
         nodes = []
         parse_bnd = bnd_grammar.parseString(string)
-
+        mutations = []
         for token in parse_bnd:
             interns = {v.lhs: v.rhs for v in token.interns}
             logic = interns.pop('logic') if 'logic' in interns else None
             rate_up = interns.pop('rate_up') if 'rate_up' in interns.keys() else "@logic ? 1.0 : 0.0"
             rate_down = interns.pop('rate_down') if 'rate_down' in interns.keys() else "@logic ? 0.0 : 1.0"
+            
+            pattern_up = r'\$Low_%s \? 0 : \(\$High_%s \? 1E308/\$nb_mutable : \((.*)\)\)'  % (token.name, token.name)
+            pattern_down = r'\$High_%s \? 0 : \(\$Low_%s \? 1E308/\$nb_mutable : \((.*)\)\)'  % (token.name, token.name)
+            res_search_up = re.search(pattern_up, rate_up)
+            res_search_down = re.search(pattern_down, rate_down)
+            if res_search_up is not None and res_search_down is not None:
+                mutations.append(token.name)
 
             internal = (is_internal_list[token.name]
                         if token.name in is_internal_list
                         else False)
             nodes.append(Node(token.name, logic, rate_up, rate_down,
                               internal, interns))
-        return nodes
+        return nodes, mutations

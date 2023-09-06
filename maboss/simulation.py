@@ -193,7 +193,7 @@ class Simulation(object):
             res = "$nb_mutable = %d;\n" % len(self.mutations)
 
         for p in self.param:
-            if p[0] == '$':
+            if p[0] == '$' and p != "$nb_mutable":
                 res += "%s = %s;\n" % (p, self.param[p])
 
         res += self.network.str_istate() + "\n"
