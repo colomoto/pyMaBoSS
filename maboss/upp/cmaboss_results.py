@@ -235,7 +235,7 @@ class CMaBoSSUpdatePopulationResults:
         #
         # first_line, last_line = read_first_last_lines_from_trajectory (traj_fd)
         # states, probs = get_states_probs_from_trajectory_line (first_line, last_line)
-        last_state, raw_states, timepoint = result.cmaboss_result.get_last_probtraj()
+        last_state, timepoint, raw_states  = result.cmaboss_result.get_last_probtraj()
         
         states = []
         probs = []

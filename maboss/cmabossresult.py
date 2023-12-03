@@ -42,15 +42,15 @@ class CMaBoSSResult(BaseResult):
 
     def get_last_states_probtraj(self):
         
-        raw_res, states, timepoints = self.cmaboss_result.get_last_probtraj()
-        df = pandas.DataFrame(raw_res, columns=states, index=timepoints)
+        raw_res = self.cmaboss_result.get_last_probtraj()
+        df = pandas.DataFrame(*raw_res)
         return df
 
     def get_states_probtraj(self, prob_cutoff=None):
         if not self.only_final_state:
 
-            raw_res, states, timepoints = self.cmaboss_result.get_probtraj()
-            df = pandas.DataFrame(raw_res, columns=states, index=timepoints)
+            raw_res = self.cmaboss_result.get_probtraj()
+            df = pandas.DataFrame(*raw_res)
             df.sort_index(axis=1, inplace=True)
 
             if prob_cutoff is not None:
@@ -61,8 +61,8 @@ class CMaBoSSResult(BaseResult):
 
     def get_nodes_probtraj(self, nodes=None, prob_cutoff=None):
         if not self.only_final_state:
-            raw_res, raw_nodes, timepoints = self.cmaboss_result.get_nodes_probtraj(nodes)
-            df = pandas.DataFrame(raw_res, columns=raw_nodes, index=timepoints)
+            raw_res = self.cmaboss_result.get_nodes_probtraj(nodes)
+            df = pandas.DataFrame(*raw_res)
             df.sort_index(axis=1, inplace=True)
 
             if prob_cutoff is not None:
@@ -72,8 +72,8 @@ class CMaBoSSResult(BaseResult):
             return df
 
     def get_last_nodes_probtraj(self, nodes=None):
-        raw_res, raw_nodes, timepoints = self.cmaboss_result.get_last_nodes_probtraj(nodes)
-        df = pandas.DataFrame(raw_res, columns=raw_nodes, index=timepoints)
+        raw_res = self.cmaboss_result.get_last_nodes_probtraj(nodes)
+        df = pandas.DataFrame(*raw_res)
         df.sort_index(axis=0, inplace=True)
 
         return df
