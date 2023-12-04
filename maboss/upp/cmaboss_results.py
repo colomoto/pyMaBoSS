@@ -55,8 +55,8 @@ class CMaBoSSUpdatePopulationResults:
 
             self.pop_ratios = pd.read_csv(
                 os.path.join(self.workdir, "PopRatios.csv"),
-                index_col=0, squeeze=True
-            ) / self.uppModel.base_ratio
+                index_col=0
+            ).squeeze("columns") / self.uppModel.base_ratio
 
             if previous_run:
                 # Load the previous run final state
