@@ -15,6 +15,8 @@ class CMaBoSSSimulation(object):
 
         self.cmaboss_net = self.cmaboss.MaBoSSNet(self.bnd)
         self.cmaboss_cfg = self.cmaboss.MaBoSSCfg(self.cmaboss_net, self.cfgs)
+        self.param = {'max_time': self.cmaboss_cfg.getMaxTime()}
+        self.network = {node: None for node in self.cmaboss_net.getListNodes()}
         
     def count_nodes(self):
         
