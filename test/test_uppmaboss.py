@@ -56,6 +56,20 @@ class TestUpPMaBoSS(TestCase):
 		for i, pop_ratio in enumerate(pop_ratios):
 			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
 
+	def test_uppmaboss_cmaboss_for_maboss_load(self):
+
+		sim = load(join(dirname(__file__), "CellFateModel.bnd"), join(dirname(__file__), "CellFateModel_1h.cfg"), cmaboss=True)
+		uppmaboss_model = UpdatePopulation(sim, join(dirname(__file__), "CellFate_1h.upp"))
+		uppmaboss_sim = uppmaboss_model.run('WT_cmaboss', cmaboss=True)
+		pop_ratios = uppmaboss_sim.get_population_ratios('WT').values.tolist()
+		expected_pop_ratios = [
+			1.0, 0.6907820416914479, 0.6341903631891185, 0.612996053462505, 0.5996083687781087, 
+			0.5788914827739509, 0.5466795703259922, 0.5075723301828101, 0.46462393081796144, 
+			0.4237712222056809, 0.388072085864841, 0.35730025864566073, 0.3320260202532354
+		]
+
+		for i, pop_ratio in enumerate(pop_ratios):
+			self.assertAlmostEqual(pop_ratio, expected_pop_ratios[i])
 
 class TestUpPMaBoSSOverwrite(TestCase):
 
