@@ -160,7 +160,7 @@ class Ensemble(object):
         else:
             self.models_path = path
         
-        for filename in os.listdir(self.models_path):
+        for filename in sorted(os.listdir(self.models_path)):
             if filename.endswith(".bnet") or filename.endswith(".bnd"):
                 self.models_files.append(os.path.join(self.models_path, filename))
                 if (os.path.splitext(filename)[0] + ".cfg") in os.listdir(self.models_path):
