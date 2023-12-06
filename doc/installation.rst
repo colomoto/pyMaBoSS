@@ -26,7 +26,7 @@ To download the MaBoSS binaries, if you have conda and if you are using linux or
 
    python -m maboss-setup
    
-Otherwise, you can download them using the following links, for `Linux <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-linux64.zip>`_, `MacOSX <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-osx64.zip>`_ or `Windows <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-win64.zip>`_. Once downloaded, you need to make them accessible by putting them in a folder configured in your PATH. 
+Otherwise, you can download them using the following links, for `Linux <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-linux64.zip>`_, `MacOSX <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-osx64.zip>`_ or `Windows <https://github.com/sysbio-curie/MaBoSS-env-2.0/releases/latest/download/MaBoSS-win64.zip>`_. Once downloaded, you need to extract them and make them accessible by putting them in a folder configured in your PATH. 
 
 Installation with GitHub
 ------------------------
