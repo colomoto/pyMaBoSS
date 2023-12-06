@@ -21,7 +21,7 @@ jobs:
           - "3.12"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
@@ -67,7 +67,7 @@ jobs:
           - "3.12"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
@@ -114,7 +114,7 @@ jobs:
           - "3.12"
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
@@ -164,7 +164,7 @@ jobs:
 
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: s-weigand/setup-conda@v1
       with:
         update-conda: true
@@ -200,7 +200,7 @@ jobs:
     needs: [pymaboss_test, pymaboss_scripts, pymaboss_test_macos, pymaboss_scripts_macos]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: s-weigand/setup-conda@v1
     
     - name: Install conda-build and anaconda-client
@@ -228,7 +228,7 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created' && github.repository == 'colomoto/pyMaBoSS'
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Install twine
       run: pip3 install twine
