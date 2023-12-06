@@ -18,7 +18,8 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
-    
+          - "3.12"
+
     steps:
     - uses: actions/checkout@v2
     - uses: s-weigand/setup-conda@v1
@@ -63,7 +64,8 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
-    
+          - "3.12"
+
     steps:
     - uses: actions/checkout@v2
     - uses: s-weigand/setup-conda@v1
@@ -109,6 +111,7 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
     
     steps:
     - uses: actions/checkout@v2
@@ -157,7 +160,8 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
-          
+          - "3.12"
+
     
     steps:
     - uses: actions/checkout@v2
