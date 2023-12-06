@@ -7,7 +7,26 @@ The API is loaded by running the following line in Python::
    
    import maboss
     
+Once loaded, it allows you to quickly load a MaBoSS model::
+   
+   sim = maboss.load("metastasis.bnd", "metastasis.cfg")    
+   
+And then to simulate the model and plot the simulation results::
+   
+   res = sim.run()
+   res.plot_piechart()
+   
+.. image:: sample_piechart.png
+  :width: 600
+  :alt: Simulation result
+  
+  
 
+.. toctree::
+   :maxdepth: 2
+
+   installation.rst
+   
 .. toctree::
    :maxdepth: 2
 
