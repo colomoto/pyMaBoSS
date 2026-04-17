@@ -54,6 +54,11 @@ ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetT
 
 ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], QUERY)
 ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], QUERY)
+
+QUERY_ERROR_TYPE = "V(node:name) > 0.5"
+QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5"
+QUERY_ERROR_TARGET = "P(traj:name) <= 0.5"
+
 # DO NOT REMOVE ELSE BUGS -----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_test_path(filename):
@@ -110,6 +115,11 @@ class TestParser(TestCase):
         assert formula6.value == str(0.5)
         assert formula6.target_name == ['A', 'B', 'C']
         assert formula6.logical_equation == ['B', '|', ['C', '&', 'D']]
+
+    def test_main_query_parser_check_values(self):
+        self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_TYPE)
+        self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_OPERATOR)
+        self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_TARGET)
 
 # -------------------------------- FORMULA CHECKER TESTS -------------------------------------
     def test_formula_checker_no_error(self):
