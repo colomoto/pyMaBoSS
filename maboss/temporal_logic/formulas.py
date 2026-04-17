@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Union
 
+from pyparsing import warnings
+
 from maboss.temporal_logic.CustomExceptions import *
 
 
@@ -63,10 +65,10 @@ class FormulaChecker:
         if formula.value == "?" and formula.operator.value != Operators.EQ.value:
             raise WrongGrammarException("Value is \"?\" but the operator is not \"=\"")
         if formula.value != "?" and formula.operator.value == Operators.EQ.value:
-            raise Warning("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
+            warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
 
         if formula.operator == Operators.NE:
-            raise Warning("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
+            warnings.warn("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
 
         if formula.value != "?":
             try:

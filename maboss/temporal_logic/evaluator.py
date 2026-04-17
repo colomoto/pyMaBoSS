@@ -1,3 +1,5 @@
+import warnings
+
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
 import pandas as pd
@@ -68,7 +70,7 @@ class MaBoSSEvaluator:
         for name in target_name:
             if name not in df.columns:
                 df.drop(name, axis=1, inplace=True)
-                raise Warning(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+                warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
 
         new_df = pd.DataFrame()
 
