@@ -4,7 +4,7 @@ from typing import List, Union
 
 from pyparsing import warnings
 
-from maboss.temporal_logic.CustomExceptions import *
+from maboss.temporal_logic.custom_exceptions import *
 
 
 class QueryType(Enum):

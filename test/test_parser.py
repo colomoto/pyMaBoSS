@@ -1,8 +1,9 @@
 from maboss import result
 from maboss.temporal_logic.evaluator import MaBoSSEvaluator
+from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import *
 from maboss.temporal_logic.formulas import *
-from maboss.temporal_logic.CustomExceptions import *
+from maboss.temporal_logic.custom_exceptions import *
 from maboss.results.probtrajresult import ProbTrajResult
 from maboss.results.statdistresult import StatDistResult
 from unittest import TestCase
@@ -59,6 +60,14 @@ QUERY_ERROR_TYPE = "V(node:name) > 0.5"
 QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5"
 QUERY_ERROR_TARGET = "P(traj:name) <= 0.5"
 
+LOGICAL_EXPRESSION_SIMPLE_NO_ERROR = ['A','&', '!B']
+LOGICAL_EXPRESSION_INTRICATE_NO_ERROR = ['A','|', ['B','&','C']]
+
+LOGICAL_EXPRESSION_ERROR_NODES = ['A','|', 'B','&','C','D']
+LOGICAL_EXPRESSION_ERROR_SYMBOL = ['A', '|' , '&', 'B']
+LOGICAL_EXPRESSION_ERROR_FIRST_MEMBER_SYMBOL = ['&','A', '|', 'B']
+LOGICAL_EXPRESSION_ERROR_LAST_MEMBER_SYMBOL = ['A', '|', '&', 'B', '|']
+LOGICAL_EXPRESSION_ERROR_NODES_INTRICATE = ['A','|', ['B','&','C','D']]
 # DO NOT REMOVE ELSE BUGS -----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_test_path(filename):
@@ -155,6 +164,26 @@ class TestParser(TestCase):
     def test_formula_value_strict_pos(self):
         self.assertRaises(WrongValueAccordingToType, FormulaChecker.check_formula, ERROR_VALUE_OVER_ONE_FOR_PROBA)
         self.assertRaises(ValueError, FormulaChecker.check_formula, ERROR_VALUE_UNDER_ZERO)
+
+# ---------------------------- TESTS FOR COMPUTATION OF LOGICAL EXPRESSION -----------------------
+    def test_expression_no_error(self):
+        try:
+            ComputeLogicalExpression.check_logical_expression(LOGICAL_EXPRESSION_SIMPLE_NO_ERROR)
+        except ErrorInLogicalExpression:
+            self.fail("ComputeLogicalExpression.check_logical_expression() raised an unexpected ValueError on SIMPLE")
+
+        try:
+            ComputeLogicalExpression.check_logical_expression(LOGICAL_EXPRESSION_INTRICATE_NO_ERROR)
+        except ErrorInLogicalExpression:
+            self.fail("ComputeLogicalExpression.check_logical_expression() raised an unexpected ValueError on INTRICATE")
+
+    def test_expression_error(self):
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_expression, LOGICAL_EXPRESSION_ERROR_NODES)
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_expression, LOGICAL_EXPRESSION_ERROR_SYMBOL)
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_expression, LOGICAL_EXPRESSION_ERROR_FIRST_MEMBER_SYMBOL)
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_expression, LOGICAL_EXPRESSION_ERROR_LAST_MEMBER_SYMBOL)
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_expression, LOGICAL_EXPRESSION_ERROR_NODES_INTRICATE)
+
 
 # -------------------- TEST WITH PROBAS AND NODES ------------------------------------------
     def test_get_df_target_node(self):

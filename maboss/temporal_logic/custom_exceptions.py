@@ -27,3 +27,10 @@ class WrongValueAccordingToType(FormulaException):
     def __init__(self, message):
         super().__init__(message)
 
+class DataFrameIsEmpty(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
+class ErrorInLogicalExpression(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)

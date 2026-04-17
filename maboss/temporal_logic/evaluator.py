@@ -1,5 +1,6 @@
 import warnings
 
+from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
 import pandas as pd
@@ -32,7 +33,7 @@ class MaBoSSEvaluator:
         # Selection of the simulation result df to use depending of the target
         df_target = MaBoSSEvaluator.get_df_target(parsed_query.target)
         if df_target.empty:
-            raise ValueError(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
+            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
 
         # Selection of the columns regarding the name of the target
         df_target = MaBoSSEvaluator.get_df_target_name(df_target, parsed_query.target_name)

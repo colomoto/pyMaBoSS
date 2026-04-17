@@ -1,8 +1,4 @@
 import re
-import warnings
-
-from psycopg.types import none
-
 from maboss.temporal_logic.formulas import *
 
 class Parser:
