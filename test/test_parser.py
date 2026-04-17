@@ -1,12 +1,15 @@
+from maboss import result
 from maboss.temporal_logic.evaluator import MaBoSSEvaluator
 from maboss.temporal_logic.temporal_parser import *
 from maboss.temporal_logic.formulas import *
+from maboss.temporal_logic.CustomExceptions import *
 from maboss.results.probtrajresult import ProbTrajResult
 from maboss.results.statdistresult import StatDistResult
 from unittest import TestCase
 from unittest.mock import patch
 import pandas as pd
 import numpy as np
+import os
 
 #Generation of a random dataframe
 class FakeResult:
@@ -24,40 +27,157 @@ class FakeResult:
     def get_probtraj(self):
         return self._traj_df
 
-QUERY = "P(node:name) > 0.623"
+# Parser test queries
+QUERY = "P(node:name) <= 0.623"
+QUERY_INTERROGATION = "T(state:name) = ? [ !A & B | C ]"
+QUERY_MULTIPLE_NAMES = "P(node:name,name2,name3) <= 0.5 "
+QUERY_INTRICATE_CONDITION = "P(node:name) > 0.5 [ B | ( C & D ) ]"
 QUERY_FOUND_BY_NAME = "P(node:AKT1) > 0.623"
+QUERY_MULTIPLE_NAMES_AND_CONDITION = "P(node:A,B,C) <= 0.4 [ A | !B & C ]"
+QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION = "P(node:A,B,C) >= 0.5 [ B | ( C & D ) ]"
+
+# FORMULA CHECKER test Formulas
+NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], QUERY)
+NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?")
+NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ? [ !A & B | C ]")
+
+ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [], QUERY)
+ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [], QUERY)
+ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], QUERY)
+
+ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], QUERY)
+
+ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], "T(state:name) = ? [ !A & B | C ]")
+ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?")
+
+ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], QUERY)
+ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], QUERY)
+# DO NOT REMOVE ELSE BUGS -----------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def get_test_path(filename):
+    return os.path.join(BASE_DIR, filename)
+# -------------------------------------------------
+# -------------------------- TESTS PARSER --------------------------------------
 
 class TestParser(TestCase):
-    def test_parse(self):
-        assert Parser.parse_query(QUERY).type == QueryType.P
-        assert Parser.parse_query(QUERY).target == TargetType.NODE
-        assert Parser.parse_query(QUERY).operator == Operators.GT
-        assert Parser.parse_query(QUERY).value == 0.623
-        assert Parser.parse_query(QUERY).target_name == "name"
+    def test_parse_simple_query(self):
+        formula1 = Parser.parse_query(QUERY)
+        assert formula1.type == QueryType.P
+        assert formula1.operator == Operators.LE
+        assert formula1.value == str(0.623)
+        assert formula1.target_name == ['name']
+        assert formula1.logical_equation == []
 
+    def test_parse_interrogation_query_one_name(self):
+        formula2 = Parser.parse_query(QUERY_INTERROGATION)
+        assert formula2.type == QueryType.T
+        assert formula2.target == TargetType.STATE
+        assert formula2.operator == Operators.EQ
+        assert formula2.value == "?"
+        assert formula2.target_name == ['name']
+        assert formula2.logical_equation == ['!A', '&', 'B', '|', 'C']
+
+    def test_parse_multiple_names(self):
+        formula3 = Parser.parse_query(QUERY_MULTIPLE_NAMES)
+        assert formula3.type == QueryType.P
+        assert formula3.operator == Operators.LE
+        assert formula3.value == str(0.5)
+        assert formula3.target_name == ['name', 'name2', 'name3']
+        assert formula3.logical_equation == []
+
+    def test_parse_intricate_condition(self):
+        formula4 = Parser.parse_query(QUERY_INTRICATE_CONDITION)
+        assert formula4.type == QueryType.P
+        assert formula4.operator == Operators.GT
+        assert formula4.value == str(0.5)
+        assert formula4.target_name == ['name']
+        assert formula4.logical_equation == ['B', '|', ['C', '&', 'D']]
+
+    def test_parse_multiple_names_and_condition(self):
+        formula5 = Parser.parse_query(QUERY_MULTIPLE_NAMES_AND_CONDITION)
+        assert formula5.type == QueryType.P
+        assert formula5.operator == Operators.LE
+        assert formula5.value == str(0.4)
+        assert formula5.target_name == ['A', 'B', 'C']
+        assert formula5.logical_equation == ['A', '|', '!B', '&', 'C']
+
+    def test_parse_multiple_names_and_intricate_condition(self):
+        formula6 = Parser.parse_query(QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION)
+        assert formula6.type == QueryType.P
+        assert formula6.operator == Operators.GE
+        assert formula6.value == str(0.5)
+        assert formula6.target_name == ['A', 'B', 'C']
+        assert formula6.logical_equation == ['B', '|', ['C', '&', 'D']]
+
+# -------------------------------- FORMULA CHECKER TESTS -------------------------------------
+    def test_formula_checker_no_error(self):
+        try:
+            FormulaChecker.check_formula(NO_ERROR_FORMULA_PROBA)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() PROBA raised an unexpected ValueError")
+
+        try:
+            FormulaChecker.check_formula(NO_ERROR_FORMULA_TIME)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() TIME raised an unexpected ValueError")
+
+        try:
+            FormulaChecker.check_formula(NO_ERROR_INTERROGATION)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() INTERROGATION raised an unexpected ValueError")
+
+    def test_formula_checker_error_value(self):
+        self.assertRaises(EmptyValueException, FormulaChecker.check_formula, ERROR_FORMULA_VALUE_EMPTY)
+        self.assertRaises(WrongSymbolForValue, FormulaChecker.check_formula, ERROR_FORMULA_VALUE_WRONG_SYMBOL)
+        self.assertRaises(WrongSymbolForValue, FormulaChecker.check_formula, ERROR_FORMULA_VALUE_NOT_A_NUMBER)
+
+    def test_formula_checker_error_target_name_empty(self):
+        self.assertRaises(EmptyNameException, FormulaChecker.check_formula, ERROR_FORMULA_TARGET_EMPTY_TAB)
+        self.assertRaises(EmptyNameException, FormulaChecker.check_formula, ERROR_FORMULA_TARGET_EMPTY_NAME)
+        self.assertRaises(EmptyNameException, FormulaChecker.check_formula, ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES)
+
+    def test_formula_grammar(self):
+        self.assertRaises(WrongGrammarException, FormulaChecker.check_formula, ERROR_FORMULA_INTERROGATION_GRAMMAR)
+        self.assertRaises(WrongGrammarException, FormulaChecker.check_formula, ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS)
+
+    def test_formula_value_strict_pos(self):
+        self.assertRaises(WrongValueAccordingToType, FormulaChecker.check_formula, ERROR_VALUE_OVER_ONE_FOR_PROBA)
+        self.assertRaises(ValueError, FormulaChecker.check_formula, ERROR_VALUE_UNDER_ZERO)
+
+# -------------------- TEST WITH PROBAS AND NODES ------------------------------------------
     def test_get_df_target_node(self):
-        df_nodes = pd.DataFrame({"name": ["AKT1", "AKT2", "AKT3"], "P(AKT1)": [0.1, 0.2, 0.3]})
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         fake = FakeResult(df_nodes,None,None)
-
         MaBoSSEvaluator.simulation_results = fake
         df = MaBoSSEvaluator.get_df_target(TargetType.NODE)
 
         assert df.equals(df_nodes)
 
     def test_get_df_target_name(self):
-        df = pd.DataFrame({"A": [0.1, 0.7], "B": [0.9, 0.3]})
-        result = MaBoSSEvaluator.get_df_target_name(df, "A")
-
-        assert list(result.columns) == ["A"]
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        result = MaBoSSEvaluator.get_df_target_name(df_nodes, ["AKT2"])
+        print(result)
+        assert list(result.columns) == ["Time","AKT2"]
 
     def test_get_df_target_value(self):
-        df = pd.DataFrame({"A": [0.1, 0.7, 0.5]})
-
+        df = pd.read_csv(get_test_path('test_data.csv'))
         MaBoSSEvaluator.operator_query = Operators.GT
-        MaBoSSEvaluator.target_name = "A"
-
-        result = MaBoSSEvaluator.get_df_target_value(df, 0.5)
-
-        expected = pd.DataFrame({"A": [0.7]})
+        MaBoSSEvaluator.target_name = "AKT3"
+        df=df[["Time","AKT3"]]
+        result = MaBoSSEvaluator.get_df_target_value_proba(df, 0.5)
+        expected = pd.read_csv(get_test_path('expected_data_target_value.csv'))
+        print(result)
+        print(expected)
         assert result.reset_index(drop=True).equals(expected)
+
+    def test_get_df_full_process(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        result = MaBoSSEvaluator.querying(QUERY_FOUND_BY_NAME, FakeResult(df_nodes,None,None))
+        expected = pd.read_csv(get_test_path('expected_data_full_process.csv'))
+        print(result)
+        print(expected)
+        assert result.reset_index(drop=True).equals(expected)
+
 
