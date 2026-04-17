@@ -1,4 +1,5 @@
 import re
+import warnings
 
 from psycopg.types import none
 
@@ -41,7 +42,7 @@ class Parser:
                     if in_sub:
                         if c == ')':
                             if len(sub_array) == 0:
-                                raise Warning("Empty sub-array in logical equation, removed")
+                                warnings.warn("Empty sub-array in logical equation, removed")
                             else:
                                 logical_equation_components.append(sub_array)
                             in_sub = False
