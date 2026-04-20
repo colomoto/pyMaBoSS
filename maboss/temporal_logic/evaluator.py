@@ -1,6 +1,6 @@
 import warnings
 
-from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty
+from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
 import pandas as pd
@@ -68,20 +68,28 @@ class MaBoSSEvaluator:
         if df is None :
             raise ValueError(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
 
-        for name in target_name:
-            if name not in df.columns:
-                df.drop(name, axis=1, inplace=True)
-                warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+        if target_name is None or target_name == []:
+            raise NoNameException()
+
+        if target_name[0] != '*':
+            for name in target_name:
+                if name not in df.columns:
+                    target_name.remove(name)
+                    warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+
+        if target_name == []:
+            raise NoNameValidException()
 
         new_df = pd.DataFrame()
 
-        new_df["Time"] = df["Time"]
+        if target_name[0] != '*':
+            new_df["Time"] = df["Time"]
 
-        for name in target_name:
-            new_df[name] = df[name]
+            for name in target_name:
+                new_df[name] = df[name]
 
-        if new_df.columns.size == 1:
-            raise ValueError("The dataframe is empty after dropping the unwanted columns")
+        else:
+            new_df = df.copy()
 
         return new_df
 
