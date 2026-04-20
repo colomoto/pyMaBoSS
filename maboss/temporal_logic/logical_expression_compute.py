@@ -139,11 +139,15 @@ class ComputeLogicalExpression:
     @staticmethod
     def check_name_exist(name: str, nodes_df, states_df):
         out = [False, False]
+        if name.startswith("!"):
+            new_name = name[1:]
+        else:
+            new_name = name
         if nodes_df is not None:
-            out[0] = name in nodes_df.columns
+            out[0] = new_name in nodes_df.columns
         if states_df is not None:
             for col in states_df.columns:
-                if str.__contains__(col, name):
+                if str.__contains__(col, new_name):
                     out[1] = True
                     break
         return out
