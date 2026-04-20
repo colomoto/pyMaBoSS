@@ -4,7 +4,6 @@ from maboss.temporal_logic.evaluator import MaBoSSEvaluator
 from maboss.temporal_logic.formulas import *
 from maboss.temporal_logic.custom_exceptions import *
 from maboss.temporal_logic.temporal_parser import *
-from maboss import result
 import pandas as pd
 
 
@@ -76,7 +75,6 @@ class EvaluatorTest(unittest.TestCase):
         print(result)
         print(expected)
         assert result.reset_index(drop=True).equals(expected)
-
 
 if __name__ == '__main__':
     unittest.main()
