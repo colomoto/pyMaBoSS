@@ -143,4 +143,4 @@ class TestLogicalCompute(TestCase):
         fake = FakeResult(df_nodes, df_states, None)
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT2'], fake)
         print(f"Résultats : \n{results}")
-        #assert results.equals(expected)
+        assert results.equals(expected)
