@@ -1,5 +1,7 @@
 import re
 from maboss.temporal_logic.formulas import *
+from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
+
 
 class Parser:
     QUERY_PATTERN = \
@@ -11,7 +13,7 @@ class Parser:
 
         if not match:
             raise ValueError(f"Invalid query format, the query should be of the form: "
-                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optionnal] ]. "
+                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ]. "
                              f"More info : MaBoSSEvaluator.help()\n Input : {input}")
 
         query_type, target, target_name, operator, value, logical_equation = match.groups()
@@ -19,33 +21,20 @@ class Parser:
 
         if target_name.__contains__(","):
             names_list = [n.strip() for n in target_name.split(",")]
-        else :
+        else:
             names_list = [target_name]
 
         if logical_equation is None:
             logical_equation_components = []
         else:
             logical_equation_striped = [n.strip() for n in logical_equation.split(" ")]
-            logical_equation_components = []
-            in_sub = False
-            for c in logical_equation_striped:
-                if c == '': # ignore the spaces
-                    pass
-                elif c == '(':
-                    in_sub = True
-                    sub_array = []
-                else: # c is any other char
-                    if in_sub:
-                        if c == ')':
-                            if len(sub_array) == 0:
-                                warnings.warn("Empty sub-array in logical equation, removed")
-                            else:
-                                logical_equation_components.append(sub_array)
-                            in_sub = False
-                        else:
-                            sub_array.append(c)
-                    else: # if in major equation
-                        logical_equation_components.append(c)
+            logical_equation_components = ComputeLogicalExpression.parse_logical_expression(logical_equation_striped)
+            count_members = len(list(filter(lambda m: m != '(' and m != ')', logical_equation_components)))
+            if Parser.counting_members_logical_query(logical_equation_components) != count_members:
+                raise ErrorInLogicalExpressionNonOpeningParenthesis(
+                    ("An error has occurred in the logical equation, please check it. A parenthesis is not opened. Result : ",
+                     logical_equation_components))
+            # vérifier pour tableaux vides à l'intérieur et warning
 
         # Conversion of types, with try/catch to handle errors
         try:
@@ -66,10 +55,18 @@ class Parser:
         return Formula(
             type=_type,
             target=_target,
-            target_name=names_list, # an array of names
+            target_name=names_list,  # an array of names
             operator=_op,
             value=str(value),
-            logical_equation = logical_equation_components,
+            logical_equation=logical_equation_components,
             expression=input
         )
-    
+
+    @staticmethod
+    def counting_members_logical_query(logical_query, count=0):
+        for m in logical_query:
+            if isinstance(m, list):
+                return Parser.counting_members_logical_query(m, count)
+            else:
+                count += 1
+        return count
