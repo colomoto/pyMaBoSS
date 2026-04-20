@@ -1,8 +1,29 @@
 import unittest
+import pandas as pd
+import os
+from maboss.temporal_logic.extractors import Extractor
 
-class MyTestCase(unittest.TestCase):
-    def test_something(self):
-        self.assertEqual(True, False)  # add assertion here
+def get_test_data_path():
+    return os.path.join(os.path.dirname(__file__), "test_data.csv")
+
+def get_expected_data_path(name= "expected_result_extractor.csv"):
+    return os.path.join(os.path.dirname(__file__),name )
+
+class TestExtractor(unittest.TestCase):
+    def test_extract_column(self):
+        df = pd.read_csv(get_test_data_path())
+        expected = pd.read_csv(get_expected_data_path())
+
+        df = Extractor.extract_column(df, "AKT1")
+        assert expected.equals(df)
+
+    def test_extract_column_exclusion(self):
+        df = pd.read_csv(get_test_data_path())
+        expected = pd.read_csv(get_expected_data_path("expected_extractor_exclusion_data.csv"))
+        print(expected)
+        df = Extractor.extract_column(df, "AKT1", True)
+        print(df)
+        assert expected.equals(df)
 
 if __name__ == '__main__':
     unittest.main()
