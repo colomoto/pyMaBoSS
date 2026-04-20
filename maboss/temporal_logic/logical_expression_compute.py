@@ -88,7 +88,8 @@ class ComputeLogicalExpression:
                     elif not name_checker[0] and name_checker[1]: # state
                         temp = Extractor.extract_column(states_df, member_name, logical_no)
                     else:
-                        temp = Extractor.extract_column(nodes_df, member_name, False)
+                        if not logical_no:
+                            temp = Extractor.extract_column(nodes_df, member_name, False)
                         print(f"{member_name} : Data temp before merge or:\n {temp}")
                         temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no))
 
