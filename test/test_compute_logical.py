@@ -72,6 +72,13 @@ class TestLogicalCompute(TestCase):
         out = ComputeLogicalExpression.check_name_exist(NAME, df_nodes, df_states)
         assert out[0] == False and out[1] == False
 
+    def test_check_name_with_no(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        NAME = '!AKT1'
+        out = ComputeLogicalExpression.check_name_exist(NAME, df_nodes, df_states)
+        assert out[0] == True and out[1] == True
+
     def test_check_logical_no(self):
         LOGICAL = '!AKT1'
         assert ComputeLogicalExpression.check_logical_no(LOGICAL) == True
@@ -79,12 +86,13 @@ class TestLogicalCompute(TestCase):
     def test_compute_logical_expression_return_df(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.read_csv(get_test_path("expected_compute_data.csv"))
         fake = FakeResult(df_nodes, df_states, None)
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1','&','AKT2'], fake)
         print(f"Résultats : \n{results}")
+        assert results.equals(expected)
 
     def test_merge_or(self):
-        nodes_df = pd.DataFrame(columns=['A', 'B', 'C'])
         df1 = pd.DataFrame({
             'Time': [0.4, 0.5, 0.6, 0.7],
             'A': [True, True, True, True],
@@ -124,3 +132,16 @@ class TestLogicalCompute(TestCase):
         self.assertEqual(len(merged), 1, "Devrait avoir une seule ligne (0.6)")
 
         print("\n",merged)
+
+    def test_compute_with_no(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 0.1 , 0.2],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT1 -- AKT3' : [0.07521 ,0.2,0.11],
+        })
+        fake = FakeResult(df_nodes, df_states, None)
+        results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT2'], fake)
+        print(f"Résultats : \n{results}")
+        assert results.equals(expected)
