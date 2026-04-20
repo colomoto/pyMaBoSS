@@ -34,3 +34,7 @@ class DataFrameIsEmpty(FormulaException):
 class ErrorInLogicalExpression(FormulaException):
     def __init__(self, message):
         super().__init__(message)
+
+class ErrorInLogicalExpressionNonOpeningParenthesis(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
