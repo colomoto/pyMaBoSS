@@ -144,3 +144,50 @@ class TestLogicalCompute(TestCase):
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT2'], fake)
         print(f"Résultats : \n{results}")
         assert results.equals(expected)
+
+    def test_compute_with_or(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 , 2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2,0.11],
+            'AKT2_state' : [0.00479,0.05,0.11]
+        })
+        fake = FakeResult(df_nodes, df_states, None)
+        results = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|', 'AKT2'], fake)
+        #results.to_csv("compute_with_or.csv")
+        assert results.equals(expected)
+
+    def test_compute_with_no_or(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 , 2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            '<nil>_state' : [0.32,0.4,0.67],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2,0.11]
+        })
+        fake = FakeResult(df_nodes,df_states,None)
+        results = ComputeLogicalExpression.compute_logical_expression(['!AKT2' , '|', 'AKT1'], fake)
+        results.to_csv("compute_with_or_not.csv")
+        assert results.equals(expected)
+
+    def test_compute_intrication(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 , 2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT3' : [0.12,0.941,0.443],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2,0.11]
+        })
+        fake = FakeResult(df_nodes, df_states, None)
+        results = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|', ['AKT2' , '&' , 'AKT3']], fake)
+        #results.to_csv("compute_intrication.csv")
+        assert results.equals(expected)

@@ -29,11 +29,14 @@ class ComputeLogicalExpression:
         member_name = ''
         logical_no = False
 
+        if states_df is not None:
+            states_df = states_df.rename(columns={c: f"{c}_state" for c in states_df.columns if c != 'Time'})
+
         for member in logical_expression:
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:
-                    work_df = ComputeLogicalExpression.merge_or(work_df, temp)
+                    work_df = ComputeLogicalExpression.merge_or(work_df, temp,nodes_df)
                 else:
                     work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
                 temp = pd.DataFrame()
@@ -91,12 +94,12 @@ class ComputeLogicalExpression:
                         if not logical_no:
                             temp = Extractor.extract_column(nodes_df, member_name, False)
                         print(f"{member_name} : Data temp before merge or:\n {temp}")
-                        temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no))
+                        temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
 
                 print(f"{member_name} : Data temp after merge or :\n {temp}")
 
                 if fusion:
-                    work_df = ComputeLogicalExpression.merge_or(work_df, temp)
+                    work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
                 else:
                     work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
 
@@ -187,7 +190,15 @@ class ComputeLogicalExpression:
         return out
 
     @staticmethod
-    def merge_or(df1, df2):
+    def merge_or(df1, df2, nodes_df):
+        '''
+        todo,
+        The end of the function sorts the df by column types (nodes or state) then by alphabetical order
+        :param df1:
+        :param df2:
+        :param nodes_df:
+        :return:
+        '''
         if df1.empty: return df2
         if df2.empty: return df1
 
@@ -198,6 +209,13 @@ class ComputeLogicalExpression:
         df2_idx = df2.set_index('Time')
 
         result = df1_idx.combine_first(df2_idx).reset_index()
+
+        if nodes_df is not None:
+            node_cols_present = [c for c in result if c in nodes_df.columns and c != 'Time']
+            state_cols_present = [c for c in result if c not in nodes_df.columns and c != 'Time']
+            ordered_cols = ['Time'] + sorted(node_cols_present) + sorted(state_cols_present)
+            result = result[ordered_cols]
+
 
         return result
 
