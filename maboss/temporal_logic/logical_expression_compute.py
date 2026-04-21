@@ -1,9 +1,14 @@
-import pandas as pd
-from numpy.ma.core import logical_not
-from pyparsing import warnings
-from scipy.stats import false_discovery_control
+"""
+Class to compute the logical expression. Returns dataframes containing the columns needed
+accordingly to the logical expression.
 
-import maboss.temporal_logic
+Author: Oscar Dufossez
+Date: 2026-04
+"""
+
+import pandas as pd
+from pyparsing import warnings
+
 from maboss.temporal_logic.custom_exceptions import ErrorInLogicalExpression
 from maboss.temporal_logic.extractors import Extractor
 
@@ -12,7 +17,14 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def compute_logical_expression(logical_expression, simulation_results):
-
+        """
+        Main function for the data retrieving logic. Treat each member of the logical expression and merge the results.
+        Check if the name exists in the dataframes, handles notation 'node:name' and 'state:name'
+        todo : implementing logic with a logical equation like : 'node:name > 0.7'
+        :param logical_expression: the logical expression to be evaluated
+        :param simulation_results: the results of the simulation
+        :return: a dataframe containing the results of the logical expression that will be later used to compute the final result
+        """
         try:
             ComputeLogicalExpression.check_logical_expression(logical_expression)
         except ErrorInLogicalExpression:
@@ -73,6 +85,7 @@ class ComputeLogicalExpression:
                 print(f"Logical no : {logical_no} for {member_name}")
                 print(f"is_node : {is_node} is_state : {is_state} for {member_name}")
 
+                # if it is indicated what the name is, extract the column from the dataframe, else looks in both df
                 if is_node:
                     if name_checker[0]:
                         temp = Extractor.extract_column(nodes_df, member_name, False)
@@ -96,14 +109,15 @@ class ComputeLogicalExpression:
                         print(f"{member_name} : Data temp before merge or:\n {temp}")
                         temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
 
-                print(f"{member_name} : Data temp after merge or :\n {temp}")
+                # print(f"{member_name} : Data temp after merge or :\n {temp}")
 
                 if fusion:
                     work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
                 else:
                     work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
 
-                print(f"{member_name} : Data :\n {work_df}")
+                # print(f"{member_name}: Data :\n {work_df}")
+
                 temp = pd.DataFrame()
                 is_state = False
                 is_node = False
@@ -112,10 +126,16 @@ class ComputeLogicalExpression:
 
         return work_df
 
-        # todo continue
-
     @staticmethod
     def parse_logical_expression(logical_expression: list[str]):
+        """
+        Parse the logical expression as lists so the inner expressions are kept together. Removes the (,) and the spaces.
+        Intrications are possible on more than 2 levels of nesting. (e.g.: A & ( ( B | C ) & D ). SPACES ARE OBLIGATORY
+        SO THE PARSING IS CORRECTLY DONE !!!!
+        :param logical_expression: the logical expression to be parsed, it can be a sub expression of the main expression, the
+        function is blind to this.
+        :return: a list of strings with possible sub lists of strings.
+        """
         out = []
         it = iter(logical_expression) if isinstance(logical_expression, list) else logical_expression
         for c in it:
@@ -132,12 +152,30 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def check_logical_no(expression: str):
+        """
+        If the expression starts with a '!', it is a logical no.
+        :param expression: a name of the expression, for example, 'A' or '!B'
+        :return: True if the name starts with ! else False
+        """
         if expression.startswith("!"):
             return True
         return False
 
     @staticmethod
     def check_logical_expression(logical_expression):
+        """
+        Checks if the logical expression is valid. It is not a complete check, it only checks the syntax.
+        Checks for the following:
+        - Two symbols in a row
+        - Two nodes in a row
+        - Two states in a row
+        - Expression starts or ends with a logical symbol
+        It raises an ErrorInLogicalExpression if the expression is not valid and the computing stops
+        It uses a recursion logic to check the inner expressions, thus why the try except
+        NB: It does NOT check for the good parenthesis. It is checked elsewhere
+        :param logical_expression: the expression to be verified
+        :return: nothing, only raises an error if an error occurs
+        """
         print(logical_expression)
         last_member = logical_expression[-1]
         first_member = logical_expression[0]
@@ -169,6 +207,15 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def check_name_exist(name: str, nodes_df, states_df):
+        """
+        Checks if the provided name exists in the dataframes.
+        There are three possible checks :
+        - The name is indicated as a node (node: name), only checks in :param nodes_df
+        :param name: the name to be checked
+        :param nodes_df: the nodes dataframe used for the computing
+        :param states_df: the states dataframe used for the computing
+        :return: a list of two booleans, the first one indicates if the name is present in the nodes, the second one if it is present in the states
+        """
         out = [False, False]
         if name.startswith("!"):
             new_name = name[1:]
@@ -192,16 +239,19 @@ class ComputeLogicalExpression:
     @staticmethod
     def merge_or(df1, df2, nodes_df):
         '''
-        todo,
+        Merge two dataframes on the time column following an OR logic. Meaning it keeps the values of both the df without
+        causing doubling.
         The end of the function sorts the df by column types (nodes or state) then by alphabetical order
         :param df1:
         :param df2:
-        :param nodes_df:
-        :return:
+        :param nodes_df: the nodes dataframe used for the computing coming from the simulation results
+        :return: a dataframe containing the results of the logical expression that will be later used to compute the final result
         '''
         if df1.empty: return df2
         if df2.empty: return df1
 
+        # round up the times to 5 decimals to avoid doubles and to avoid the possibility of having the same time in two df
+        # with a little variation like: 1.5678912 and 1.5678913
         df1['Time'] = df1['Time'].round(5)
         df2['Time'] = df2['Time'].round(5)
 
@@ -210,6 +260,7 @@ class ComputeLogicalExpression:
 
         result = df1_idx.combine_first(df2_idx).reset_index()
 
+        # sorts by column types (nodes or state) then by alphabetical order
         if nodes_df is not None:
             node_cols_present = [c for c in result if c in nodes_df.columns and c != 'Time']
             state_cols_present = [c for c in result if c not in nodes_df.columns and c != 'Time']
@@ -221,6 +272,15 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def merge_and(df1, df2, nodes_df):
+        """
+        Merges the two dataframes on the time column following an AND logic. Meaning it keeps only the common values of both the df.
+        Ends by sorting the columns by column types (nodes or state) then by alphabetical order
+        :param df1:
+        :param df2:
+        :param nodes_df: the nodes dataframe used for the computing coming from the simulation results,
+        used to determine which columns to keep and which columns are from nodes and which are from states
+        :return: a dataframe result of the logical expression that will be later used to compute the final result
+        """
         df1['Time'] = df1['Time'].round(5)
         df2['Time'] = df2['Time'].round(5)
 
@@ -236,6 +296,7 @@ class ComputeLogicalExpression:
             elif col in df1.columns and col in df2.columns:
                 final_cols.append(col)
 
+        # Sorts the columns by column types (nodes or state) then by alphabetical order
         node_cols_present = [c for c in final_cols if c in nodes_df.columns and c != 'Time']
         state_cols_present = [c for c in final_cols if c not in nodes_df.columns and c != 'Time']
         ordered_cols = ['Time'] + sorted(node_cols_present) + sorted(state_cols_present)
