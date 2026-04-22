@@ -45,6 +45,14 @@ class MaBoSSEvaluator:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.parsed_query.value)
             case QueryType.T.value:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value)
+            case QueryType.PMAX:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.simulation_results.get_max_prob())
+            case QueryType.PMIN:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.simulation_results.get_min_prob())
+            case QueryType.TMAX:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.simulation_results.get_max_time())
+            case QueryType.TMIN:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.simulation_results.get_min_time())
             case _:
                 raise ValueError("Query type is not supported, try P or T")
 
@@ -122,24 +130,27 @@ class MaBoSSEvaluator:
     def get_df_target_value_time(df, value):
 
         value = float(value)
-        match MaBoSSEvaluator.parsed_query.operator_query:
+        match MaBoSSEvaluator.parsed_query.operator:
             case Operators.LT:
-                return df[df[df.Time] < value]
+                mask =  (df['Time'] < value)
             case Operators.EQ:
-                return df[df[df.Time] == value]
+                mask = (df['Time'] == value)
             case Operators.GT:
-                return df[df[df.Time] > value]
+                mask = (df['Time'] > value)
             case Operators.LE:
-                return df[df[df.Time] <= value]
+                mask = (df['Time'] <= value)
             case Operators.GE:
-                return df[df[df.Time] >= value]
+                mask = (df['Time'] >= value)
             case Operators.NE:
-                return df[df[df.Time] != value]
+                mask = (df['Time'] != value)
             case _:
-                raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
+                raise ValueError("Operator is not supported, try <, <=, ==, !=, >=, >")
+
+        return df[mask].copy()
 
     @staticmethod
     def remove_double_columns(df):
+        print(isinstance(df,pd.DataFrame))
         df = df.rename(columns=lambda x: "".join(x.split()))
         current_cols = list(df.columns)
         rename_map = {}
