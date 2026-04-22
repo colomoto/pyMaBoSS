@@ -158,3 +158,30 @@ class TestEvaluator(TestCase):
         })
         res.to_csv("test/test_data_result.csv", index=False)
         assert res.equals(expected)
+
+    def test_time_query(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying("T(node:AKT1) > 1.0", FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [2.0],
+            'AKT1' : [0.115],
+        })
+
+        assert res.equals(expected)
+
+    def test_time_query_with_logical(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying("T(node:AKT1) >= 1.0 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [1.0,2.0],
+            'AKT1' : [0.678,0.115],
+            'AKT2' : [0.332,0.567],
+            'AKT3' : [0.941,0.443],
+            'AKT1--AKT2--AKT3': [0.15,0.11],
+            'AKT1--AKT3' : [0.2,0.11],
+            'AKT2_state' : [0.05,0.11]
+        })
+
+        assert res.equals(expected)
