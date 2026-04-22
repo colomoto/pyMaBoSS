@@ -29,7 +29,7 @@ class Parser:
         else:
             logical_equation_striped = [n.strip() for n in logical_equation.split(" ")]
             logical_equation_components = ComputeLogicalExpression.parse_logical_expression(logical_equation_striped)
-            count_members = len(list(filter(lambda m: m != '(' and m != ')', logical_equation_components)))
+            count_members = len(list(filter(lambda m: m != '(' and m != ')' and m != '', logical_equation_striped)))
             if Parser.counting_members_logical_query(logical_equation_components) != count_members:
                 raise ErrorInLogicalExpressionNonOpeningParenthesis(
                     ("An error has occurred in the logical equation, please check it. A parenthesis is not opened. Result : ",

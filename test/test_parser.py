@@ -1,3 +1,5 @@
+import pandas as pd
+
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import *
 from maboss.temporal_logic.formulas import *
@@ -15,8 +17,8 @@ QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION = "P(node:A,B,C) >= 0.5 [ B | ( C &
 
 # FORMULA CHECKER test Formulas
 NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], QUERY)
-NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?")
-NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ? [ !A & B | C ]")
+NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], "T(state:name) = ?")
+NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], "T(state:name) = ? [ !A & B | C ]")
 
 ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [], QUERY)
 ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [], QUERY)
@@ -44,6 +46,7 @@ LOGICAL_EXPRESSION_ERROR_SYMBOL = ['A', '|' , '&', 'B']
 LOGICAL_EXPRESSION_ERROR_FIRST_MEMBER_SYMBOL = ['&','A', '|', 'B']
 LOGICAL_EXPRESSION_ERROR_LAST_MEMBER_SYMBOL = ['A', '|', '&', 'B', '|']
 LOGICAL_EXPRESSION_ERROR_NODES_INTRICATE = ['A','|', ['B','&','C','D']]
+
 
 # -------------------------- TESTS PARSER --------------------------------------
 
@@ -159,5 +162,5 @@ class TestParser(TestCase):
     def test_counting_members_logical_query(self):
         assert Parser.counting_members_logical_query(LOGICAL_EXPRESSION_SIMPLE_NO_ERROR) == 3
         assert Parser.counting_members_logical_query(LOGICAL_EXPRESSION_INTRICATE_NO_ERROR) == 5
-
+        assert Parser.counting_members_logical_query(['B', '|', ['C', '&', 'D']]) == 5
 
