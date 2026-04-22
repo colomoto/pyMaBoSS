@@ -5,6 +5,7 @@ from maboss.temporal_logic.custom_exceptions import *
 from unittest import TestCase
 import os
 import pandas as pd
+import operator
 
 QUERY_LOGICAL_SIMPLE = "A & B | !C"
 EXPECTED_LOGICAL_SIMPLE = ['A', '&', 'B', '|', '!C']
@@ -58,6 +59,11 @@ class TestLogicalCompute(TestCase):
     def test_handling_non_opening_parenthesis(self):
         pass # todo
 
+    def test_parsing_with_numerical(self):
+        parsed_logical = [n.strip() for n in "( A >= 0.5 ) | B".split(" ")]
+        res = ComputeLogicalExpression.parse_logical_expression(parsed_logical)
+        assert res == [['A', '>=', '0.5'], '|', 'B']
+
     def test_check_name_exist(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
@@ -98,7 +104,7 @@ class TestLogicalCompute(TestCase):
             'C': [False, False]
         })
 
-        merged = ComputeLogicalExpression.merge_or(df1, df2)
+        merged = ComputeLogicalExpression.merge_or(df1, df2,nodes_df=pd.DataFrame(columns=['A', 'B', 'C']))
         print("\n", merged)
 
     def test_merge_and(self):
@@ -138,7 +144,7 @@ class TestLogicalCompute(TestCase):
         expected = pd.DataFrame({
             'Time' : [0.0 , 1.0 , 2.0],
             'AKT1' : [0.421,0.678,0.115],
-            'AKT1 -- AKT3' : [0.07521 ,0.2,0.11],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2,0.11],
         })
         fake = FakeResult(df_nodes, df_states, None)
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT2'], fake)
@@ -191,3 +197,140 @@ class TestLogicalCompute(TestCase):
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|', ['AKT2' , '&' , 'AKT3']], fake)
         #results.to_csv("compute_intrication.csv")
         assert results.equals(expected)
+
+    def test_compute_full_process_simple_and(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 , 2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11],
+        })
+
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&' , 'AKT2'], FakeResult(df_nodes, df_states, None))
+
+        assert res.equals(expected)
+
+    def test_compute_full_process_simple_or(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 , 2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2,0.11],
+            'AKT2_state' : [0.00479,0.05,0.11]
+        })
+
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|' , 'AKT2'], FakeResult(df_nodes, df_states, None))
+        assert res.equals(expected)
+
+    def test_simple_value_numerical(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0],
+            'AKT1' : [0.421,0.678],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2],
+        })
+
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '>' , '0.4'], FakeResult(df_nodes, df_states, None))
+        #print(res)
+        assert res.equals(expected)
+
+    def test_simple_value_numerical_with_no(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 2.0],
+            '<nil>_state' : [0.32,0.67],
+            'AKT2_state' : [0.00479,0.11],
+        })
+        res = ComputeLogicalExpression.compute_logical_expression([['!AKT1' , '>' , '0.4']], FakeResult(df_nodes, df_states, None))
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert expected.equals(res)
+
+    def test_simple_value_numerical_with_or(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0 ],
+            'AKT1' : [0.421,0.678],
+            'AKT2' : [0.854,0.332],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2],
+            'AKT2_state' : [0.00479,0.05]
+        })
+        log_exp = [['AKT1' , '>' , '0.4'] , '|' , 'AKT2' ]
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        assert expected.equals(res)
+
+    def test_expression_more_complex(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0],
+            'AKT1' : [0.421,0.678],
+            'AKT2' : [0.854,0.332],
+            'AKT3' : [0.12,0.941],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15],
+            'AKT1 -- AKT3_state' : [0.07521 ,0.2]
+        })
+        log_exp = [['AKT1' , '>' , '0.4'] , '|' , ['AKT2' , '&' , 'AKT3']]
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        assert expected.equals(res)
+
+    def test_expression_more_complex_with_no(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 2.0],
+            'AKT2' : [0.854,0.567],
+            'AKT3' : [0.12,0.443],
+            '<nil>_state' : [0.32,0.67],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.11],
+            'AKT2_state' : [0.00479,0.11] #it is here because !AKT1 returns all the columns where AKT1 is inactive
+        })
+
+        log_exp = [['!AKT1' , '>' , '0.4'] , '|' , ['AKT2' , '&' , 'AKT3']]
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        #print(f"Results : \n{res}\n Expected : \n{expected}")
+        #assert expected.equals(res)
+
+    def test_akt2_and_akt3(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0, 2.0],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT3' : [0.12,0.941, 0.443],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.15, 0.11]
+        })
+
+        log_exp = [['AKT2' , '&' , 'AKT3']]
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        assert expected.equals(res)
+
+
+    def test_check_logical_expression_numerical(self):
+        exp = ['AKT1' , '>' , '0.4']
+
+        try:
+            ComputeLogicalExpression.check_logical_expression(exp)
+        except ErrorInLogicalExpression:
+            self.fail(("Erreur lors de l'analyse de l'expression logique " , exp))
+
+    def test_check_handling_symb(self):
+        symbols = ['&', '|', '>', '<', '==', '>=', '<=', '=']
+        for s in symbols:
+            print(s)
+            assert True == ComputeLogicalExpression.is_any_symb_check(s)
+
+    def test_operator_map(self):
+        symbol = '>'
+        print(Operators(symbol))
+        #print(ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)))
+        #assert ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)) == operator.gt

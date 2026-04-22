@@ -7,24 +7,34 @@ Date: 2026-04
 """
 
 import pandas as pd
-from pyparsing import warnings
+import operator
 
+from pyparsing import warnings
+from maboss.temporal_logic.formulas import Operators
 from maboss.temporal_logic.custom_exceptions import ErrorInLogicalExpression
 from maboss.temporal_logic.extractors import Extractor
 
 
 class ComputeLogicalExpression:
+    OPERATOR_MAP = {
+        Operators.LT: operator.lt,  # <
+        Operators.LE: operator.le,  # <=
+        Operators.GT: operator.gt,  # >
+        Operators.GE: operator.ge,  # >=
+        Operators.EQ: operator.eq,  # == (ou = dans ton Enum)
+        Operators.NE: operator.ne,  # !=
+    }
 
     @staticmethod
     def compute_logical_expression(logical_expression, simulation_results):
         """
         Main function for the data retrieving logic. Treat each member of the logical expression and merge the results.
         Check if the name exists in the dataframes, handles notation 'node:name' and 'state:name'
-        todo : implementing logic with a logical equation like : 'node:name > 0.7'
         :param logical_expression: the logical expression to be evaluated
         :param simulation_results: the results of the simulation
         :return: a dataframe containing the results of the logical expression that will be later used to compute the final result
         """
+
         try:
             ComputeLogicalExpression.check_logical_expression(logical_expression)
         except ErrorInLogicalExpression:
@@ -35,16 +45,20 @@ class ComputeLogicalExpression:
         nodes_df = simulation_results.get_nodes_probtraj()
         states_df = simulation_results.get_states_probtraj()
         fusion = True
+        op = operator.gt
         name_checker = [False, False] #0: nodes, 1: states
         is_node = False
         is_state = False
         member_name = ''
         logical_no = False
+        is_number = False
+        value = 0.0
 
         if states_df is not None:
             states_df = states_df.rename(columns={c: f"{c}_state" for c in states_df.columns if c != 'Time'})
 
         for member in logical_expression:
+            print(f"Member : {member}")
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:
@@ -52,78 +66,90 @@ class ComputeLogicalExpression:
                 else:
                     work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
                 temp = pd.DataFrame()
-            elif member == '&' or member == '|':
-                if member == '&':
-                    fusion = False
-                else:
-                    fusion = True
+            elif ComputeLogicalExpression.is_any_symb_check(member):
+                match member:
+                    case '&':
+                        fusion = False
+                    case '|':
+                        fusion = True
+                    case _: op = Operators(member)
             else:
-                # check if the name exists in at least one of the dfs
-                name_checker = ComputeLogicalExpression.check_name_exist(member, nodes_df, states_df)
-                if name_checker[0] == False and name_checker[1] == False:
-                    raise ErrorInLogicalExpression("Node or state name not found")
+                try:
+                    value = float(member)
+                    is_number = True
+                except ValueError:
+                    is_number = False
 
-                # check if the name is a node or a state
-                if str.__contains__(member, 'node:'):
-                    is_node = True
-                    is_state = False
-                    member_name = member[5:]
-                elif str.__contains__(member, 'state:'):
-                    is_node = False
-                    is_state = True
-                    member_name = member[6:]
+                if is_number:
+                    if value > 1 or value < 0:
+                        raise ErrorInLogicalExpression("The value of the logical expression must be between 0 and 1")
+                    work_df = Extractor.extract_column_numerical(work_df, member_name, simulation_results, op, value, logical_no )
+                    print(f"Numerical value : {member} , work_df : \n {work_df} \n")
+                    return work_df
                 else:
-                    is_node = False
-                    is_state = False
-                    member_name = member
+                    # check if the name exists in at least one of the dfs
+                    name_checker = ComputeLogicalExpression.check_name_exist(member, nodes_df, states_df)
+                    if name_checker[0] == False and name_checker[1] == False:
+                        raise ErrorInLogicalExpression("Node or state name not found")
 
-                print(f"{member_name} loop")
-
-                # Logical no
-                logical_no = ComputeLogicalExpression.check_logical_no(member)
-                member_name = member_name[1:] if logical_no else member_name
-                print(f"Logical no : {logical_no} for {member_name}")
-                print(f"is_node : {is_node} is_state : {is_state} for {member_name}")
-
-                # if it is indicated what the name is, extract the column from the dataframe, else looks in both df
-                if is_node:
-                    if name_checker[0]:
-                        temp = Extractor.extract_column(nodes_df, member_name, False)
+                    # check if the name is a node or a state
+                    if str.__contains__(member, 'node:'):
+                        is_node = True
+                        is_state = False
+                        member_name = member[5:]
+                    elif str.__contains__(member, 'state:'):
+                        is_node = False
+                        is_state = True
+                        member_name = member[6:]
                     else:
-                        warnings.warn(f"The name {member_name} has been provided for a node but no node with that name has been found in the dataframe")
+                        is_node = False
+                        is_state = False
+                        member_name = member
 
-                if is_state:
-                    if name_checker[1]:
-                        temp = Extractor.extract_column(states_df, member_name, logical_no)
-                    else:
-                        warnings.warn(f"The name {member_name} has been provided for a state but no state with that name has been found in the dataframe")
+                    #print(f"{member_name} loop")
 
-                if temp.empty:
-                    if name_checker[0] and not name_checker[1] and not logical_no: # node
-                        temp = Extractor.extract_column(nodes_df, member_name, False)
-                    elif not name_checker[0] and name_checker[1]: # state
-                        temp = Extractor.extract_column(states_df, member_name, logical_no)
-                    else:
-                        if not logical_no:
+                    # Logical no
+                    logical_no = ComputeLogicalExpression.check_logical_no(member)
+                    member_name = member_name[1:] if logical_no else member_name
+                    #print(f"Logical no : {logical_no} for {member_name}")
+                    #print(f"is_node : {is_node} is_state : {is_state} for {member_name}")
+
+                    # if it is indicated what the name is, extract the column from the dataframe, else looks in both df
+                    if is_node:
+                        if name_checker[0]:
                             temp = Extractor.extract_column(nodes_df, member_name, False)
-                        print(f"{member_name} : Data temp before merge or:\n {temp}")
-                        temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
+                        else:
+                            warnings.warn(f"The name {member_name} has been provided for a node but no node with that name has been found in the dataframe")
 
-                # print(f"{member_name} : Data temp after merge or :\n {temp}")
+                    if is_state:
+                        if name_checker[1]:
+                            temp = Extractor.extract_column(states_df, member_name, logical_no)
+                        else:
+                            warnings.warn(f"The name {member_name} has been provided for a state but no state with that name has been found in the dataframe")
 
-                if fusion:
-                    work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
-                else:
-                    work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
+                    if temp.empty:
+                        if name_checker[0] and not name_checker[1] and not logical_no: # node only getting the column if is activated
+                            temp = Extractor.extract_column(nodes_df, member_name, False)
+                        elif not name_checker[0] and name_checker[1]: # state
+                            temp = Extractor.extract_column(states_df, member_name, logical_no)
+                        else:
+                            if not logical_no: # same here, only getting the column if activated (!name does not get the column)
+                                temp = Extractor.extract_column(nodes_df, member_name, False)
+                            print(f"{member_name} : Data temp before merge or:\n {temp}")
+                            temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
 
-                # print(f"{member_name}: Data :\n {work_df}")
+                    print(f"{member_name} : Data temp after merge or :\n {temp}")
 
-                temp = pd.DataFrame()
-                is_state = False
-                is_node = False
-                member_name = ''
-                logical_no = False
+                    if fusion:
+                        work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
+                    else:
+                        work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
 
+                    print(f"{member_name}: Data :\n {work_df}")
+
+                    temp = pd.DataFrame()
+
+        work_df.dropna(inplace=True, ignore_index=True)
         return work_df
 
     @staticmethod
@@ -180,10 +206,12 @@ class ComputeLogicalExpression:
         last_member = logical_expression[-1]
         first_member = logical_expression[0]
 
-        if first_member == '&' or first_member == '|':
+        if first_member == last_member: return
+
+        if ComputeLogicalExpression.is_any_symb_check(first_member) :
             raise ErrorInLogicalExpression("Formula cannot start with '&' or '|', it must start with a node name (V1)")
 
-        if last_member == '&' or last_member == '|':
+        if ComputeLogicalExpression.is_any_symb_check(last_member):
             raise ErrorInLogicalExpression("Formula cannot end with '&' or '|', it must end with a node name (V1)")
 
         last_member_is_logical_symb = False
@@ -196,14 +224,25 @@ class ComputeLogicalExpression:
                 except ErrorInLogicalExpression:
                     raise ErrorInLogicalExpression("")
 
-            if (m == '&' or m == '|') and last_member_is_logical_symb:
+            if ComputeLogicalExpression.is_any_symb_check(m) and last_member_is_logical_symb:
                 raise ErrorInLogicalExpression("Formula cannot contain two logical symbols in a row")
-            elif (m == '&' or m == '|') and not last_member_is_logical_symb:
+            elif ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
                 last_member_is_logical_symb = True
-            elif (m != '&' and m != '|') and not last_member_is_logical_symb:
+            elif not ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
                 raise ErrorInLogicalExpression("Formula cannot contain two nodes in a row")
             else:
                 last_member_is_logical_symb = False
+
+    @staticmethod
+    def is_any_symb_check(symb: str):
+        """
+        Check if the provided symbol is a logical symbol like '&' or '|'
+        Handles all numerical operators (e.g., <, >, =, ==, =, <=, >=)
+        Basically, it replaces an if of the form : if(symb == '&' or symb == '|' or ...)
+        :param symb a symbol to be checked
+        :return: return True if the symbol is a logical symbol, False otherwise
+        """
+        return symb == '&' or symb == '|' or symb == '>' or symb == '<' or symb == '=' or symb == '!=' or symb == '>=' or symb == '<=' or symb == '=='
 
     @staticmethod
     def check_name_exist(name: str, nodes_df, states_df):
@@ -238,7 +277,7 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def merge_or(df1, df2, nodes_df):
-        '''
+        """
         Merge two dataframes on the time column following an OR logic. Meaning it keeps the values of both the df without
         causing doubling.
         The end of the function sorts the df by column types (nodes or state) then by alphabetical order
@@ -246,7 +285,7 @@ class ComputeLogicalExpression:
         :param df2:
         :param nodes_df: the nodes dataframe used for the computing coming from the simulation results
         :return: a dataframe containing the results of the logical expression that will be later used to compute the final result
-        '''
+        """
         if df1.empty: return df2
         if df2.empty: return df1
 
@@ -273,7 +312,8 @@ class ComputeLogicalExpression:
     @staticmethod
     def merge_and(df1, df2, nodes_df):
         """
-        Merges the two dataframes on the time column following an AND logic. Meaning it keeps only the common values of both the df.
+        Merges the two dataframes on the time column following an AND logic. Meaning it keeps only the common values
+        of both the df.
         Ends by sorting the columns by column types (nodes or state) then by alphabetical order
         :param df1:
         :param df2:
