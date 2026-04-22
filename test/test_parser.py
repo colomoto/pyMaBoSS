@@ -163,4 +163,5 @@ class TestParser(TestCase):
         assert Parser.counting_members_logical_query(LOGICAL_EXPRESSION_SIMPLE_NO_ERROR) == 3
         assert Parser.counting_members_logical_query(LOGICAL_EXPRESSION_INTRICATE_NO_ERROR) == 5
         assert Parser.counting_members_logical_query(['B', '|', ['C', '&', 'D']]) == 5
+        assert Parser.counting_members_logical_query([['AKT2','>=','0.2'],'|','AKT3']) == 5
 
