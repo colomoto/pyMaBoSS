@@ -44,7 +44,8 @@ class TestExtractor(unittest.TestCase):
         assert expected.equals(df)
 
     def test_extract_row_with_numerical_value(self):
-        df = pd.read_csv(get_expected_data_path("test_data.csv"))
+        df_nodes = pd.read_csv(get_expected_data_path("test_data.csv"))
+        df_states = pd.read_csv(get_expected_data_path("test_data_states.csv"))
         expected = pd.DataFrame({
             'Time' : [0.0 , 1.0],
             'AKT1':[0.421,0.678],
@@ -52,7 +53,7 @@ class TestExtractor(unittest.TestCase):
             'AKT3': [0.12,0.941],
         })
 
-        res = Extractor.extract_column_numerical(df, "AKT1", Operators.GT, 0.4)
+        res = Extractor.extract_column_numerical(df_nodes, "AKT1", FakeResult(df_nodes, df_states, None), Operators.GT, 0.4)
         print(res)
         assert expected.equals(res)
 
@@ -70,7 +71,7 @@ class TestExtractor(unittest.TestCase):
         akt1 = ComputeLogicalExpression.compute_logical_expression(['AKT1'] , fake)
         # print(akt1)
         akt2 = ComputeLogicalExpression.compute_logical_expression(['AKT2'] , fake)
-        akt2 = Extractor.extract_column_numerical(akt2, "AKT2", Operators.GT, 0.4)
+        akt2 = Extractor.extract_column_numerical(akt2, "AKT2", FakeResult(df_nodes, df_states, None), Operators.GT, 0.4)
         #print(akt2)
         res = ComputeLogicalExpression.merge_and(akt1, akt2, df_nodes)
         #print(res)
