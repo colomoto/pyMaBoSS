@@ -1,6 +1,7 @@
 import warnings
 
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException
+from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
 import pandas as pd
@@ -47,21 +48,20 @@ class MaBoSSEvaluator:
             case _:
                 raise ValueError("Query type is not supported, try P or T")
 
-        return filtered_data
-
+        if parsed_query.logical_equation:
+            log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query.logical_equation, MaBoSSEvaluator.simulation_results)
+            filtered_data = ComputeLogicalExpression.merge_or(log_df, filtered_data, MaBoSSEvaluator.simulation_results.get_nodes_probtraj())
+        filtered_data = MaBoSSEvaluator.remove_double_columns(filtered_data)
+        return filtered_data.dropna(inplace=False, ignore_index=True)
 
     @staticmethod
     def get_df_target(target):
         if target.value == TargetType.NODE.value:
-            print("matched NODE")
             return MaBoSSEvaluator.simulation_results.get_nodes_probtraj()
         elif target.value == TargetType.STATE.value:
-            print("matched STATE")
             return MaBoSSEvaluator.simulation_results.get_states_probtraj()
         else:
-            print("matched default")
             raise ValueError("Target is not supported, try node or state")
-
 
     @staticmethod
     def get_df_target_name(df, target_name):
@@ -97,26 +97,26 @@ class MaBoSSEvaluator:
     @staticmethod
     def get_df_target_value_proba(df, value):
         op = MaBoSSEvaluator.parsed_query.operator
-        new_df = pd.DataFrame()
-        for name in df.columns:
-            match op:
-                case Operators.LT:
-                    new_df[name] = df[name] < float(value)
-                case Operators.EQ:
-                    new_df[name] = df[name] == float(value)
-                case Operators.GT:
-                    new_df[name] = df[name] > float(value)
-                case Operators.LE:
-                    new_df[name] = df[name] <= float(value)
-                case Operators.GE:
-                    new_df[name] = df[name] >= float(value)
-                case Operators.NE:
-                    new_df[name] = df[name] != float(value)
-                case _:
-                    raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
+        cols_to_check = [c for c in df.columns if c != "Time"]
+        value = float(value)
 
-        new_df = new_df.dropna() # removing all the lines with NaN values because it means all the columns does not respect the condition
-        return new_df
+        match op:
+            case Operators.LT:
+                mask = (df[cols_to_check] < value).all(axis=1)
+            case Operators.EQ:
+                mask = (df[cols_to_check] == value).all(axis=1)
+            case Operators.GT:
+                mask = (df[cols_to_check] > value).all(axis=1)
+            case Operators.LE:
+                mask = (df[cols_to_check] <= value).all(axis=1)
+            case Operators.GE:
+                mask = (df[cols_to_check] >= value).all(axis=1)
+            case Operators.NE:
+                mask = (df[cols_to_check] != value).all(axis=1)
+            case _:
+                raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
+
+        return df[mask].copy()
 
     @staticmethod
     def get_df_target_value_time(df, value):
@@ -137,3 +137,33 @@ class MaBoSSEvaluator:
                 return df[df[df.Time] != value]
             case _:
                 raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
+
+    @staticmethod
+    def remove_double_columns(df):
+        df = df.rename(columns=lambda x: "".join(x.split()))
+        current_cols = list(df.columns)
+        rename_map = {}
+
+        for col in current_cols:
+            if col.endswith("_state"):
+                base_name = col[:-6]
+                if base_name in current_cols:
+                    try:
+                        #we compute the difference max between the two columns
+                        diff = (df[col].astype(float) - df[base_name].astype(float)).abs().max()
+                        if diff < 1e-10:
+                            rename_map[col] = base_name
+                    except Exception:
+                        if df[col].equals(df[base_name]):
+                            rename_map[col] = base_name
+                else:
+                    #if the base name is not in the columns, we keep the column so it is clearer
+                    rename_map[col] = base_name
+        #applying the rename
+        df = df.rename(columns=rename_map)
+        #delete the columns that became identical
+        df = df.loc[:, ~df.columns.duplicated()].copy()
+        df.dropna(inplace=True, ignore_index=True)
+        print(df)
+
+        return df

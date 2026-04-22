@@ -58,7 +58,7 @@ class ComputeLogicalExpression:
             states_df = states_df.rename(columns={c: f"{c}_state" for c in states_df.columns if c != 'Time'})
 
         for member in logical_expression:
-            print(f"Member : {member}")
+            #print(f"Member : {member}")
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:
@@ -84,7 +84,7 @@ class ComputeLogicalExpression:
                     if value > 1 or value < 0:
                         raise ErrorInLogicalExpression("The value of the logical expression must be between 0 and 1")
                     work_df = Extractor.extract_column_numerical(work_df, member_name, simulation_results, op, value, logical_no )
-                    print(f"Numerical value : {member} , work_df : \n {work_df} \n")
+                    #print(f"Numerical value : {member} , work_df : \n {work_df} \n")
                     return work_df
                 else:
                     # check if the name exists in at least one of the dfs
@@ -135,17 +135,17 @@ class ComputeLogicalExpression:
                         else:
                             if not logical_no: # same here, only getting the column if activated (!name does not get the column)
                                 temp = Extractor.extract_column(nodes_df, member_name, False)
-                            print(f"{member_name} : Data temp before merge or:\n {temp}")
+                            #(f"{member_name} : Data temp before merge or:\n {temp}")
                             temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
 
-                    print(f"{member_name} : Data temp after merge or :\n {temp}")
+                    #print(f"{member_name} : Data temp after merge or :\n {temp}")
 
                     if fusion:
                         work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
                     else:
                         work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
 
-                    print(f"{member_name}: Data :\n {work_df}")
+                    #print(f"{member_name}: Data :\n {work_df}")
 
                     temp = pd.DataFrame()
 
@@ -202,7 +202,7 @@ class ComputeLogicalExpression:
         :param logical_expression: the expression to be verified
         :return: nothing, only raises an error if an error occurs
         """
-        print(logical_expression)
+        #print(logical_expression)
         last_member = logical_expression[-1]
         first_member = logical_expression[0]
 

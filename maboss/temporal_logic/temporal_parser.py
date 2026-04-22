@@ -17,7 +17,7 @@ class Parser:
                              f"More info : MaBoSSEvaluator.help()\n Input : {input}")
 
         query_type, target, target_name, operator, value, logical_equation = match.groups()
-        print(query_type, target, target_name, operator, value, logical_equation)
+        #print(query_type, target, target_name, operator, value, logical_equation)
 
         if target_name.__contains__(","):
             names_list = [n.strip() for n in target_name.split(",")]
@@ -30,9 +30,11 @@ class Parser:
             logical_equation_striped = [n.strip() for n in logical_equation.split(" ")]
             logical_equation_components = ComputeLogicalExpression.parse_logical_expression(logical_equation_striped)
             count_members = len(list(filter(lambda m: m != '(' and m != ')' and m != '', logical_equation_striped)))
+            print(count_members, Parser.counting_members_logical_query(logical_equation_components))
             if Parser.counting_members_logical_query(logical_equation_components) != count_members:
                 raise ErrorInLogicalExpressionNonOpeningParenthesis(
-                    ("An error has occurred in the logical equation, please check it. A parenthesis is not opened. Result : ",
+                    ("An error has occurred in the logical equation, please check it. "
+                     "A parenthesis is not opened or a space might be missing. Result : ",
                      logical_equation_components))
             # vérifier pour tableaux vides à l'intérieur et warning
 
@@ -64,9 +66,10 @@ class Parser:
 
     @staticmethod
     def counting_members_logical_query(logical_query, count=0):
+        print(logical_query)
         for m in logical_query:
             if isinstance(m, list):
-                return Parser.counting_members_logical_query(m, count)
+                count = Parser.counting_members_logical_query(m, count)
             else:
                 count += 1
         return count
