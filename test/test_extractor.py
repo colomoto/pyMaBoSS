@@ -1,7 +1,14 @@
 import unittest
 import pandas as pd
 import os
+
+from sklearn.inspection import permutation_importance
+
 from maboss.temporal_logic.extractors import Extractor
+from maboss.temporal_logic.formulas import Operators, LogicalOperators
+from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
+from test.test_compute_logical import FakeResult
+
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(__file__), "test_data.csv")
@@ -35,6 +42,40 @@ class TestExtractor(unittest.TestCase):
         df = Extractor.extract_column(df, "AKT2", True)
         print("\n",df)
         assert expected.equals(df)
+
+    def test_extract_row_with_numerical_value(self):
+        df = pd.read_csv(get_expected_data_path("test_data.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 1.0],
+            'AKT1':[0.421,0.678],
+            'AKT2': [0.854,0.332],
+            'AKT3': [0.12,0.941],
+        })
+
+        res = Extractor.extract_column_numerical(df, "AKT1", Operators.GT, 0.4)
+        print(res)
+        assert expected.equals(res)
+
+    def test_merge_and_with_numerical_value(self):
+        df_nodes = pd.read_csv(get_expected_data_path("test_data.csv"))
+        df_states = pd.read_csv(get_expected_data_path("test_data_states.csv"))
+        expected = pd.DataFrame({
+            'Time' : [0.0 , 2.0],
+            'AKT1':[0.421,0.115],
+            'AKT2':[0.854,0.567],
+            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.11],
+        })
+
+        fake = FakeResult(df_nodes, df_states, None)
+        akt1 = ComputeLogicalExpression.compute_logical_expression(['AKT1'] , fake)
+        # print(akt1)
+        akt2 = ComputeLogicalExpression.compute_logical_expression(['AKT2'] , fake)
+        akt2 = Extractor.extract_column_numerical(akt2, "AKT2", Operators.GT, 0.4)
+        #print(akt2)
+        res = ComputeLogicalExpression.merge_and(akt1, akt2, df_nodes)
+        #print(res)
+        assert expected.equals(res)
+
 
 if __name__ == '__main__':
     unittest.main()
