@@ -1,4 +1,5 @@
 import warnings
+from unittest import case
 
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
@@ -47,11 +48,11 @@ class MaBoSSEvaluator:
             case QueryType.PMIN.value:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.PMIN)
             case QueryType.TMAX.value:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMAX) #todo
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time_minmax(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMAX)
             case QueryType.TMIN.value:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMIN) #todo
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time_minmax(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMIN)
             case _:
-                raise ValueError("Query type is not supported, try P or T") #min and max in wip
+                raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax") #min and max in wip
 
         #print(f"DF after value selection : \n {filtered_data}")
 
@@ -196,10 +197,10 @@ class MaBoSSEvaluator:
 
 
     @staticmethod
-    def get_df_target_value_time(df, value, query_type=QueryType.T):
-
+    def get_df_target_value_time(df, value):
+        op = MaBoSSEvaluator.parsed_query.operator
         value = float(value)
-        match MaBoSSEvaluator.parsed_query.operator:
+        match op:
             case Operators.LT:
                 mask =  (df['Time'] < value)
             case Operators.EQ:
@@ -216,6 +217,66 @@ class MaBoSSEvaluator:
                 raise ValueError("Operator is not supported, try <, <=, ==, !=, >=, >")
 
         return df[mask].copy()
+
+    @staticmethod
+    def get_df_target_value_time_minmax(df, value, query_type=QueryType.TMIN):
+        value = float(value)
+        query_type = query_type.value
+        op = MaBoSSEvaluator.parsed_query.operator
+        target_names = MaBoSSEvaluator.parsed_query.target_name
+
+        print(f"get_df_target_value_time_minmax :{value}, {query_type}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
+
+        if target_names[0] == '*':
+            cols_to_check = [c for c in df.columns if c != "Time"]
+            use_all = True
+        else:
+            cols_to_check = [n for n in target_names if n in df.columns]
+            use_all = False
+
+        def apply_mask(c,v,o):
+            match o:
+                case Operators.LT:
+                    m = (df[c] < v)
+                case Operators.EQ:
+                    m = (df[c] == v)
+                case Operators.GT:
+                    m = (df[c] > v)
+                case Operators.LE:
+                    m = (df[c] <= v)
+                case Operators.GE:
+                    m = (df[c] >= v)
+                case Operators.NE:
+                    m = (df[c] != v)
+                case _:
+                    raise ValueError("Operator not supported")
+            return m.all(axis=1) if use_all else m.any(axis=1)
+
+        mask = apply_mask(cols_to_check, value, op)
+
+        if not mask.any():
+            print(f"No value found for {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} and operator {op} and value {value}")
+            return pd.DataFrame(columns=df.columns)
+
+        #TMIN
+        if query_type == QueryType.TMIN:
+            start_idx = mask.idxmax() #the first time the condition is true
+            after_start = mask.loc[start_idx:]
+            first_false_idx = after_start[~after_start].index
+
+            if first_false_idx.size == 0:
+                return df.loc[start_idx:].copy
+            return df.loc[start_idx: first_false_idx[0]].iloc[-1].copy()
+        #TMAX
+        else:
+            last_true_idx = mask[::-1].idxmax()
+            before_last = mask.loc[:last_true_idx][::-1]
+            first_false_backward = before_last[~before_last].index
+
+            if first_false_backward.empty:
+                return df.loc[:last_true_idx].copy()
+            return df.loc[first_false_backward[0]: last_true_idx].iloc[1:].copy()
+
 
     @staticmethod
     def remove_double_columns(df):
