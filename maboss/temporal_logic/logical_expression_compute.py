@@ -8,6 +8,7 @@ Date: 2026-04
 
 import pandas as pd
 import operator
+from pandas import Series as series
 
 from pyparsing import warnings
 from maboss.temporal_logic.formulas import Operators
@@ -62,9 +63,9 @@ class ComputeLogicalExpression:
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:
-                    work_df = ComputeLogicalExpression.merge_or(work_df, temp,nodes_df)
+                    work_df = ComputeLogicalExpression.merge_or(work_df, temp,nodes_df, states_df)
                 else:
-                    work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
+                    work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df, states_df)
                 temp = pd.DataFrame()
             elif ComputeLogicalExpression.is_any_symb_check(member):
                 match member:
@@ -136,20 +137,21 @@ class ComputeLogicalExpression:
                             if not logical_no: # same here, only getting the column if activated (!name does not get the column)
                                 temp = Extractor.extract_column(nodes_df, member_name, False)
                             #(f"{member_name} : Data temp before merge or:\n {temp}")
-                            temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df)
+                            temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df, states_df)
 
                     #print(f"{member_name} : Data temp after merge or :\n {temp}")
 
                     if fusion:
-                        work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df)
+                        work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df, states_df)
                     else:
-                        work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df)
+                        work_df = ComputeLogicalExpression.merge_and(work_df, temp, nodes_df, states_df)
 
                     #print(f"{member_name}: Data :\n {work_df}")
 
                     temp = pd.DataFrame()
 
         work_df.dropna(inplace=True, ignore_index=True)
+        print(f"Logical expression : {logical_expression} \n Result : \n {work_df} \n")
         return work_df
 
     @staticmethod
@@ -276,7 +278,7 @@ class ComputeLogicalExpression:
         return out
 
     @staticmethod
-    def merge_or(df1, df2, nodes_df):
+    def merge_or(df1, df2, nodes_df, state_df):
         """
         Merge two dataframes on the time column following an OR logic. Meaning it keeps the values of both the df without
         causing doubling.
@@ -301,16 +303,24 @@ class ComputeLogicalExpression:
 
         # sorts by column types (nodes or state) then by alphabetical order
         if nodes_df is not None:
-            node_cols_present = [c for c in result if c in nodes_df.columns and c != 'Time']
-            state_cols_present = [c for c in result if c not in nodes_df.columns and c != 'Time']
-            ordered_cols = ['Time'] + sorted(node_cols_present) + sorted(state_cols_present)
-            result = result[ordered_cols]
+            node_cols = []
+            state_cols = []
 
+            for c in result.columns:
+                if c=='Time':continue
+
+                is_node = ComputeLogicalExpression.check_if_node(c, result[c], nodes_df, state_df)
+
+                if is_node: node_cols.append(c)
+                else: state_cols.append(c)
+
+            ordered_cols = ['Time'] + sorted(node_cols) + sorted(state_cols)
+            result = result[ordered_cols]
 
         return result
 
     @staticmethod
-    def merge_and(df1, df2, nodes_df):
+    def merge_and(df1, df2, nodes_df, state_df):
         """
         Merges the two dataframes on the time column following an AND logic. Meaning it keeps only the common values
         of both the df.
@@ -325,20 +335,44 @@ class ComputeLogicalExpression:
         df2['Time'] = df2['Time'].round(5)
 
         merged = pd.merge(df1, df2, on='Time', how='inner', suffixes=('', '_dup'))
-        node_cols = nodes_df.columns.tolist()
 
-        final_cols = ['Time']
-        for col in merged.columns:
-            if col.endswith('_dup') or col == 'Time': continue
+        potential_cols = [c for c in merged.columns if not c.endswith('_dup') and c!='Time']
 
-            # if it is a node: keep
-            if col in node_cols: final_cols.append(col)
-            elif col in df1.columns and col in df2.columns:
-                final_cols.append(col)
+        node_cols = []
+        state_cols = []
+
+        for col in potential_cols:
+            is_node = ComputeLogicalExpression.check_if_node(col, merged[col], nodes_df, state_df)
+            if is_node: node_cols.append(col)
+            else: state_cols.append(col)
 
         # Sorts the columns by column types (nodes or state) then by alphabetical order
-        node_cols_present = [c for c in final_cols if c in nodes_df.columns and c != 'Time']
-        state_cols_present = [c for c in final_cols if c not in nodes_df.columns and c != 'Time']
-        ordered_cols = ['Time'] + sorted(node_cols_present) + sorted(state_cols_present)
-
+        ordered_cols = ['Time'] + sorted(node_cols) + sorted(state_cols)
         return merged[ordered_cols].copy()
+
+    @staticmethod
+    def check_if_node(name: str, col, nodes_df, state_df):
+        if name.endswith('_state'): return False
+
+        in_nodes = nodes_df is not None and name in nodes_df.columns
+
+        state_ref = None
+        if state_df is not None:
+            if name in state_df.columns:
+                state_ref = name
+            elif f"{name}_state" in state_df.columns:
+                state_ref = f"{name}_state"
+
+        in_states = state_ref is not None
+
+        if in_nodes and in_states:
+            try:
+                act_val = float(col.dropna().iloc[0])
+                node_ref_val = float(nodes_df[name].dropna().iloc[0])
+                state_ref_val = float(state_df[state_ref].dropna().iloc[0])
+
+                if abs(act_val - node_ref_val) < abs(act_val - state_ref_val): return True
+                return False
+            except Exception:
+                return True
+        return in_nodes
