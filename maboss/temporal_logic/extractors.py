@@ -35,7 +35,7 @@ class Extractor(object):
             df_nodes = sim_res.get_nodes_probtraj()
             df_states = sim_res.get_states_probtraj()
             df_name = Extractor.extract_column(df_nodes, column_name)
-            df_final = ComputeLogicalExpression.merge_or(df_states, Extractor.extract_column(df_nodes, column_name), df_nodes)
+            df_final = ComputeLogicalExpression.merge_or(df_states, df_name, df_nodes, df_states)
         else:
             raise ValueError("No simulation result provided")
 

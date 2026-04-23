@@ -13,7 +13,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def help():  # todo little manual
-        return True
+        print('wip')
 
     @staticmethod
     def querying(query, results):  # maybe pass the results as an array to compute more than one simulation
@@ -31,35 +31,49 @@ class MaBoSSEvaluator:
         FormulaChecker.check_formula(parsed_query) # raise error if the formula is not correct
         MaBoSSEvaluator.parsed_query = parsed_query
 
-        # Selection of the simulation result df to use depending of the target
+        # Selection of the simulation result df to use depending on the target
         df_target = MaBoSSEvaluator.get_df_target(parsed_query.target)
         if df_target.empty:
             raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
-
-        # Selection of the columns regarding the name of the target
-        df_target = MaBoSSEvaluator.get_df_target_name(df_target, parsed_query.target_name)
-
-        # Selection of the rows depending of what is looking for
+        #print(f"DF after target selection : \n {df_target}")
+        # Selection of the rows depending on what is looking for
         match parsed_query.type.value:
             case QueryType.P.value:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.parsed_query.value)
             case QueryType.T.value:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value)
-            case QueryType.PMAX:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.simulation_results.get_max_prob())
-            case QueryType.PMIN:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.simulation_results.get_min_prob())
-            case QueryType.TMAX:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.simulation_results.get_max_time())
-            case QueryType.TMIN:
-                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.simulation_results.get_min_time())
+            case QueryType.PMAX.value:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.PMAX)
+            case QueryType.PMIN.value:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_proba(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.PMIN)
+            case QueryType.TMAX.value:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMAX) #todo
+            case QueryType.TMIN.value:
+                filtered_data = MaBoSSEvaluator.get_df_target_value_time(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMIN) #todo
             case _:
-                raise ValueError("Query type is not supported, try P or T")
+                raise ValueError("Query type is not supported, try P or T") #min and max in wip
+
+        #print(f"DF after value selection : \n {filtered_data}")
+
+        if parsed_query.type == QueryType.P or parsed_query.type == QueryType.T:
+            #print(f"DF in treatment for P or T type")
+            # Selection of the columns regarding the name of the target if type P or T strictly. If type in a min max logic, keep all the columns
+            filtered_data = MaBoSSEvaluator.get_df_target_name(filtered_data, parsed_query.target_name)
+
+        print(f"DF after name selection : \n {filtered_data}")
 
         if parsed_query.logical_equation:
+            #print(f"DF in treatment for logical equation")
             log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query.logical_equation, MaBoSSEvaluator.simulation_results)
-            filtered_data = ComputeLogicalExpression.merge_or(log_df, filtered_data, MaBoSSEvaluator.simulation_results.get_nodes_probtraj())
-        filtered_data = MaBoSSEvaluator.remove_double_columns(filtered_data)
+            filtered_data = ComputeLogicalExpression.merge_and(log_df, filtered_data, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(), MaBoSSEvaluator.simulation_results.get_states_probtraj())
+
+        if filtered_data.empty:
+            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\" "
+                                   f"with name \"{MaBoSSEvaluator.parsed_query.target_name}\" and logical equation "
+                                   f"\"{MaBoSSEvaluator.parsed_query.logical_equation}\"")
+        if filtered_data.size > 2:
+            filtered_data = MaBoSSEvaluator.remove_double_columns(filtered_data)
+
         return filtered_data.dropna(inplace=False, ignore_index=True)
 
     @staticmethod
@@ -103,31 +117,86 @@ class MaBoSSEvaluator:
 
 
     @staticmethod
-    def get_df_target_value_proba(df, value):
+    def get_df_target_value_proba(df, value, query_type=QueryType.P):
         op = MaBoSSEvaluator.parsed_query.operator
-        cols_to_check = [c for c in df.columns if c != "Time"]
+        print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name}")
+        if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
+            cols_to_check = [c for c in df.columns if c != "Time"]
+        else:
+            cols_to_check = MaBoSSEvaluator.parsed_query.target_name
+            for name in MaBoSSEvaluator.parsed_query.target_name:
+                if name not in df.columns:
+                    cols_to_check.remove(name)
+                    warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+
+            if not cols_to_check:
+                raise NoNameValidException()
+
+        print(f"cols to check : {cols_to_check}")
+
         value = float(value)
+        out_df = pd.DataFrame()
+        #print(f"Received df : \n{df}\n")
 
         match op:
             case Operators.LT:
-                mask = (df[cols_to_check] < value).all(axis=1)
+                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                    mask = (df[cols_to_check] < value).any(axis=1) #just check the value, any column checking it is good passes the test
+                else:
+                    mask = (df[cols_to_check] < value).all(axis=1) #all the values on the line must be less than the value
             case Operators.EQ:
-                mask = (df[cols_to_check] == value).all(axis=1)
+                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                    mask = (df[cols_to_check] == value).any(axis=1)
+                else:
+                    mask = (df[cols_to_check] == value).all(axis=1)
             case Operators.GT:
-                mask = (df[cols_to_check] > value).all(axis=1)
+                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                    mask = (df[cols_to_check] > value).any(axis=1)
+                else:
+                    mask = (df[cols_to_check] > value).all(axis=1)
             case Operators.LE:
-                mask = (df[cols_to_check] <= value).all(axis=1)
+                    if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                        mask = (df[cols_to_check] <= value).any(axis=1)
+                    else:
+                        mask = (df[cols_to_check] <= value).all(axis=1)
             case Operators.GE:
-                mask = (df[cols_to_check] >= value).all(axis=1)
+                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                    mask = (df[cols_to_check] >= value).any(axis=1)
+                else:
+                    mask = (df[cols_to_check] >= value).all(axis=1)
             case Operators.NE:
-                mask = (df[cols_to_check] != value).all(axis=1)
+                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                    mask = (df[cols_to_check] != value).any(axis=1)
+                else:
+                    mask = (df[cols_to_check] != value).all(axis=1)
             case _:
                 raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
 
-        return df[mask].copy()
+        out_df = df[mask].copy()
+        out_df["Time"] = df["Time"] #restablish the correct time values
+
+        #print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} : \n {out_df} \n")
+
+        out_df = out_df.dropna(subset=out_df.columns.difference(['Time']), axis=0, how='all', ignore_index=True) #remove the rows with all nan values
+
+        #print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
+
+        if query_type == QueryType.P:
+            return out_df
+        elif  query_type == QueryType.PMAX:
+            if MaBoSSEvaluator.parsed_query.target_name[0] not in df.columns:
+                raise NoNameValidException()
+            idx_max =  out_df[MaBoSSEvaluator.parsed_query.target_name].max(axis=1).idxmax()
+            return out_df.iloc[[idx_max]]
+        else:
+            if MaBoSSEvaluator.parsed_query.target_name[0] not in df.columns:
+                raise NoNameValidException()
+            idx_min = out_df[MaBoSSEvaluator.parsed_query.target_name].min(axis=1).idxmin()
+            return out_df.iloc[[idx_min]]
+
 
     @staticmethod
-    def get_df_target_value_time(df, value):
+    def get_df_target_value_time(df, value, query_type=QueryType.T):
 
         value = float(value)
         match MaBoSSEvaluator.parsed_query.operator:
@@ -150,7 +219,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def remove_double_columns(df):
-        print(isinstance(df,pd.DataFrame))
+        #print(isinstance(df,pd.DataFrame))
         df = df.rename(columns=lambda x: "".join(x.split()))
         current_cols = list(df.columns)
         rename_map = {}
@@ -175,6 +244,6 @@ class MaBoSSEvaluator:
         #delete the columns that became identical
         df = df.loc[:, ~df.columns.duplicated()].copy()
         df.dropna(inplace=True, ignore_index=True)
-        print(df)
+        #print(df)
 
         return df

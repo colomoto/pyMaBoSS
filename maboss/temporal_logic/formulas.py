@@ -49,12 +49,19 @@ class FormulaChecker:
         if formula.target_name is None or formula.target_name == []:
             raise EmptyNameException()
         if len(formula.target_name) > 1:
+            if formula.type != QueryType.P and formula.type != QueryType.T:
+                raise ErrorMinMaxOnlyForOneEntity("A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
             for name in formula.target_name:
                 if name == "":
                     raise EmptyNameException()
         else:
             if formula.target_name[0] == "":
                 raise EmptyNameException()
+
+            if formula.target_name[0] == "*":
+                if formula.type != QueryType.P and formula.type != QueryType.T:
+                    raise ErrorMinMaxOnlyForOneEntity(
+                        "A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
 
         if formula.value is None or formula.value == "":
             raise EmptyValueException()
@@ -76,7 +83,9 @@ class FormulaChecker:
             except Exception:
                 raise WrongSymbolForValue("Wrong symbol for value, it must be a number or \"?\"")
 
-            if float(formula.value) > 1 and formula.type.value == QueryType.P.value:
+            if float(formula.value) > 1 and (formula.type.value == QueryType.P.value or
+                                             formula.type.value == QueryType.TMAX.value or
+                                             formula.type.value == QueryType.TMIN.value) :
                 raise WrongValueAccordingToType("Value is greater than 1, the formula must be a probability : between 0 and 1")
             if float(formula.value) < 0:
                 raise ValueError("Value can not be negative")
