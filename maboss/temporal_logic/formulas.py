@@ -49,7 +49,7 @@ class FormulaChecker:
         if formula.target_name is None or formula.target_name == []:
             raise EmptyNameException()
         if len(formula.target_name) > 1:
-            if formula.type != QueryType.P and formula.type != QueryType.T:
+            if formula.type == QueryType.PMIN or formula.type == QueryType.PMAX:
                 raise ErrorMinMaxOnlyForOneEntity("A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
             for name in formula.target_name:
                 if name == "":
