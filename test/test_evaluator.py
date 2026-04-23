@@ -303,3 +303,14 @@ class TestEvaluator(TestCase):
         })
 
         print(f"Results : \n{res}\n Expected : \n{expected}")
+
+    def test_time_min_query(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying("Tmin(node:AKT1) > 0.4", FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [0.0,1.0],
+            'AKT1' : [0.421,0.678],
+        })
+
+        print(f"Results : \n{res}\n Expected : \n{expected}")
