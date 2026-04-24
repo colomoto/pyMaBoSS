@@ -337,28 +337,28 @@ class ComputeLogicalExpression:
         df1['Time'] = df1['Time'].round(5)
         df2['Time'] = df2['Time'].round(5)
 
-        # Normalisation simple (uniquement les espaces) pour faciliter le merge
+        # Removes the spaces
         df1 = df1.rename(columns=lambda x: "".join(x.split()))
         df2 = df2.rename(columns=lambda x: "".join(x.split()))
 
-        # Merge avec suffixes pour gérer les données différentes sur des colonnes de même nom
+        # Merge with suffixes to handle different data on the same column name
         merged = pd.merge(df1, df2, on='Time', how='inner', suffixes=('_df1', '_df2'))
 
-        # On identifie les colonnes à conserver
+        # to identify the columns to keep, nodes are all kept, states only if they are in both dfs
         node_cols = []
         state_cols = []
 
-        # Liste unique de toutes les colonnes présentes dans df1 et df2
+        # A list of all the columns present in df1 and df2
         all_source_cols = set(df1.columns).union(set(df2.columns))
         all_source_cols.remove('Time')
 
         for col in all_source_cols:
-            # On détermine le nom physique dans 'merged'
+            #identify from where the column comes
             m_name = col
             if col + '_df1' in merged.columns:
                 m_name = col + '_df1'
 
-            # Classification
+            # is the name a column node or column state
             is_node = ComputeLogicalExpression.check_if_node(col, merged[m_name], nodes_df, state_df)
 
             if is_node:
@@ -366,17 +366,17 @@ class ComputeLogicalExpression:
                     node_cols.append(col)
                     merged = merged.rename(columns={m_name: col})
             else:
-                # Logique AND : l'état doit être présent dans les deux DataFrames
+                # AND logic, the state must be in both df
                 if col in df1.columns and col in df2.columns:
                     if col not in state_cols:
                         state_cols.append(col)
                         merged = merged.rename(columns={m_name: col})
 
-        # Tri des colonnes
+        # Sort the columns by type (nodes or states) and alphabetically
         ordered_cols = ['Time'] + sorted(node_cols) + sorted(state_cols)
         res = merged[ordered_cols].copy()
 
-        # On retourne le résultat sans toucher aux suffixes _state ici
+        # Returns the result without touching the _state suffixes here
         return res.loc[:, ~res.columns.duplicated()].copy()
 
     @staticmethod
