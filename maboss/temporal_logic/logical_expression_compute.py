@@ -296,6 +296,9 @@ class ComputeLogicalExpression:
         df1['Time'] = df1['Time'].round(5)
         df2['Time'] = df2['Time'].round(5)
 
+        df1 = df1.rename(columns=lambda x: "".join(x.split()))
+        df2 = df2.rename(columns=lambda x: "".join(x.split()))
+
         df1_idx = df1.set_index('Time')
         df2_idx = df2.set_index('Time')
 
@@ -334,21 +337,47 @@ class ComputeLogicalExpression:
         df1['Time'] = df1['Time'].round(5)
         df2['Time'] = df2['Time'].round(5)
 
-        merged = pd.merge(df1, df2, on='Time', how='inner', suffixes=('', '_dup'))
+        # Normalisation simple (uniquement les espaces) pour faciliter le merge
+        df1 = df1.rename(columns=lambda x: "".join(x.split()))
+        df2 = df2.rename(columns=lambda x: "".join(x.split()))
 
-        potential_cols = [c for c in merged.columns if not c.endswith('_dup') and c!='Time']
+        # Merge avec suffixes pour gérer les données différentes sur des colonnes de même nom
+        merged = pd.merge(df1, df2, on='Time', how='inner', suffixes=('_df1', '_df2'))
 
+        # On identifie les colonnes à conserver
         node_cols = []
         state_cols = []
 
-        for col in potential_cols:
-            is_node = ComputeLogicalExpression.check_if_node(col, merged[col], nodes_df, state_df)
-            if is_node: node_cols.append(col)
-            else: state_cols.append(col)
+        # Liste unique de toutes les colonnes présentes dans df1 et df2
+        all_source_cols = set(df1.columns).union(set(df2.columns))
+        all_source_cols.remove('Time')
 
-        # Sorts the columns by column types (nodes or state) then by alphabetical order
+        for col in all_source_cols:
+            # On détermine le nom physique dans 'merged'
+            m_name = col
+            if col + '_df1' in merged.columns:
+                m_name = col + '_df1'
+
+            # Classification
+            is_node = ComputeLogicalExpression.check_if_node(col, merged[m_name], nodes_df, state_df)
+
+            if is_node:
+                if col not in node_cols:
+                    node_cols.append(col)
+                    merged = merged.rename(columns={m_name: col})
+            else:
+                # Logique AND : l'état doit être présent dans les deux DataFrames
+                if col in df1.columns and col in df2.columns:
+                    if col not in state_cols:
+                        state_cols.append(col)
+                        merged = merged.rename(columns={m_name: col})
+
+        # Tri des colonnes
         ordered_cols = ['Time'] + sorted(node_cols) + sorted(state_cols)
-        return merged[ordered_cols].copy()
+        res = merged[ordered_cols].copy()
+
+        # On retourne le résultat sans toucher aux suffixes _state ici
+        return res.loc[:, ~res.columns.duplicated()].copy()
 
     @staticmethod
     def check_if_node(name: str, col, nodes_df, state_df):

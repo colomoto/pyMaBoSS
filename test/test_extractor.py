@@ -64,17 +64,17 @@ class TestExtractor(unittest.TestCase):
             'Time' : [0.0 , 2.0],
             'AKT1':[0.421,0.115],
             'AKT2':[0.854,0.567],
-            'AKT1 -- AKT2 -- AKT3_state': [0.6, 0.11],
+            'AKT1--AKT2--AKT3_state': [0.6, 0.11],
         })
-
+        #like doing AKT1 & ( AKT2 > 0.4 )
         fake = FakeResult(df_nodes, df_states, None)
         akt1 = ComputeLogicalExpression.compute_logical_expression(['AKT1'] , fake)
         # print(akt1)
         akt2 = ComputeLogicalExpression.compute_logical_expression(['AKT2'] , fake)
         akt2 = Extractor.extract_column_numerical(akt2, "AKT2", FakeResult(df_nodes, df_states, None), Operators.GT, 0.4)
         #print(akt2)
-        res = ComputeLogicalExpression.merge_and(akt1, akt2, df_nodes)
-        #print(res)
+        res = ComputeLogicalExpression.merge_and(akt1, akt2, df_nodes, df_states)
+        print(f"Res : \n {res} \n Expected : \n {expected}")
         assert expected.equals(res)
 
 

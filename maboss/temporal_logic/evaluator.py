@@ -28,7 +28,6 @@ class MaBoSSEvaluator:
 
         # Decomposition of the query
         parsed_query = Parser.parse_query(query_input)
-
         FormulaChecker.check_formula(parsed_query) # raise error if the formula is not correct
         MaBoSSEvaluator.parsed_query = parsed_query
 
@@ -66,7 +65,10 @@ class MaBoSSEvaluator:
         if parsed_query.logical_equation:
             #print(f"DF in treatment for logical equation")
             log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query.logical_equation, MaBoSSEvaluator.simulation_results)
-            filtered_data = ComputeLogicalExpression.merge_and(log_df, filtered_data, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(), MaBoSSEvaluator.simulation_results.get_states_probtraj())
+            print(f"DF after logical equation : \n {log_df} \n Will be merged with :\n {filtered_data}\n")
+            filtered_data = ComputeLogicalExpression.merge_or(log_df, filtered_data, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),
+                                                               MaBoSSEvaluator.simulation_results.get_states_probtraj()
+                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}))
 
         if filtered_data.empty:
             raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\" "
@@ -82,7 +84,8 @@ class MaBoSSEvaluator:
         if target.value == TargetType.NODE.value:
             return MaBoSSEvaluator.simulation_results.get_nodes_probtraj()
         elif target.value == TargetType.STATE.value:
-            return MaBoSSEvaluator.simulation_results.get_states_probtraj()
+            return (MaBoSSEvaluator.simulation_results.get_states_probtraj()
+                    .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}))
         else:
             raise ValueError("Target is not supported, try node or state")
 
@@ -120,20 +123,31 @@ class MaBoSSEvaluator:
     @staticmethod
     def get_df_target_value_proba(df, value, query_type=QueryType.P):
         op = MaBoSSEvaluator.parsed_query.operator
-        print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name}")
+        #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name} df cols :\n {df.columns}")
+
         if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
             cols_to_check = [c for c in df.columns if c != "Time"]
         else:
             cols_to_check = MaBoSSEvaluator.parsed_query.target_name
+            if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
+                cols_to_check = [f"{name}_state" for name in cols_to_check]
+
             for name in MaBoSSEvaluator.parsed_query.target_name:
-                if name not in df.columns:
-                    cols_to_check.remove(name)
-                    warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+                if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
+                    if name + "_state" not in df.columns:
+                            cols_to_check.remove(name+"_state")
+                            warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+                else:
+                    if name not in df.columns:
+                        cols_to_check.remove(name)
+                        warnings.warn(
+                            f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+
 
             if not cols_to_check:
                 raise NoNameValidException()
 
-        print(f"cols to check : {cols_to_check}")
+        print(f"cols to check after verification: {cols_to_check}")
 
         value = float(value)
         out_df = pd.DataFrame()
@@ -181,19 +195,22 @@ class MaBoSSEvaluator:
         out_df = out_df.dropna(subset=out_df.columns.difference(['Time']), axis=0, how='all', ignore_index=True) #remove the rows with all nan values
 
         #print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
+        if TargetType.STATE == MaBoSSEvaluator.parsed_query.target:
+            name_to_search = MaBoSSEvaluator.parsed_query.target_name[0] + "_state"
+        else: name_to_search = MaBoSSEvaluator.parsed_query.target_name[0]
 
         if query_type == QueryType.P:
             return out_df
         elif  query_type == QueryType.PMAX:
-            if MaBoSSEvaluator.parsed_query.target_name[0] not in df.columns:
+            if name_to_search not in df.columns:
                 raise NoNameValidException()
-            idx_max =  out_df[MaBoSSEvaluator.parsed_query.target_name].max(axis=1).idxmax()
-            return out_df.iloc[[idx_max]]
+            idx_max =  out_df.loc[:, [name_to_search]].max(axis=1).idxmax()
+            return out_df.loc[[idx_max]]
         else:
-            if MaBoSSEvaluator.parsed_query.target_name[0] not in df.columns:
+            if name_to_search not in df.columns:
                 raise NoNameValidException()
-            idx_min = out_df[MaBoSSEvaluator.parsed_query.target_name].min(axis=1).idxmin()
-            return out_df.iloc[[idx_min]]
+            idx_min = out_df.loc[:, [name_to_search]].min(axis=1).idxmin()
+            return out_df.loc[[idx_min]]
 
 
     @staticmethod
