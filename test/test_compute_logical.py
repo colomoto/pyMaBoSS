@@ -127,7 +127,6 @@ class TestLogicalCompute(TestCase):
         print(f"Res : \n{res}\n")
 
 
-    #todo merge_and causing problems
     def test_compute_logical_expression_return_df(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
@@ -137,7 +136,6 @@ class TestLogicalCompute(TestCase):
         print(f"Résultats : \n{results}\n Expected : \n{expected}")
         assert results.equals(expected)
 
-    #todo merge_and causing problems
     def test_compute_with_no(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
@@ -213,7 +211,6 @@ class TestLogicalCompute(TestCase):
         results.to_csv("compute_with_or_not.csv")
         assert results.equals(expected)
 
-    # todo merge_and causing problems
     def test_compute_intrication(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
@@ -230,7 +227,6 @@ class TestLogicalCompute(TestCase):
         results.to_csv("test/compute_intrication.csv")
         assert results.equals(expected)
 
-#todo problem here with the merge_and function
     def test_compute_full_process_simple_and(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))

@@ -83,9 +83,7 @@ class FormulaChecker:
             except Exception:
                 raise WrongSymbolForValue("Wrong symbol for value, it must be a number or \"?\"")
 
-            if float(formula.value) > 1 and (formula.type.value == QueryType.P.value or
-                                             formula.type.value == QueryType.TMAX.value or
-                                             formula.type.value == QueryType.TMIN.value) :
+            if float(formula.value) > 1 :
                 raise WrongValueAccordingToType("Value is greater than 1, the formula must be a probability : between 0 and 1")
             if float(formula.value) < 0:
                 raise ValueError("Value can not be negative")
