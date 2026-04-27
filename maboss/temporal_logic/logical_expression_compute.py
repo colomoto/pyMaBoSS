@@ -278,11 +278,13 @@ class ComputeLogicalExpression:
         return out
 
     @staticmethod
-    def merge_or(df1, df2, nodes_df, state_df):
+    def merge_or(df1, df2, nodes_df, state_df, keep_times_df1 = False):
         """
         Merge two dataframes on the time column following an OR logic. Meaning it keeps the values of both the df without
         causing doubling.
         The end of the function sorts the df by column types (nodes or state) then by alphabetical order
+        :param keep_times_df1:
+        :param state_df:
         :param df1:
         :param df2:
         :param nodes_df: the nodes dataframe used for the computing coming from the simulation results
@@ -303,6 +305,9 @@ class ComputeLogicalExpression:
         df2_idx = df2.set_index('Time')
 
         result = df1_idx.combine_first(df2_idx).reset_index()
+
+        if keep_times_df1:
+            result = result[result['Time'].isin(df1['Time'])] #if true, filter to keep only the times of df1 important for tmin and tmax
 
         # sorts by column types (nodes or state) then by alphabetical order
         if nodes_df is not None:
@@ -358,7 +363,7 @@ class ComputeLogicalExpression:
             if col + '_df1' in merged.columns:
                 m_name = col + '_df1'
 
-            # is the name a column node or column state
+            # is the name a column node or column state ?
             is_node = ComputeLogicalExpression.check_if_node(col, merged[m_name], nodes_df, state_df)
 
             if is_node:
