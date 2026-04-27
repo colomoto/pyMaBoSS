@@ -7,9 +7,9 @@ from maboss.temporal_logic.temporal_parser import *
 import pandas as pd
 
 
-
 QUERY = "P(node:name) <= 0.623"
 QUERY_FOUND_BY_NAME = "P(node:AKT1) > 0.623"
+QUERY_INTERROGATION = "P(node:AKT1) = ? [ AKT2 | AKT3 ]"
 
 #Generation of a random dataframe
 class FakeResult:
@@ -45,6 +45,7 @@ class TestEvaluator(TestCase):
 
     def test_get_df_target_name(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT2"],Operators.GT,'0.5',[],'')
         result = MaBoSSEvaluator.get_df_target_name(df_nodes, ["AKT2"])
         #print(result)
         assert list(result.columns) == ["Time", "AKT2"]
@@ -62,11 +63,13 @@ class TestEvaluator(TestCase):
 
     def test_get_all_columns_name(self):
         df = pd.read_csv(get_test_path('test_data.csv'))
+        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT1","AKT2","AKT3"],Operators.GT,'0.5',[],'')
         result = MaBoSSEvaluator.get_df_target_name(df, ["AKT1", "AKT2", "AKT3"])
         assert list(result.columns) == ["Time", "AKT1", "AKT2", "AKT3"]
 
     def test_get_df_name_not_found(self):
         df = pd.read_csv(get_test_path('test_data.csv'))
+        MaBoSSEvaluator.parsed_query.target_name = ["AKT4"]
         self.assertRaises(NoNameValidException, MaBoSSEvaluator.get_df_target_name, df, ["AKT4"])
 
     def test_get_df_full_process_no_logical(self):
@@ -384,3 +387,79 @@ class TestEvaluator(TestCase):
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
+
+# ----------------------------------------------- TESTS INTERROGATION --------------------------------------------------
+    def test_interrogation(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        MaBoSSEvaluator.parsed_query = Parser.parse_query(QUERY_INTERROGATION)
+        res = MaBoSSEvaluator.get_df_target_value_proba(df_nodes,'?', QueryType.P)
+        expected = pd.DataFrame({ #this is only out of one step, not the whole computing
+            'Time' : [0.0,1.0,2.0],
+            'AKT1' : [0.421,0.678,0.115],
+        })
+        #print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.equals(expected)
+
+        log_df = ComputeLogicalExpression.compute_logical_expression(
+            Parser.parse_query(QUERY_INTERROGATION).logical_equation,
+            FakeResult(df_nodes, df_states, None)
+        )
+
+        final_data = ComputeLogicalExpression.merge_or(res,
+                                                       log_df,
+                                                       df_nodes,
+                                                       (df_states.rename(columns={c: f"{c}_state" for c in df_states.columns if c != 'Time'})),
+                                                       True)
+
+        final_data = MaBoSSEvaluator.remove_double_columns(final_data)
+
+        #print(f"Results : \n{final_data}\n")
+        assert final_data.equals(pd.DataFrame({
+            'Time' : [0.0,1.0,2.0],
+            'AKT1' : [0.421,0.678,0.115],
+            'AKT2' : [0.854,0.332,0.567],
+            'AKT3' : [0.120,0.941,0.443],
+            'AKT1--AKT2--AKT3': [0.6,0.15,0.11],
+            'AKT1--AKT3' : [0.07521,0.2,0.11],
+            'AKT2_state' : [0.00479,0.05,0.11],
+        }))
+
+        # Computation for the probas
+        computed_res = MaBoSSEvaluator.compute_interrogation_proba(final_data, MaBoSSEvaluator.parsed_query, df_nodes, df_states)
+        print(f"Results : \n{computed_res}\n")
+        assert computed_res.equals(pd.DataFrame({
+            'Time' : [0.0,1.0,2.0],
+            'P(AKT1_node)' : [0.421,0.678,0.115],
+            'P_from_states(AKT1)' : [0.67521,0.35,0.22]
+        }))
+
+
+    def test_interrogation_multiple_nodes(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+
+        res = MaBoSSEvaluator.querying("P(node:AKT1,AKT2) = ? [ AKT1 & AKT3 ]", FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [0.0,1.0,2.0],
+            'P(AKT1_node)' : [0.421,0.678,0.115],
+            'P_from_states(AKT1)' : [0.67521,0.35,0.22],
+            'P(AKT2_node)' : [0.854,0.332,0.567],
+            'P_from_states(AKT2)' : [0.6,0.15,0.11],
+        })
+        print(f"Results : \n{res[0]}\n Expected : \n{expected}")
+        assert res[0].equals(expected)
+
+    def test_interrogation_state(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+
+        res = MaBoSSEvaluator.querying("P(state:AKT2) = ? [ AKT1 & AKT3 ]", FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [0.0,1.0,2.0],
+            'P(AKT2_state)' : [0.00479,0.05,0.11],
+            'P_from_states(AKT2)' : [0.60,0.15,0.11],
+        })
+
+        assert res[0].equals(expected)
+
