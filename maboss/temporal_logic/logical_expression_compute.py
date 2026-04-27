@@ -333,6 +333,7 @@ class ComputeLogicalExpression:
         Merges the two dataframes on the time column following an AND logic. Meaning it keeps only the common values
         of both the df.
         Ends by sorting the columns by column types (nodes or state) then by alphabetical order
+        :param state_df:
         :param df1:
         :param df2:
         :param nodes_df: the nodes dataframe used for the computing coming from the simulation results,

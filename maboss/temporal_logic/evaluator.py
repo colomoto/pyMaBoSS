@@ -1,3 +1,4 @@
+import re
 import warnings
 from unittest import case
 
@@ -30,6 +31,7 @@ class MaBoSSEvaluator:
         parsed_query = Parser.parse_query(query_input)
         FormulaChecker.check_formula(parsed_query) # raise error if the formula is not correct
         MaBoSSEvaluator.parsed_query = parsed_query
+        print("Query parsed successfully !")
 
         # Selection of the simulation result df to use depending on the target
         df_target = MaBoSSEvaluator.get_df_target(parsed_query.target)
@@ -53,10 +55,10 @@ class MaBoSSEvaluator:
             case _:
                 raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax") #min and max in wip
 
-        #print(f"DF after value selection : \n {filtered_data}")
+        print(f"DF after value selection : \n {filtered_data}")
 
         if parsed_query.type == QueryType.P or parsed_query.type == QueryType.T:
-            #print(f"DF in treatment for P or T type")
+            print(f"DF in treatment for P or T type\n Filtered_data columns : \n{filtered_data.columns}\n")
             # Selection of the columns regarding the name of the target if type P or T strictly. If type in a min max logic, keep all the columns
             filtered_data = MaBoSSEvaluator.get_df_target_name(filtered_data, parsed_query.target_name)
 
@@ -77,6 +79,11 @@ class MaBoSSEvaluator:
         if filtered_data.size > 2:
             filtered_data = MaBoSSEvaluator.remove_double_columns(filtered_data)
 
+        #todo put here the call of the computation function (returns a new df with the new columns and the filtered_data
+        if MaBoSSEvaluator.parsed_query.value == '?':
+            computed_values = MaBoSSEvaluator.compute_interrogation_proba(filtered_data, MaBoSSEvaluator.parsed_query,MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),MaBoSSEvaluator.simulation_results.get_states_probtraj())
+            return [computed_values, filtered_data]
+
         return filtered_data.dropna(inplace=False, ignore_index=True)
 
     @staticmethod
@@ -94,24 +101,18 @@ class MaBoSSEvaluator:
         if df is None :
             raise ValueError(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
 
-        if target_name is None or target_name == []:
-            raise NoNameException()
-
-        if target_name[0] != '*':
-            for name in target_name:
-                if name not in df.columns:
-                    target_name.remove(name)
-                    warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
-
-        if target_name == []:
+        try:
+            cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
+        except NoNameValidException:
             raise NoNameValidException()
+
 
         new_df = pd.DataFrame()
 
         if target_name[0] != '*':
             new_df["Time"] = df["Time"]
 
-            for name in target_name:
+            for name in cols_to_check:
                 new_df[name] = df[name]
 
         else:
@@ -125,97 +126,92 @@ class MaBoSSEvaluator:
         op = MaBoSSEvaluator.parsed_query.operator
         #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name} df cols :\n {df.columns}")
 
-        if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
-            cols_to_check = [c for c in df.columns if c != "Time"]
-        else:
-            cols_to_check = MaBoSSEvaluator.parsed_query.target_name
-            if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
-                cols_to_check = [f"{name}_state" for name in cols_to_check]
-
-            for name in MaBoSSEvaluator.parsed_query.target_name:
-                if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
-                    if name + "_state" not in df.columns:
-                            cols_to_check.remove(name+"_state")
-                            warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
-                else:
-                    if name not in df.columns:
-                        cols_to_check.remove(name)
-                        warnings.warn(
-                            f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
-
-
-            if not cols_to_check:
-                raise NoNameValidException()
-
+        cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
         print(f"cols to check after verification: {cols_to_check}")
 
-        value = float(value)
+        #todo here do the check "?"
+        try:
+            value = float(value)
+            is_number = True
+        except ValueError:
+            is_number = False
+
         out_df = pd.DataFrame()
         #print(f"Received df : \n{df}\n")
 
-        match op:
-            case Operators.LT:
-                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                    mask = (df[cols_to_check] < value).any(axis=1) #just check the value, any column checking it is good passes the test
-                else:
-                    mask = (df[cols_to_check] < value).all(axis=1) #all the values on the line must be less than the value
-            case Operators.EQ:
-                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                    mask = (df[cols_to_check] == value).any(axis=1)
-                else:
-                    mask = (df[cols_to_check] == value).all(axis=1)
-            case Operators.GT:
-                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                    mask = (df[cols_to_check] > value).any(axis=1)
-                else:
-                    mask = (df[cols_to_check] > value).all(axis=1)
-            case Operators.LE:
+        if is_number:
+            match op:
+                case Operators.LT:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] <= value).any(axis=1)
+                        mask = (df[cols_to_check] < value).any(axis=1) #just check the value, any column checking it is good passes the test
                     else:
-                        mask = (df[cols_to_check] <= value).all(axis=1)
-            case Operators.GE:
-                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                    mask = (df[cols_to_check] >= value).any(axis=1)
-                else:
-                    mask = (df[cols_to_check] >= value).all(axis=1)
-            case Operators.NE:
-                if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                    mask = (df[cols_to_check] != value).any(axis=1)
-                else:
-                    mask = (df[cols_to_check] != value).all(axis=1)
-            case _:
-                raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
+                        mask = (df[cols_to_check] < value).all(axis=1) #all the values on the line must be less than the value
+                case Operators.EQ:
+                    if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                        mask = (df[cols_to_check] == value).any(axis=1)
+                    else:
+                        mask = (df[cols_to_check] == value).all(axis=1)
+                case Operators.GT:
+                    if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                        mask = (df[cols_to_check] > value).any(axis=1)
+                    else:
+                        mask = (df[cols_to_check] > value).all(axis=1)
+                case Operators.LE:
+                        if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                            mask = (df[cols_to_check] <= value).any(axis=1)
+                        else:
+                            mask = (df[cols_to_check] <= value).all(axis=1)
+                case Operators.GE:
+                    if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                        mask = (df[cols_to_check] >= value).any(axis=1)
+                    else:
+                        mask = (df[cols_to_check] >= value).all(axis=1)
+                case Operators.NE:
+                    if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
+                        mask = (df[cols_to_check] != value).any(axis=1)
+                    else:
+                        mask = (df[cols_to_check] != value).all(axis=1)
+                case _:
+                    raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
 
-        out_df = df[mask].copy()
-        out_df["Time"] = df["Time"] #restablish the correct time values
+            out_df = df[mask].copy()
+            out_df["Time"] = df["Time"]  # restablish the correct time values
 
-        #print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} : \n {out_df} \n")
+            # print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} : \n {out_df} \n")
 
-        out_df = out_df.dropna(subset=out_df.columns.difference(['Time']), axis=0, how='all', ignore_index=True) #remove the rows with all nan values
+            out_df = out_df.dropna(subset=out_df.columns.difference(['Time']), axis=0, how='all',
+                                   ignore_index=True)  # remove the rows with all nan values
 
-        #print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
-        if TargetType.STATE == MaBoSSEvaluator.parsed_query.target:
-            name_to_search = MaBoSSEvaluator.parsed_query.target_name[0] + "_state"
-        else: name_to_search = MaBoSSEvaluator.parsed_query.target_name[0]
+            # print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
+            if TargetType.STATE == MaBoSSEvaluator.parsed_query.target:
+                name_to_search = MaBoSSEvaluator.parsed_query.target_name[0] + "_state"
+            else:
+                name_to_search = MaBoSSEvaluator.parsed_query.target_name[0]
 
-        if query_type == QueryType.P:
-            return out_df
-        elif  query_type == QueryType.PMAX: #last time it happens
-            if name_to_search not in df.columns:
-                raise NoNameValidException()
-            idx_max =  out_df.loc[:, [name_to_search]].max(axis=1).idxmax()
-            return out_df.loc[[idx_max]]
+            if query_type == QueryType.P:
+                return out_df
+            elif query_type == QueryType.PMAX:  # last time it happens
+                if name_to_search not in df.columns:
+                    raise NoNameValidException()
+                idx_max = out_df.loc[:, [name_to_search]].max(axis=1).idxmax()
+                return out_df.loc[[idx_max]]
+            else:
+                if name_to_search not in df.columns:  # first time it happens
+                    raise NoNameValidException()
+                idx_min = out_df.loc[:, [name_to_search]].min(axis=1).idxmin()
+                return out_df.loc[[idx_min]]
         else:
-            if name_to_search not in df.columns: #first time it happens
-                raise NoNameValidException()
-            idx_min = out_df.loc[:, [name_to_search]].min(axis=1).idxmin()
-            return out_df.loc[[idx_min]]
-
+            #print(f"value is not a number")
+            out_df["Time"] = df["Time"]
+            for col in cols_to_check:
+                out_df[col] = df[col]
+            print(f"out_df : \n {out_df}")
+            return out_df
 
     @staticmethod
     def get_df_target_value_time(df, value):
         op = MaBoSSEvaluator.parsed_query.operator
+        #todo here do the check "?"
         value = float(value)
         target_names = MaBoSSEvaluator.parsed_query.target_name
         target_type = MaBoSSEvaluator.parsed_query.target
@@ -255,6 +251,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target_value_time_minmax(df, value, query_type=QueryType.TMIN):
+        #todo here the "?" check
         value = float(value)
         query_type = query_type.value
         op = MaBoSSEvaluator.parsed_query.operator
@@ -262,10 +259,7 @@ class MaBoSSEvaluator:
 
         print(f"get_df_target_value_time_minmax :{value}, {query_type}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
 
-        if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
-            cols_to_check = [f"{name}_state" for name in target_names if f"{name}_state" in df.columns]
-        else:
-            cols_to_check = [n for n in target_names if n in df.columns]
+        cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
 
         def apply_mask(c,v,o):
             match o:
@@ -342,3 +336,67 @@ class MaBoSSEvaluator:
         #print(df)
 
         return df
+
+    @staticmethod
+    def compute_interrogation_proba(filtered_data, parsed_query, df_nodes, df_states):
+        out_df = pd.DataFrame()
+        out_df["Time"] = filtered_data["Time"]
+
+        target_names = parsed_query.target_name
+        print(f"Target names = {target_names}" )
+
+        for target in target_names:
+            if parsed_query.target == TargetType.NODE:
+                col_node = f"P({target}_node)" #the column for the node
+            else:
+                col_node = f"P({target}_state)" #the column for the state alone if it exists
+            col_states = f"P_from_states({target})"
+
+            out_df[col_node]= 0.0
+            out_df[col_states] = 0.0
+
+            for col in filtered_data.columns:
+                if col == 'Time': continue
+
+                is_state_col = "--" in col or col.endswith("_state")
+
+                clean_col = col.replace("_state", "").replace(" ", "").strip()
+                nodes_in_col = clean_col.split("--")
+
+                if not is_state_col:
+                    if clean_col == target:
+                        out_df[col_node] = filtered_data[col]
+                else:
+                    if target in nodes_in_col:
+                        out_df[col_states] += filtered_data[col]
+
+        print(f"Out df = \n{out_df}" )
+        return out_df
+
+
+
+
+    @staticmethod
+    def get_the_cols_to_check(df):
+        if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
+            cols_to_check = [c for c in df.columns if c != "Time"]
+        else:
+            cols_to_check = MaBoSSEvaluator.parsed_query.target_name
+            if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
+                cols_to_check = [f"{name}_state" for name in cols_to_check]
+
+            for name in MaBoSSEvaluator.parsed_query.target_name:
+                if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
+                    if name + "_state" not in df.columns:
+                            cols_to_check.remove(name+"_state")
+                            warnings.warn(f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+                else:
+                    if name not in df.columns:
+                        cols_to_check.remove(name)
+                        warnings.warn(
+                            f"Target name \"{name}\" has not been found in the dataframe, removed from the query")
+
+        if not cols_to_check:
+            raise NoNameValidException()
+        else:
+            return cols_to_check

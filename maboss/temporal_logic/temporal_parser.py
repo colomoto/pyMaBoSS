@@ -30,7 +30,7 @@ class Parser:
             logical_equation_striped = [n.strip() for n in logical_equation.split(" ")]
             logical_equation_components = ComputeLogicalExpression.parse_logical_expression(logical_equation_striped)
             count_members = len(list(filter(lambda m: m != '(' and m != ')' and m != '', logical_equation_striped)))
-            print(count_members, Parser.counting_members_logical_query(logical_equation_components))
+            #print(count_members, Parser.counting_members_logical_query(logical_equation_components))
             if Parser.counting_members_logical_query(logical_equation_components) != count_members:
                 raise ErrorInLogicalExpressionNonOpeningParenthesis(
                     ("An error has occurred in the logical equation, please check it. "
@@ -66,7 +66,7 @@ class Parser:
 
     @staticmethod
     def counting_members_logical_query(logical_query, count=0):
-        print(logical_query)
+        #print(logical_query)
         for m in logical_query:
             if isinstance(m, list):
                 count = Parser.counting_members_logical_query(m, count)
