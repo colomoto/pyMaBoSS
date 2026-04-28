@@ -16,27 +16,27 @@ QUERY_MULTIPLE_NAMES_AND_CONDITION = "P(node:A,B,C) <= 0.4 [ A | !B & C ]"
 QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION = "P(node:A,B,C) >= 0.5 [ B | ( C & D ) ]"
 
 # FORMULA CHECKER test Formulas
-NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], QUERY)
-NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], "T(state:name) = ?")
-NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], "T(state:name) = ? [ !A & B | C ]")
+NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], QUERY,[])
+NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], "T(state:name) = ?",[])
+NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], "T(state:name) = ? [ !A & B | C ]",[])
 
-ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [], QUERY)
-ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [], QUERY)
-ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], QUERY)
+ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [], QUERY,[])
+ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [], QUERY,[])
+ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], QUERY,[])
 
-ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [], QUERY)
-ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [], QUERY)
-ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [], QUERY,[])
+ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [], QUERY,[])
+ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], QUERY,[])
 
-ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], "T(state:name) = ? [ !A & B | C ]")
-ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?")
+ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], "T(state:name) = ? [ !A & B | C ]",[])
+ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?",[])
 
-ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], QUERY)
-ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], QUERY)
+ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], QUERY,[])
+ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], QUERY,[])
 
-QUERY_ERROR_TYPE = "V(node:name) > 0.5"
-QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5"
-QUERY_ERROR_TARGET = "P(traj:name) <= 0.5"
+QUERY_ERROR_TYPE = "V(node:name) > 0.5 [] []"
+QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5 [] []"
+QUERY_ERROR_TARGET = "P(traj:name) <= 0.5 [] []"
 
 LOGICAL_EXPRESSION_SIMPLE_NO_ERROR = ['A','&', '!B']
 LOGICAL_EXPRESSION_INTRICATE_NO_ERROR = ['A','|', ['B','&','C']]
@@ -58,15 +58,18 @@ class TestParser(TestCase):
         assert formula1.value == str(0.623)
         assert formula1.target_name == ['name']
         assert formula1.logical_equation == []
+        assert formula1.mutation_constraint == []
 
     def test_parse_interrogation_query_one_name(self):
         formula2 = Parser.parse_query(QUERY_INTERROGATION)
+        #print(formula2)
         assert formula2.type == QueryType.T
         assert formula2.target == TargetType.STATE
         assert formula2.operator == Operators.EQ
         assert formula2.value == "?"
         assert formula2.target_name == ['name']
         assert formula2.logical_equation == ['!A', '&', 'B', '|', 'C']
+        assert formula2.mutation_constraint == []
 
     def test_parse_multiple_names(self):
         formula3 = Parser.parse_query(QUERY_MULTIPLE_NAMES)
@@ -75,6 +78,7 @@ class TestParser(TestCase):
         assert formula3.value == str(0.5)
         assert formula3.target_name == ['name', 'name2', 'name3']
         assert formula3.logical_equation == []
+        assert formula3.mutation_constraint == []
 
     def test_parse_intricate_condition(self):
         formula4 = Parser.parse_query(QUERY_INTRICATE_CONDITION)
@@ -83,6 +87,7 @@ class TestParser(TestCase):
         assert formula4.value == str(0.5)
         assert formula4.target_name == ['name']
         assert formula4.logical_equation == ['B', '|', ['C', '&', 'D']]
+        assert formula4.mutation_constraint == []
 
     def test_parse_multiple_names_and_condition(self):
         formula5 = Parser.parse_query(QUERY_MULTIPLE_NAMES_AND_CONDITION)
@@ -91,6 +96,7 @@ class TestParser(TestCase):
         assert formula5.value == str(0.4)
         assert formula5.target_name == ['A', 'B', 'C']
         assert formula5.logical_equation == ['A', '|', '!B', '&', 'C']
+        assert formula5.mutation_constraint == []
 
     def test_parse_multiple_names_and_intricate_condition(self):
         formula6 = Parser.parse_query(QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION)
@@ -99,6 +105,7 @@ class TestParser(TestCase):
         assert formula6.value == str(0.5)
         assert formula6.target_name == ['A', 'B', 'C']
         assert formula6.logical_equation == ['B', '|', ['C', '&', 'D']]
+        assert formula6.mutation_constraint == []
 
     def test_main_query_parser_check_values(self):
         self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_TYPE)
