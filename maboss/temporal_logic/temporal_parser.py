@@ -73,8 +73,9 @@ class Parser:
             operator=_op,
             value=str(value),
             logical_equation=logical_equation_components,
+            mutation_constraint=mutation_param_final,
+
             expression=input,
-            mutation_constraint=mutation_param_final
         )
 
     @staticmethod

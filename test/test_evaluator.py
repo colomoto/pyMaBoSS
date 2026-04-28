@@ -45,14 +45,14 @@ class TestEvaluator(TestCase):
 
     def test_get_df_target_name(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
-        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT2"],Operators.GT,'0.5',[],'')
+        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT2"],Operators.GT,'0.5',[],[],'P(node:AKT2) > 0.5')
         result = MaBoSSEvaluator.get_df_target_name(df_nodes, ["AKT2"])
         #print(result)
         assert list(result.columns) == ["Time", "AKT2"]
 
     def test_get_df_target_value_proba(self):
         df = pd.read_csv(get_test_path('test_data.csv'))
-        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT3"],Operators.GT,'0.5',[],'')
+        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT3"],Operators.GT,'0.5',[],[],'P(node:AKT3) > 0.5')
         MaBoSSEvaluator.target_name = "AKT3"
         df = df[["Time", "AKT3"]]
         result = MaBoSSEvaluator.get_df_target_value_proba(df, 0.5)
@@ -63,7 +63,7 @@ class TestEvaluator(TestCase):
 
     def test_get_all_columns_name(self):
         df = pd.read_csv(get_test_path('test_data.csv'))
-        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT1","AKT2","AKT3"],Operators.GT,'0.5',[],'')
+        MaBoSSEvaluator.parsed_query = Formula(QueryType.P,TargetType.NODE,["AKT1","AKT2","AKT3"],Operators.GT,'0.5',[],[],'P(node:AKT1,AKT2,AKT3) > 0.5')
         result = MaBoSSEvaluator.get_df_target_name(df, ["AKT1", "AKT2", "AKT3"])
         assert list(result.columns) == ["Time", "AKT1", "AKT2", "AKT3"]
 
@@ -462,4 +462,3 @@ class TestEvaluator(TestCase):
         })
 
         assert res[0].equals(expected)
-

@@ -14,10 +14,14 @@ class QueryType(Enum):
     T = "T" # time of an event
     TMIN = "Tmin" # time mini of an event (first time it happens)
     TMAX = "Tmax" # time maxi of an event (last time it happens)
+    DEPENDENCIE = "D"
 
 class TargetType(Enum):
     NODE = "node"
     STATE = "state"
+    MUTATION = "mutation"
+    INCREASE = "increase"
+    DECREASE = "decrease"
 
 class Operators(Enum):
     LT = "<"
@@ -40,6 +44,7 @@ class Formula:
     operator: Operators
     value: str
     logical_equation: list # the list of the component of the logical equation
+    mutation_constraint: list
     expression: str
 
 class FormulaChecker:
@@ -63,6 +68,10 @@ class FormulaChecker:
                     raise ErrorMinMaxOnlyForOneEntity(
                         "A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
 
+        if formula.type == QueryType.DEPENDENCIE:
+            if len(formula.target_name) != 2:
+                raise ErrorInDependencieEvaluation("A dependencie evaluation must have 2 names")
+
         if formula.value is None or formula.value == "":
             raise EmptyValueException()
 
@@ -73,7 +82,6 @@ class FormulaChecker:
             raise WrongGrammarException("Value is \"?\" but the operator is not \"=\"")
         if formula.value != "?" and formula.operator.value == Operators.EQ.value:
             warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
-
         if formula.operator == Operators.NE:
             warnings.warn("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
 
