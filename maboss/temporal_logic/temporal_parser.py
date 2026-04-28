@@ -5,7 +5,7 @@ from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpre
 
 class Parser:
     QUERY_PATTERN = \
-        r"^(Pmax|Pmin|P|T|Tmin|Tmax)\((node|state)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?))?\s*(?:\[(.+?)\])?"
+        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D)\((node|state|mutation|increase|decrease)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?))?(?:\s*\[(.+?)\])?(?:\s*\[(.+?)\])?"
 
     @staticmethod
     def parse_query(input: str) -> Formula:
@@ -13,11 +13,18 @@ class Parser:
 
         if not match:
             raise ValueError(f"Invalid query format, the query should be of the form: "
-                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ]. "
+                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ] [ [mutation constraint optional] ]. "
                              f"More info : MaBoSSEvaluator.help()\n Input : {input}")
 
-        query_type, target, target_name, operator, value, logical_equation = match.groups()
-        #print(query_type, target, target_name, operator, value, logical_equation)
+        print(f"\nInput : {input}\n Match : {match.group(0)}\n Match groups :\n {match.groups()}")
+        query_type = match.group(1)
+        target = match.group(2)
+        target_name = match.group(3)
+        operator = match.group(4)
+        value = match.group(5)
+        logical_equation = match.group(6)
+        mutation_param = match.group(7)
+
 
         if target_name.__contains__(","):
             names_list = [n.strip() for n in target_name.split(",")]
@@ -36,7 +43,12 @@ class Parser:
                     ("An error has occurred in the logical equation, please check it. "
                      "A parenthesis is not opened or a space might be missing. Result : ",
                      logical_equation_components))
-            # vérifier pour tableaux vides à l'intérieur et warning
+
+        if mutation_param is None:
+            mutation_param_final = []
+        else:
+            mutation_param_striped = [n.strip() for n in mutation_param.split(" ")]
+            mutation_param_final = [mutation_param_striped[2], mutation_param_striped[4]] #2 being name of the mutation, 4 being the value (0 or 1)
 
         # Conversion of types, with try/catch to handle errors
         try:
@@ -52,7 +64,7 @@ class Parser:
         try:
             _target = TargetType(target)
         except ValueError:
-            raise ValueError(f"Target \"{target}\" is not supported, try node, state")
+            raise ValueError(f"Target \"{target}\" is not supported, try node, state, mutation, increase, decrease")
 
         return Formula(
             type=_type,
@@ -61,7 +73,8 @@ class Parser:
             operator=_op,
             value=str(value),
             logical_equation=logical_equation_components,
-            expression=input
+            expression=input,
+            mutation_constraint=mutation_param_final
         )
 
     @staticmethod
