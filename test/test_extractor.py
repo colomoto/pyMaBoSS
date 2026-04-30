@@ -124,12 +124,6 @@ class TestExtractor(unittest.TestCase):
         print(f"Res : \n {res} \n Expected : \n {expected}")
         assert expected.round(5).equals(res.round(5))
 
-    def test_sandbox(self):
-        df_nodes = pd.read_csv(get_expected_data_path("test_data.csv"))
-        df_states = pd.read_csv(get_expected_data_path("test_data_states.csv"))
-        res = Extractor.extract_column(df_states,"AKT2",False,True)
-        print(res)
-
 
 if __name__ == '__main__':
     unittest.main()

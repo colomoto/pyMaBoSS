@@ -1,10 +1,7 @@
-import re
+
 import warnings
-from unittest import case
 
 import numpy as np
-from bs4.filter import TagNameMatchRule
-from pandas.core.computation.parsing import clean_column_name
 
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
     FormulaException
@@ -19,8 +16,68 @@ class MaBoSSEvaluator:
     parsed_query = None
 
     @staticmethod
-    def help():  # todo little manual
-        print('wip')
+    def help():
+        print("MaBoSSEvaluator help :")
+        print("To evaluate one or multiple queries based on ONE already run simulation (v1.0), use the following syntax :")
+        print("MaBoSSEvaluator.evaluate_query([query], results)")
+        print("query : the query to evaluate, a list of strings : [\"query1\",\"query2\"], results] , [\"query\"], results]")
+        print("results : the results of the simulation, a SimulationResults object (one that maboss returns)")
+        print("--------------------------------------------------------------------------------------------------------")
+        print("HELP FOR THE QUERY")
+        print("The query is a string that contains the following elements : [type]([target_type]:name1,name2...) [operator] [value] [logical_equation (optional)]")
+        print("[type] : The type of operation to perform, can be P (probability) or T (time).")
+        print("\t - P : will compare the probability of the target to the value. Only one to handle \'?\' value")
+        print("\t - T : will return the periods of time where the target probability is meeting the criteria of value.")
+        print("\t - Pmax : will return the highest value of the target probability while meeting the criteria of value.")
+        print("\t - Pmin : will return the lowest value of the target probability while meeting the criteria of value.")
+        print("\t - Tmax : will return the last period of time where the target probability is meeting the criteria of value.")
+        print("\t - Tmin : will return the first period of time where the target probability is meeting the criteria of value.")
+        print("[target_type] : The type of target to look for, can be node or state.")
+        print("\t - node : will look for the probability of the target node.")
+        print("\t - state : will look for the probability of the target state.")
+        print("[name] : The name of the target to look for. If target_type is node, name is the name of the node. "
+              "If target_type is state, name is the name of the state. No spaces or \"\". For all targets use *. Can handle multiple names separated by commas.")
+        print("[operator] : The operator to use to compare the target to the value. Can be <, <=, =, !=, >=, >.")
+        print("Note that != might return very broad results and = might not return anything.")
+        print("\t - < : the probability of the target must be less than the value.")
+        print("\t - <= : the probability of the target must be less than or equal to the value.")
+        print("\t - = : the probability of the target must be equal to the value.")
+        print("\t - != : the probability of the target must not be equal to the value.")
+        print("\t - >= : the probability of the target must be greater than or equal to the value.")
+        print("\t - > : the probability of the target must be greater than the value.")
+        print("[value] : The value to compare the target to. Can be a number between 0 and 1 or \"?\" ONLY IF the operator used is \'=\' and query type P. If value is \"?\", the query will return the probability of the target.")
+        print("With a value of \'?\' the logical equation must not be empty.")
+        print("[logical_equation] : An optional logical equation to apply to the results. Can be a string or a list of strings.")
+        print("\t - The logical equation is a string that contains the following elements : [ [name]  [operator] [value] ]")
+        print("\t - The operator can be &, | (pipe). A logical-not ! can be used in front of a name : !name.")
+        print("\t - The name can referenced to a node or a state, by default the result will be the probability "
+              "of the node or state, thus returning both. For less columns in output, use : node:name or state:name."
+              " To appy a logical-not in this condition do : node:!name or state:!name.")
+        print("\t - The logical equation can contain a numerical evaluation. This one must be placed in between parentheses or strange results may occur.")
+        print("\t - The logical equation can have multiple conditions intricated on numerous levels: [ ( condition A ) | ( ( condition B ) | ( ( condition C ) ) ) ]")
+        print("\t - It is really important to separate each member by a space so the parser reads it correctly and not raises an Exception.")
+        print("------------------------------------------------------------------------------------------------------")
+        print("Examples :")
+        print("P(node:A) > 0.5 : returns all the rows where the probability of node A is greater than 0.5")
+        print("P(node:A,B) < 0.4 : returns all the rows where the probability of node A and node B is less than 0.4")
+        print("P(node:A) = ? [ node:B & C ] : returns the probabilities of node A to be active in one state while B and C are also active (joint probability)")
+        print("P(state:A) = ? [ ( node:B > 0.3 ) | C ] : returns the probabilities of state A to be active in one state while B has a probability greater than 0.3 or while C is active.")
+        print("T(state:A) >= 0.6 : returns all the periods of time where state A has a probability greater than or equal to 0.6.")
+        print("Tmin(node:A,B) >= 0.3 : returns the first period of time where node A and node B are active with a probability greater than or equal to 0.3.")
+        print("Tmax(node:A,B) <= 0.7 : returns the last period of time where node A and node B are active with a probability less than or equal to 0.7.")
+        print("Pmax(node:A) >= 0.5 : returns the greatest probability of node A being above 0.5 in any period of time. Can return nothing.")
+        print("Pmin(node:A) <= 0.5 : returns the lowest probability of node A being under 0.5 in any period of time. Can return nothing.")
+        print("------------------------------------------------------------------------------------------------------")
+        print("Exemple of questions and the query to provide : ")
+        print("What is the probability of node A and B being active at the same time while C is inactive and D above 0.5 ?\n\t -> P(node:A,B) = ? [ node:!C & ( D > 0.5 ) ]")
+        print("What are all the moments my simulation is on the state A--B with C inactive ?\n\t -> T(state:A--B) >= 0.0 [ !C ]")
+        print("What probability for the state A--B to be active if C, D or E is active and F is inactive ?\n\t -> P(state:A--B) = ? [ ( C | D | E ) & !F ]")
+        print("When does the probability of state <nil> exceeds 0.5 ?\n\t -> T(state:<nil>) >= 0.5")
+        print("When does the probability of state <nil> exceeds 0.5 for the first time ?\n\t -> Tmin(state:<nil>) >= 0.5")
+        print("When does the probability of state <nil> exceeds 0.5 for the last time ?\n\t -> Tmax(state:<nil>) >= 0.5")
+        print("--------------------------------------------------------------------------------------------------------")
+        print("For more exemples and output exemples you can check the test_evaluator.py file.")
+        print("In case of any question you can contact me at : oscardufossez@gmail.com")
 
     @staticmethod
     def querying(query, results):

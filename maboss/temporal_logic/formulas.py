@@ -72,18 +72,17 @@ class FormulaChecker:
             if len(formula.target_name) != 2:
                 raise ErrorInDependencieEvaluation("A dependencie evaluation must have 2 names")
 
+        if formula.operator == Operators.NE:
+            warnings.warn("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
+
         if formula.value is None or formula.value == "":
             raise EmptyValueException()
 
-        # checking the value
-        if formula.value == "?" and (formula.logical_equation is None or formula.logical_equation ==[]):
-            raise WrongGrammarException("Value is \"?\" but the logical equation is empty")
-        if formula.value == "?" and formula.operator.value != Operators.EQ.value:
-            raise WrongGrammarException("Value is \"?\" but the operator is not \"=\"")
-        if formula.value != "?" and formula.operator.value == Operators.EQ.value:
-            warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
-        if formula.operator == Operators.NE:
-            warnings.warn("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
+        if formula.value == "?":
+            if formula.logical_equation is None or formula.logical_equation ==[]: raise WrongGrammarException("Value is \"?\" but the logical equation is empty")
+            if formula.operator.value != Operators.EQ.value : raise WrongGrammarException("Value is \"?\" but the operator is not \"=\"")
+            if formula.type != QueryType.P:
+                raise WrongValueAccordingToType("Only query P handles \"?\"")
 
         if formula.value != "?":
             try:
@@ -95,3 +94,6 @@ class FormulaChecker:
                 raise WrongValueAccordingToType("Value is greater than 1, the formula must be a probability : between 0 and 1")
             if float(formula.value) < 0:
                 raise ValueError("Value can not be negative")
+
+            if formula.operator.value == Operators.EQ.value:
+                warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
