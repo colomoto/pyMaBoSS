@@ -93,6 +93,8 @@ class MaBoSSEvaluator:
 
         return list_of_df
 
+
+
     @staticmethod
     def evaluate_query(query, results):  # maybe pass the results as an array to compute more than one simulation
         if query == "" or query is None:
