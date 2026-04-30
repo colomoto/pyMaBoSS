@@ -59,7 +59,7 @@ class ComputeLogicalExpression:
             states_df = states_df.rename(columns={c: f"{c}_state" for c in states_df.columns if c != 'Time'})
 
         for member in logical_expression:
-            #print(f"Member : {member}")
+            print(f"\nMember : {member} ----------------------------------------")
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:
@@ -129,10 +129,14 @@ class ComputeLogicalExpression:
 
                     if is_state:
                         if name_checker[1]:
+
                             temp = Extractor.extract_column(states_df, member_name, logical_no, is_state=True)
+                            print(f"State temp : {temp}")
                         else:
                             warnings.warn(f"The name {member_name} has been provided for a state but no state with that "
                                           f"name has been found in the dataframe")
+
+                    print(f"{member_name} : Data temp before merge and :\n {temp}\n Data work before merge fusion: {fusion} :\n {work_df} \n")
 
                     if temp.empty:
                         if name_checker[0] and not name_checker[1] and not logical_no: # node only getting the column if is activated
@@ -147,8 +151,6 @@ class ComputeLogicalExpression:
                                                                                                     member_name,
                                                                                                     logical_no),
                                                                      nodes_df, states_df,True)
-
-                    #print(f"{member_name} : Data temp after merge or :\n {temp}")
 
                     if fusion:
                         work_df = ComputeLogicalExpression.merge_or(work_df, temp, nodes_df, states_df)
