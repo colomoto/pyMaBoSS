@@ -9,6 +9,8 @@ from .ensemble import EnsembleResult, Ensemble
 from .pop import PopSimulation
 import platform 
 import maboss.pipelines
+from . import temporal_logic
+from .temporal_logic import MaBoSSEvaluator
 
 from colomoto_jupyter import IN_IPYTHON
 import colomoto.setup_helper
