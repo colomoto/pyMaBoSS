@@ -364,7 +364,7 @@ class TestLogicalCompute(TestCase):
 
     def test_operator_map(self):
         symbol = '>'
-        print(Operators(symbol))
+        #print(Operators(symbol))
         #print(ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)))
         assert ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)) == operator.gt
 
@@ -375,7 +375,7 @@ class TestLogicalCompute(TestCase):
         res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
         expected = pd.DataFrame({
             'Time' : [2.0],
-            'AKT2' : [0.11],
+            'AKT2_state' : [0.11],
         })
         print(f"Result : \n{res} \n Expected : \n{expected}")
         assert res.equals(expected)
