@@ -5,6 +5,7 @@ from maboss.temporal_logic.formulas import *
 from maboss.temporal_logic.custom_exceptions import *
 from maboss.temporal_logic.temporal_parser import *
 import pandas as pd
+from pandas import testing
 
 
 QUERY = "P(node:name) <= 0.623"
@@ -77,7 +78,7 @@ class TestEvaluator(TestCase):
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
         print(f"Nodes : \n{df_nodes}")
         print(f"States : \n{df_states}")
-        result = MaBoSSEvaluator.querying(QUERY_FOUND_BY_NAME, FakeResult(df_nodes, df_states, None))
+        result = MaBoSSEvaluator.querying([QUERY_FOUND_BY_NAME], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [1.0],
             'AKT1' : [0.678],
@@ -89,7 +90,7 @@ class TestEvaluator(TestCase):
     def test_get_df_full_process_2(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(node:AKT1) > 0.3 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(node:AKT1) > 0.3 [ AKT2 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         res.to_csv("test/test_data_result.csv", index=False)
         expected= pd.DataFrame({
             'Time' : [0.0,1.0],
@@ -107,13 +108,22 @@ class TestEvaluator(TestCase):
     def test_full_process_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(node:AKT1) > 0.3 [ ( AKT2 >= 0.2 ) | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(node:AKT1) > 0.3 [ ( AKT2 >= 0.2 ) | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         res.to_csv("test/test_data_result.csv", index=False)
+        assert res.equals(pd.DataFrame({
+            'Time' : [0.0,1.0],
+            'AKT1' : [0.421,0.678],
+            'AKT2' : [0.854,0.332],
+            'AKT3' : [0.120,0.941],
+            'AKT1--AKT2--AKT3': [0.6,0.15],
+            'AKT1--AKT3' : [0.07521,0.2],
+            'AKT2_state' : [0.00479,0.05],
+        }))
 
     def test_all_columns(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(node:*) > 0.2", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(node:*) > 0.2"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [1.0],
             'AKT1' : [0.678],
@@ -127,7 +137,7 @@ class TestEvaluator(TestCase):
     def test_all_states(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(state:*) <= 0.4", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(state:*) <= 0.4"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [1.0],
             '<nil>' : [0.4],
@@ -144,7 +154,7 @@ class TestEvaluator(TestCase):
     def test_all_states_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(state:*) <= 0.4 [ AKT1 | AKT2 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(state:*) <= 0.4 [ AKT1 | AKT2 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [1.0],
             'AKT1' : [0.678],
@@ -160,7 +170,7 @@ class TestEvaluator(TestCase):
     def test_all_states_with_logical_2(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("P(state:*) <= 0.4 [ AKT1 | state:AKT2 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(state:*) <= 0.4 [ AKT1 | state:AKT2 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time': [1.0],
             'AKT1': [0.678],
@@ -175,7 +185,7 @@ class TestEvaluator(TestCase):
     def test_time_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("T(node:AKT1) <= 0.5", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["T(node:AKT1) <= 0.5"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,2.0],
             'AKT1' : [0.421,0.115],
@@ -186,7 +196,7 @@ class TestEvaluator(TestCase):
     def test_time_query_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("T(node:AKT1) <= 0.5 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["T(node:AKT1) <= 0.5 [ AKT2 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,2.0],
             'AKT1' : [0.421,0.115],
@@ -204,7 +214,7 @@ class TestEvaluator(TestCase):
     def test_min_query_node(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmin(node:AKT1) > 0.1", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmin(node:AKT1) > 0.1"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [2.0],
             'AKT1' : [0.115],
@@ -217,7 +227,7 @@ class TestEvaluator(TestCase):
     def test_max_query_node(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmax(node:AKT1) > 0.1", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmax(node:AKT1) > 0.1"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [1.0],
             'AKT1' : [0.678],
@@ -230,7 +240,7 @@ class TestEvaluator(TestCase):
     def test_min_query_node_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmin(node:AKT1) > 0.2 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmin(node:AKT1) > 0.2 [ AKT2 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0],
             'AKT1' : [0.421],
@@ -247,7 +257,7 @@ class TestEvaluator(TestCase):
     def test_max_query_node_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmax(node:AKT1) < 0.2 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmax(node:AKT1) < 0.2 [ AKT2 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [2.0],
             'AKT1' : [0.115],
@@ -264,17 +274,17 @@ class TestEvaluator(TestCase):
     def test_min_query_state_raise_error(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        self.assertRaises(NoNameValidException, MaBoSSEvaluator.querying, "Pmin(state:AKT1) > 0.1", FakeResult(df_nodes, df_states, None))
+        self.assertRaises(FormulaException, MaBoSSEvaluator.querying, ["Pmin(state:AKT1) > 0.1"], FakeResult(df_nodes, df_states, None))
 
     def test_max_query_node_raise_error(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        self.assertRaises(NoNameValidException, MaBoSSEvaluator.querying, "Pmax(node:AKT4) > 0.1", FakeResult(df_nodes, df_states, None))
+        self.assertRaises(FormulaException, MaBoSSEvaluator.querying, ["Pmax(node:AKT4) > 0.1"], FakeResult(df_nodes, df_states, None))
 
     def test_min_state_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmin(state:AKT2) < 0.1", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmin(state:AKT2) < 0.1"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0],
             '<nil>' : [0.32],
@@ -288,7 +298,7 @@ class TestEvaluator(TestCase):
     def test_max_state_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmax(state:AKT2) > 0.004", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmax(state:AKT2) > 0.004"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [2.0],
             '<nil>' : [0.67],
@@ -304,7 +314,7 @@ class TestEvaluator(TestCase):
     def test_max_state_query_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Pmax(state:AKT2) > 0.004 [ !AKT1 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Pmax(state:AKT2) > 0.004 [ !AKT1 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [2.0],
             'AKT3' : [0.443],
@@ -320,7 +330,7 @@ class TestEvaluator(TestCase):
     def test_time_min_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Tmin(node:AKT1) > 0.4", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Tmin(node:AKT1) > 0.4"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             'AKT1' : [0.421,0.678],
@@ -334,7 +344,7 @@ class TestEvaluator(TestCase):
     def test_time_min_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Tmin(node:AKT1) > 0.4 [ AKT2 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Tmin(node:AKT1) > 0.4 [ AKT2 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             'AKT1' : [0.421,0.678],
@@ -351,7 +361,7 @@ class TestEvaluator(TestCase):
     def test_time_max_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Tmax(node:AKT1) > 0.4", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Tmax(node:AKT1) > 0.4"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             'AKT1' : [0.421,0.678],
@@ -363,7 +373,7 @@ class TestEvaluator(TestCase):
     def test_time_min_state(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Tmin(state:AKT2) < 0.1", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Tmin(state:AKT2) < 0.1"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             '<nil>' : [0.32,0.4],
@@ -376,7 +386,7 @@ class TestEvaluator(TestCase):
     def test_time_min_state_with_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
-        res = MaBoSSEvaluator.querying("Tmin(state:AKT2) < 0.1 [ !AKT1 | AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["Tmin(state:AKT2) < 0.1 [ !AKT1 | AKT3 ]"], FakeResult(df_nodes, df_states, None))[0]
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             'AKT3' : [0.120,0.941],
@@ -400,6 +410,7 @@ class TestEvaluator(TestCase):
         })
         #print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
+        print("assert 1 success")
 
         log_df = ComputeLogicalExpression.compute_logical_expression(
             Parser.parse_query(QUERY_INTERROGATION).logical_equation,
@@ -424,41 +435,94 @@ class TestEvaluator(TestCase):
             'AKT1--AKT3' : [0.07521,0.2,0.11],
             'AKT2_state' : [0.00479,0.05,0.11],
         }))
+        print("assert 2 success")
 
         # Computation for the probas
         computed_res = MaBoSSEvaluator.compute_interrogation_proba(final_data, MaBoSSEvaluator.parsed_query, df_nodes, df_states)
         print(f"Results : \n{computed_res}\n")
-        assert computed_res.equals(pd.DataFrame({
+
+        assert computed_res.round(5).equals(pd.DataFrame({
             'Time' : [0.0,1.0,2.0],
-            'P(AKT1_node)' : [0.421,0.678,0.115],
-            'P_from_states(AKT1)' : [0.67521,0.35,0.22]
-        }))
+            'P(AKT1)' : [0.67521,0.35,0.22],
+        }).round(5))
+        print("assert 3 success")
 
 
     def test_interrogation_multiple_nodes(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
 
-        res = MaBoSSEvaluator.querying("P(node:AKT1,AKT2) = ? [ AKT1 & AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(node:AKT1,AKT2) = ? [ AKT1 & AKT3 ]"], FakeResult(df_nodes, df_states, None))
         expected = pd.DataFrame({
             'Time' : [0.0,1.0,2.0],
-            'P(AKT1_node)' : [0.421,0.678,0.115],
-            'P_from_states(AKT1)' : [0.67521,0.35,0.22],
-            'P(AKT2_node)' : [0.854,0.332,0.567],
-            'P_from_states(AKT2)' : [0.6,0.15,0.11],
+            'P(AKT1)' : [0.67521,0.35,0.22],
+            'P(AKT2)' : [0.60479,0.20,0.22],
         })
         print(f"Results : \n{res[0]}\n Expected : \n{expected}")
-        assert res[0].equals(expected)
+        assert res[0].round(5).equals(expected.round(5))
 
     def test_interrogation_state(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
 
-        res = MaBoSSEvaluator.querying("P(state:AKT2) = ? [ AKT1 & AKT3 ]", FakeResult(df_nodes, df_states, None))
+        res = MaBoSSEvaluator.querying(["P(state:AKT2) = ? [ AKT1 & AKT3 ]"], FakeResult(df_nodes, df_states, None))
         expected = pd.DataFrame({
             'Time' : [0.0,1.0,2.0],
-            'P(AKT2_state)' : [0.00479,0.05,0.11],
-            'P_from_states(AKT2)' : [0.60,0.15,0.11],
+            'P(AKT2)' : [0.00479,0.05,0.11]
         })
+        print(f"Results :\n{res[0]}\n Expected : \n{expected}")
+        assert res[0].round(5).equals(expected.round(5))
 
-        assert res[0].equals(expected)
+    def test_interrogation_state_with_logical_value(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying(["P(state:AKT2) = ? [ AKT1 & ( AKT3 >= 0.2 ) ]"], FakeResult(df_nodes, df_states, None))[0]
+        expected = pd.DataFrame({
+            'Time' : [1.0,2.0],
+            'P(AKT2)' : [0.05,0.11], # only AKT2_state as it exists
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.round(5).equals(expected.round(5))
+
+    def test_interrogation_multiple_state_with_logical(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying(["P(state:AKT2,AKT1--AKT3) = ? [ ( node:AKT1 < 0.2 ) ]"], FakeResult(df_nodes,df_states,None))[0]
+        expected = pd.DataFrame({
+            'Time' : [2.0],
+            'P(AKT2)' : [0.11],
+            'P(AKT1--AKT3)' : [0.11],
+        })
+        res.to_csv('test/result_multiple_state_with_logical.csv')
+        print(f"Result:\n{res}\nExpected:\n{expected}\n")
+        assert res.equals(expected)
+
+    def test_interrogation_multiple_node_with_num_logical(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying(["P(node:AKT1,AKT2) = ? [ ( node:AKT1 > 0.5 ) & AKT3 ]"], FakeResult(df_nodes,df_states,None))[0]
+        expected = pd.DataFrame({
+            'Time' : [1.0],
+            'P(AKT1)' : [0.35],
+            'P(AKT2)' : [0.2],
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.equals(expected)
+
+
+    def test_node_with_state_in_logical(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying(["P(node:AKT1,AKT3) = ? [ state:AKT2 < 0.1 ]"], FakeResult(df_nodes,df_states,None))[0]
+        expected = pd.DataFrame({
+            'Time' : [0.0,1.0],
+            #sum of the probas of the states where AKT1 and AKT3 are in
+            'P(AKT1)' : [0.67521,0.35],
+            'P(AKT3)' : [0.67521,0.35],
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.equals(expected)
+
+
+    def test_sand_box(self):
+        pass

@@ -2,7 +2,12 @@ import re
 import warnings
 from unittest import case
 
-from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException
+import numpy as np
+from bs4.filter import TagNameMatchRule
+from pandas.core.computation.parsing import clean_column_name
+
+from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
+    FormulaException
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
@@ -18,7 +23,21 @@ class MaBoSSEvaluator:
         print('wip')
 
     @staticmethod
-    def querying(query, results):  # maybe pass the results as an array to compute more than one simulation
+    def querying(query, results):
+        list_of_df = []
+        for q in query:
+            try:
+                list_of_df.append(MaBoSSEvaluator.evaluate_query(q, results))
+            except FormulaException:
+                raise FormulaException(f"Formula is not correct : {q}")
+        for i,df in enumerate(list_of_df):
+            if df is None:
+                print(f"df {i} is empty. Query was : {query[i]}")
+
+        return list_of_df
+
+    @staticmethod
+    def evaluate_query(query, results):  # maybe pass the results as an array to compute more than one simulation
         if query == "" or query is None:
             raise ValueError("Query is empty")
         if results is None:
@@ -55,14 +74,14 @@ class MaBoSSEvaluator:
             case _:
                 raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax") #min and max in wip
 
-        print(f"DF after value selection : \n {filtered_data}")
+        #print(f"DF after value selection : \n {filtered_data}")
 
         if parsed_query.type == QueryType.P or parsed_query.type == QueryType.T:
-            print(f"DF in treatment for P or T type\n Filtered_data columns : \n{filtered_data.columns}\n")
+            #print(f"DF in treatment for P or T type\n Filtered_data columns : \n{filtered_data.columns}\n")
             # Selection of the columns regarding the name of the target if type P or T strictly. If type in a min max logic, keep all the columns
             filtered_data = MaBoSSEvaluator.get_df_target_name(filtered_data, parsed_query.target_name)
 
-        print(f"DF after name selection : \n {filtered_data}")
+        #print(f"DF after name selection : \n {filtered_data}")
 
         if parsed_query.logical_equation:
             #print(f"DF in treatment for logical equation")
@@ -79,10 +98,11 @@ class MaBoSSEvaluator:
         if filtered_data.size > 2:
             filtered_data = MaBoSSEvaluator.remove_double_columns(filtered_data)
 
-        #todo put here the call of the computation function (returns a new df with the new columns and the filtered_data
+        #todo put here the call of the computation function (returns a new df with the new columns and the filtered_data)
         if MaBoSSEvaluator.parsed_query.value == '?':
+            print(f"filtered_data : \n {filtered_data} \n")
             computed_values = MaBoSSEvaluator.compute_interrogation_proba(filtered_data, MaBoSSEvaluator.parsed_query,MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),MaBoSSEvaluator.simulation_results.get_states_probtraj())
-            return [computed_values, filtered_data]
+            return computed_values
 
         return filtered_data.dropna(inplace=False, ignore_index=True)
 
@@ -127,7 +147,7 @@ class MaBoSSEvaluator:
         #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name} df cols :\n {df.columns}")
 
         cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
-        print(f"cols to check after verification: {cols_to_check}")
+        #print(f"cols to check after verification: {cols_to_check}")
 
         #todo here do the check "?"
         try:
@@ -339,41 +359,37 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def compute_interrogation_proba(filtered_data, parsed_query, df_nodes, df_states):
-        out_df = pd.DataFrame()
-        out_df["Time"] = filtered_data["Time"]
+        filtered_data.reset_index(inplace=True, drop=True)
+        valid_times = filtered_data["Time"].values
+        out_df = pd.DataFrame({"Time" : valid_times})
 
-        target_names = parsed_query.target_name
-        print(f"Target names = {target_names}" )
+        df_states_filtered = df_states[df_states["Time"].isin(valid_times)].copy()
+        df_states_filtered.columns = df_states_filtered.columns.str.replace(" ", "")
 
-        for target in target_names:
-            if parsed_query.target == TargetType.NODE:
-                col_node = f"P({target}_node)" #the column for the node
-            else:
-                col_node = f"P({target}_state)" #the column for the state alone if it exists
-            col_states = f"P_from_states({target})"
+        print(f"df_states_filtered : \n{df_states_filtered}")
 
-            out_df[col_node]= 0.0
-            out_df[col_states] = 0.0
+        for target in parsed_query.target_name:
+            if parsed_query.target == TargetType.STATE:
+                col_name = target if target in df_states_filtered.columns else f"{target}_state"
 
-            for col in filtered_data.columns:
-                if col == 'Time': continue
+                if col_name in df_states_filtered.columns:
+                    out_df[f"P({target})"] = df_states_filtered[col_name].values
+                else : out_df[f"P({target})"] = 0.0
 
-                is_state_col = "--" in col or col.endswith("_state")
+            elif parsed_query.target == TargetType.NODE:
+                #proba = sum of all the states where the node is in
+                joint_proba = np.zeros(len(out_df))
+                for col in df_states_filtered.columns:
+                    if col == "Time": continue
+                    #print(f"Col : {col}")
+                    nodes_in_state = col.replace("_state", "").replace(" ", "").split("--")
+                    #print(f"Nodes in state : {nodes_in_state} , target : {target} is in nodes_in_state : {target in nodes_in_state}")
+                    if target in nodes_in_state:
+                        joint_proba += df_states_filtered[col].values
 
-                clean_col = col.replace("_state", "").replace(" ", "").strip()
-                nodes_in_col = clean_col.split("--")
+                out_df[f"P({target})"] = joint_proba
 
-                if not is_state_col:
-                    if clean_col == target:
-                        out_df[col_node] = filtered_data[col]
-                else:
-                    if target in nodes_in_col:
-                        out_df[col_states] += filtered_data[col]
-
-        print(f"Out df = \n{out_df}" )
         return out_df
-
-
 
 
     @staticmethod

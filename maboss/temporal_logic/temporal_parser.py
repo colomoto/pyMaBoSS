@@ -16,7 +16,7 @@ class Parser:
                              f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ] [ [mutation constraint optional] ]. "
                              f"More info : MaBoSSEvaluator.help()\n Input : {input}")
 
-        print(f"\nInput : {input}\n Match : {match.group(0)}\n Match groups :\n {match.groups()}")
+        #print(f"\nInput : {input}\n Match : {match.group(0)}\n Match groups :\n {match.groups()}")
         query_type = match.group(1)
         target = match.group(2)
         target_name = match.group(3)

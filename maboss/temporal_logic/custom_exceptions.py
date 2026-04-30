@@ -50,3 +50,7 @@ class ErrorInLogicalExpressionNonOpeningParenthesis(FormulaException):
 class ErrorMinMaxOnlyForOneEntity(FormulaException):
     def __init__(self, message):
         super().__init__(message)
+        
+class ErrorInDependencieEvaluation(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
