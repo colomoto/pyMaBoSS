@@ -367,3 +367,15 @@ class TestLogicalCompute(TestCase):
         print(Operators(symbol))
         #print(ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)))
         assert ComputeLogicalExpression.OPERATOR_MAP.get(Operators(symbol)) == operator.gt
+
+    def test_logical_with_node(self):
+        df_nodes = pd.read_csv(get_test_path("test_data.csv"))
+        df_states = pd.read_csv(get_test_path("test_data_states.csv"))
+        log_exp = ['state:AKT2' , '>=' , '0.1']
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        expected = pd.DataFrame({
+            'Time' : [2.0],
+            'AKT2' : [0.11],
+        })
+        print(f"Result : \n{res} \n Expected : \n{expected}")
+        assert res.equals(expected)

@@ -81,17 +81,20 @@ class ComputeLogicalExpression:
                 except ValueError:
                     is_number = False
 
+                #print(f"Is number: {is_number} and value: {value}")
+
                 if is_number:
-                    if value > 1 or value < 0:
+                    if value > 1.0 or value < 0.0:
                         raise ErrorInLogicalExpression("The value of the logical expression must be between 0 and 1")
-                    work_df = Extractor.extract_column_numerical(work_df, member_name, simulation_results, op, value, logical_no )
+                    #print(f"work_df before extract column numerical : \n {work_df} \n ")
+                    work_df = Extractor.extract_column_numerical(work_df, member_name, simulation_results, op, value, logical_no, is_state=is_state )
                     #print(f"Numerical value : {member} , work_df : \n {work_df} \n")
                     return work_df
                 else:
                     # check if the name exists in at least one of the dfs
                     name_checker = ComputeLogicalExpression.check_name_exist(member, nodes_df, states_df)
                     if name_checker[0] == False and name_checker[1] == False:
-                        raise ErrorInLogicalExpression("Node or state name not found")
+                        raise ErrorInLogicalExpression(f"Node or state name not found : {member}")
 
                     # check if the name is a node or a state
                     if str.__contains__(member, 'node:'):
@@ -99,6 +102,7 @@ class ComputeLogicalExpression:
                         is_state = False
                         member_name = member[5:]
                     elif str.__contains__(member, 'state:'):
+                        #print("AKT2 must be here")
                         is_node = False
                         is_state = True
                         member_name = member[6:]
@@ -120,24 +124,29 @@ class ComputeLogicalExpression:
                         if name_checker[0]:
                             temp = Extractor.extract_column(nodes_df, member_name, False)
                         else:
-                            warnings.warn(f"The name {member_name} has been provided for a node but no node with that name has been found in the dataframe")
+                            warnings.warn(f"The name {member_name} has been provided for a node but no node with that "
+                                          f"name has been found in the dataframe")
 
                     if is_state:
                         if name_checker[1]:
-                            temp = Extractor.extract_column(states_df, member_name, logical_no)
+                            temp = Extractor.extract_column(states_df, member_name, logical_no, is_state=True)
                         else:
-                            warnings.warn(f"The name {member_name} has been provided for a state but no state with that name has been found in the dataframe")
+                            warnings.warn(f"The name {member_name} has been provided for a state but no state with that "
+                                          f"name has been found in the dataframe")
 
                     if temp.empty:
                         if name_checker[0] and not name_checker[1] and not logical_no: # node only getting the column if is activated
                             temp = Extractor.extract_column(nodes_df, member_name, False)
                         elif not name_checker[0] and name_checker[1]: # state
-                            temp = Extractor.extract_column(states_df, member_name, logical_no)
+                            temp = Extractor.extract_column(states_df, member_name, logical_no, is_state=True)
                         else:
                             if not logical_no: # same here, only getting the column if activated (!name does not get the column)
                                 temp = Extractor.extract_column(nodes_df, member_name, False)
-                            #(f"{member_name} : Data temp before merge or:\n {temp}")
-                            temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df, member_name, logical_no), nodes_df, states_df)
+                            #print(f"{member_name} : Data temp before merge or:\n {temp}")
+                            temp = ComputeLogicalExpression.merge_or(temp, Extractor.extract_column(states_df,
+                                                                                                    member_name,
+                                                                                                    logical_no),
+                                                                     nodes_df, states_df,True)
 
                     #print(f"{member_name} : Data temp after merge or :\n {temp}")
 
@@ -151,7 +160,7 @@ class ComputeLogicalExpression:
                     temp = pd.DataFrame()
 
         work_df.dropna(inplace=True, ignore_index=True)
-        print(f"Logical expression : {logical_expression} \n Result : \n {work_df} \n")
+        #print(f"Logical expression : {logical_expression} \n Result : \n {work_df} \n")
         return work_df
 
     @staticmethod
