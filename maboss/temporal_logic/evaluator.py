@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 
+from maboss import Result
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
     FormulaException
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
@@ -85,6 +86,7 @@ class MaBoSSEvaluator:
         for q in query:
             try:
                 list_of_df.append(MaBoSSEvaluator.evaluate_query(q, results))
+                print(f"Query {q} evaluated successfully !")
             except FormulaException:
                 raise FormulaException(f"Formula is not correct : {q}")
         for i,df in enumerate(list_of_df):
@@ -102,14 +104,24 @@ class MaBoSSEvaluator:
         if results is None:
             raise ValueError("Results are empty")
 
-        MaBoSSEvaluator.simulation_results = results
+        if not "Time" in results.get_states_probtraj().columns:
+            df_states = results.get_states_probtraj().copy()
+            df_states["Time"] = df_states.index
+        else : df_states = results.get_states_probtraj().copy()
+
+        if not "Time" in results.get_nodes_probtraj().columns:
+            df_nodes = results.get_nodes_probtraj().copy()
+            df_nodes["Time"] = df_nodes.index
+        else: df_nodes = results.get_nodes_probtraj().copy()
+
+        MaBoSSEvaluator.simulation_results = [df_nodes,df_states]
         query_input = query
 
         # Decomposition of the query
         parsed_query = Parser.parse_query(query_input)
         FormulaChecker.check_formula(parsed_query) # raise error if the formula is not correct
         MaBoSSEvaluator.parsed_query = parsed_query
-        print("Query parsed successfully !")
+        print(f"Query \"{query_input}\" parsed successfully !")
 
         # Selection of the simulation result df to use depending on the target
         df_target = MaBoSSEvaluator.get_df_target(parsed_query.target)
@@ -145,10 +157,10 @@ class MaBoSSEvaluator:
         if parsed_query.logical_equation:
             #print(f"DF in treatment for logical equation")
             log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query.logical_equation, MaBoSSEvaluator.simulation_results)
-            print(f"DF after logical equation : \n {log_df} \n Will be merged with :\n {filtered_data}\n")
-            filtered_data = ComputeLogicalExpression.merge_or(filtered_data, log_df, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),
-                                                               MaBoSSEvaluator.simulation_results.get_states_probtraj()
-                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}),True)
+            #print(f"DF after logical equation : \n {log_df} \n Will be merged with :\n {filtered_data}\n")
+            filtered_data = ComputeLogicalExpression.merge_or(filtered_data, log_df, MaBoSSEvaluator.simulation_results[0],
+                                                               MaBoSSEvaluator.simulation_results[1]
+                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results[1].columns if c != 'Time'}),True)
 
         if filtered_data.empty:
             raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\" "
@@ -160,7 +172,7 @@ class MaBoSSEvaluator:
         #todo put here the call of the computation function (returns a new df with the new columns and the filtered_data)
         if MaBoSSEvaluator.parsed_query.value == '?':
             print(f"filtered_data : \n {filtered_data} \n")
-            computed_values = MaBoSSEvaluator.compute_interrogation_proba(filtered_data, MaBoSSEvaluator.parsed_query,MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),MaBoSSEvaluator.simulation_results.get_states_probtraj())
+            computed_values = MaBoSSEvaluator.compute_interrogation_proba(filtered_data, MaBoSSEvaluator.parsed_query,MaBoSSEvaluator.simulation_results[0],MaBoSSEvaluator.simulation_results[1])
             return computed_values
 
         return filtered_data.dropna(inplace=False, ignore_index=True)
@@ -168,10 +180,10 @@ class MaBoSSEvaluator:
     @staticmethod
     def get_df_target(target):
         if target.value == TargetType.NODE.value:
-            return MaBoSSEvaluator.simulation_results.get_nodes_probtraj()
+            return MaBoSSEvaluator.simulation_results[0]
         elif target.value == TargetType.STATE.value:
-            return (MaBoSSEvaluator.simulation_results.get_states_probtraj()
-                    .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}))
+            return (MaBoSSEvaluator.simulation_results[1]
+                    .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results[1].columns if c != 'Time'}))
         else:
             raise ValueError("Target is not supported, try node or state")
 

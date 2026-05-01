@@ -7,8 +7,6 @@ from sklearn.inspection import permutation_importance
 from maboss.temporal_logic.extractors import Extractor
 from maboss.temporal_logic.formulas import Operators, LogicalOperators
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
-from test.test_compute_logical import FakeResult
-
 
 def get_test_data_path():
     return os.path.join(os.path.dirname(__file__), "test_data.csv")
@@ -56,7 +54,7 @@ class TestExtractor(unittest.TestCase):
             'Time': [0.0, 1.0, 2.0],
             'AKT1' : [0.421,0.678,0.115],
         })
-        res = Extractor.extract_column_numerical(df_akt1, "AKT1", FakeResult(df_nodes, df_states, None), Operators.GT, 0.4)
+        res = Extractor.extract_column_numerical(df_akt1, "AKT1", [df_nodes,df_states], Operators.GT, 0.4)
         print(f"res : \n{res}\n Expected : \n{expected}")
         assert expected.equals(res)
 
@@ -70,11 +68,11 @@ class TestExtractor(unittest.TestCase):
             'AKT1--AKT2--AKT3_state': [0.6, 0.11],
         })
         #like doing AKT1 & ( AKT2 > 0.4 )
-        fake = FakeResult(df_nodes, df_states, None)
+        fake =[df_nodes,df_states]
         akt1 = ComputeLogicalExpression.compute_logical_expression(['AKT1'] , fake)
         # print(akt1)
         akt2 = ComputeLogicalExpression.compute_logical_expression(['AKT2'] , fake)
-        akt2 = Extractor.extract_column_numerical(akt2, "AKT2", FakeResult(df_nodes, df_states, None), Operators.GT, 0.4)
+        akt2 = Extractor.extract_column_numerical(akt2, "AKT2", [df_nodes,df_states], Operators.GT, 0.4)
         #print(akt2)
         res = ComputeLogicalExpression.merge_and(akt1, akt2, df_nodes, df_states)
         print(f"Res : \n {res} \n Expected : \n {expected}")
@@ -99,7 +97,7 @@ class TestExtractor(unittest.TestCase):
             'AKT2' : [0.854,0.332,0.567],
         })
         res = Extractor.extract_column_numerical(df_akt2, "AKT2",
-                                                 FakeResult(df_nodes, df_states, None), Operators.GT,
+                                                 [df_nodes,df_states], Operators.GT,
                                                  0.1, is_state=True)
         expected = pd.DataFrame({
             'Time' : [2.0],
@@ -112,7 +110,7 @@ class TestExtractor(unittest.TestCase):
         df_nodes = pd.read_csv(get_expected_data_path("test_data.csv"))
         df_states = pd.read_csv(get_expected_data_path("test_data_states.csv"))
         res = Extractor.extract_column_numerical(df_nodes, "AKT2",
-                                                 FakeResult(df_nodes, df_states, None), Operators.GT,
+                                                 [df_nodes,df_states], Operators.GT,
                                                  0.1, is_state=False)
         expected = pd.DataFrame({
             'Time' : [0.0 , 1.0 , 2.0],

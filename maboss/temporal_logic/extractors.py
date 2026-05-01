@@ -44,8 +44,8 @@ class Extractor(object):
         #print("Entering extract_column_numerical")
         #print(f"df : \n {df}\n")
         if sim_res is not None:
-            df_nodes = sim_res.get_nodes_probtraj()
-            df_states = sim_res.get_states_probtraj()
+            df_nodes = sim_res[0]
+            df_states = sim_res[1]
             df_states = df_states.replace(" ","").replace("_state","")
             if is_state:
                 clean_col_name = column_name.replace(" ", "").replace("_state", "")

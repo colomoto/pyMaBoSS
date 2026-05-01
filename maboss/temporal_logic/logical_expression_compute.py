@@ -43,8 +43,8 @@ class ComputeLogicalExpression:
 
         work_df = pd.DataFrame()
         temp = pd.DataFrame()
-        nodes_df = simulation_results.get_nodes_probtraj()
-        states_df = simulation_results.get_states_probtraj()
+        nodes_df = simulation_results[0]
+        states_df = simulation_results[1]
         fusion = True
         op = operator.gt
         name_checker = [False, False] #0: nodes, 1: states
@@ -59,7 +59,7 @@ class ComputeLogicalExpression:
             states_df = states_df.rename(columns={c: f"{c}_state" for c in states_df.columns if c != 'Time'})
 
         for member in logical_expression:
-            print(f"\nMember : {member} ----------------------------------------")
+            #print(f"\nMember : {member} ----------------------------------------")
             if isinstance(member, list):
                 temp = ComputeLogicalExpression.compute_logical_expression(member, simulation_results)
                 if fusion:

@@ -131,7 +131,7 @@ class TestLogicalCompute(TestCase):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
         expected = pd.read_csv(get_test_path("expected_compute_data.csv"))
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes,df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1','&','AKT2'], fake)
         print(f"Résultats : \n{results}\n Expected : \n{expected}")
         assert results.equals(expected)
@@ -144,7 +144,7 @@ class TestLogicalCompute(TestCase):
             'AKT1' : [0.421,0.678,0.115],
             'AKT1--AKT3_state' : [0.07521 ,0.2,0.11],
         })
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes,df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT2'], fake)
 
         results.to_csv("test/compute_with_no.csv")
@@ -159,7 +159,7 @@ class TestLogicalCompute(TestCase):
             'AKT2': [0.854, 0.332, 0.567],
             'AKT2_state' : [0.00479, 0.05, 0.11],
         })
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes, df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT2', '&', '!AKT3'], fake)
 
         results.to_csv("test/compute_with_no.csv")
@@ -173,7 +173,7 @@ class TestLogicalCompute(TestCase):
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115]
         })
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes, df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', '!AKT3'], fake)
 
         results.to_csv("test/compute_with_no.csv")
@@ -191,7 +191,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT3_state' : [0.07521 ,0.2,0.11],
             'AKT2_state' : [0.00479,0.05,0.11]
         })
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes,df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|', 'AKT2'], fake)
         #results.to_csv("compute_with_or.csv")
         assert results.equals(expected)
@@ -206,7 +206,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT2--AKT3_state': [0.6, 0.15, 0.11],
             'AKT1--AKT3_state' : [0.07521 ,0.2,0.11]
         })
-        fake = FakeResult(df_nodes,df_states,None)
+        fake = [df_nodes,df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['!AKT2' , '|', 'AKT1'], fake)
         results.to_csv("compute_with_or_not.csv")
         assert results.equals(expected)
@@ -222,7 +222,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT2--AKT3_state': [0.6, 0.15, 0.11],
             'AKT1--AKT3_state' : [0.07521 ,0.2,0.11]
         })
-        fake = FakeResult(df_nodes, df_states, None)
+        fake = [df_nodes,df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|', ['AKT2' , '&' , 'AKT3']], fake)
         results.to_csv("test/compute_intrication.csv")
         assert results.equals(expected)
@@ -237,7 +237,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT2--AKT3_state': [0.6, 0.15, 0.11],
         })
 
-        res = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&' , 'AKT2'], FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&' , 'AKT2'], [df_nodes,df_states])
         res.to_csv("test/compute_full_process_simple_and.csv")
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
@@ -254,7 +254,7 @@ class TestLogicalCompute(TestCase):
             'AKT2_state' : [0.00479,0.05,0.11]
         })
 
-        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|' , 'AKT2'], FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '|' , 'AKT2'], [df_nodes,df_states])
         assert res.equals(expected)
 
     def test_simple_value_numerical(self):
@@ -267,7 +267,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT3_state' : [0.07521 ,0.2],
         })
 
-        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '>' , '0.4'], FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(['AKT1' , '>' , '0.4'], [df_nodes,df_states])
         #print(res)
         assert res.equals(expected)
 
@@ -279,7 +279,7 @@ class TestLogicalCompute(TestCase):
             '<nil>_state' : [0.32,0.67],
             'AKT2_state' : [0.00479,0.11],
         })
-        res = ComputeLogicalExpression.compute_logical_expression([['!AKT1' , '>' , '0.4']], FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression([['!AKT1' , '>' , '0.4']], [df_nodes,df_states])
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert expected.equals(res)
 
@@ -295,7 +295,7 @@ class TestLogicalCompute(TestCase):
             'AKT2_state' : [0.00479,0.05]
         })
         log_exp = [['AKT1' , '>' , '0.4'] , '|' , 'AKT2' ]
-        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes,df_states])
         assert expected.equals(res)
 
     def test_expression_more_complex(self):
@@ -310,7 +310,7 @@ class TestLogicalCompute(TestCase):
             'AKT1--AKT3_state' : [0.07521 ,0.2]
         })
         log_exp = [['AKT1' , '>' , '0.4'] , '|' , ['AKT2' , '&' , 'AKT3']]
-        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes,df_states])
         res.to_csv("test/test_expression_more_complex.csv")
         assert expected.equals(res)
 
@@ -327,7 +327,7 @@ class TestLogicalCompute(TestCase):
         })
 
         log_exp = [['!AKT1' , '>' , '0.4'] , '|' , ['AKT2' , '&' , 'AKT3']]
-        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes,df_states])
         #print(f"Results : \n{res}\n Expected : \n{expected}")
         assert expected.equals(res)
 
@@ -342,7 +342,7 @@ class TestLogicalCompute(TestCase):
         })
 
         log_exp = [['AKT2' , '&' , 'AKT3']]
-        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes,df_states])
         res.to_csv("test/test_akt2_and_akt3.csv")
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert expected.equals(res)
@@ -372,7 +372,7 @@ class TestLogicalCompute(TestCase):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
         log_exp = ['state:AKT2' , '>=' , '0.1']
-        res = ComputeLogicalExpression.compute_logical_expression(log_exp, FakeResult(df_nodes, df_states, None))
+        res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes,df_states])
         expected = pd.DataFrame({
             'Time' : [2.0],
             'AKT2_state' : [0.11],
