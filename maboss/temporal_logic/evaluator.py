@@ -109,6 +109,8 @@ class MaBoSSEvaluator:
             df_states["Time"] = df_states.index
         else : df_states = results.get_states_probtraj().copy()
 
+        df_states.columns = df_states.columns.str.replace(" ","",regex=False)
+
         if not "Time" in results.get_nodes_probtraj().columns:
             df_nodes = results.get_nodes_probtraj().copy()
             df_nodes["Time"] = df_nodes.index
@@ -171,7 +173,7 @@ class MaBoSSEvaluator:
 
         #todo put here the call of the computation function (returns a new df with the new columns and the filtered_data)
         if MaBoSSEvaluator.parsed_query.value == '?':
-            print(f"filtered_data : \n {filtered_data} \n")
+            #print(f"filtered_data : \n {filtered_data} \n")
             computed_values = MaBoSSEvaluator.compute_interrogation_proba(filtered_data, MaBoSSEvaluator.parsed_query,MaBoSSEvaluator.simulation_results[0],MaBoSSEvaluator.simulation_results[1])
             return computed_values
 
@@ -215,7 +217,7 @@ class MaBoSSEvaluator:
     @staticmethod
     def get_df_target_value_proba(df, value, query_type=QueryType.P):
         op = MaBoSSEvaluator.parsed_query.operator
-        #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name} df cols :\n {df.columns}")
+        #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name}")
 
         cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
         #print(f"cols to check after verification: {cols_to_check}")
@@ -296,7 +298,7 @@ class MaBoSSEvaluator:
             out_df["Time"] = df["Time"]
             for col in cols_to_check:
                 out_df[col] = df[col]
-            print(f"out_df : \n {out_df}")
+            #print(f"out_df : \n {out_df}")
             return out_df
 
     @staticmethod
@@ -307,7 +309,7 @@ class MaBoSSEvaluator:
         target_names = MaBoSSEvaluator.parsed_query.target_name
         target_type = MaBoSSEvaluator.parsed_query.target
 
-        print(f"get_df_target_value_time :{value}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
+        #print(f"get_df_target_value_time :{value}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
 
         if TargetType.STATE == target_type:
             cols_to_check = [f"{name}_state" for name in target_names if f"{name}_state" in df.columns]
@@ -348,7 +350,7 @@ class MaBoSSEvaluator:
         op = MaBoSSEvaluator.parsed_query.operator
         target_names = MaBoSSEvaluator.parsed_query.target_name
 
-        print(f"get_df_target_value_time_minmax :{value}, {query_type}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
+        #print(f"get_df_target_value_time_minmax :{value}, {query_type}, {op}, {MaBoSSEvaluator.parsed_query.target_name}")
 
         cols_to_check = MaBoSSEvaluator.get_the_cols_to_check(df)
 
@@ -437,7 +439,7 @@ class MaBoSSEvaluator:
         df_states_filtered = df_states[df_states["Time"].isin(valid_times)].copy()
         df_states_filtered.columns = df_states_filtered.columns.str.replace(" ", "")
 
-        print(f"df_states_filtered : \n{df_states_filtered}")
+        #print(f"df_states_filtered : \n{df_states_filtered}")
 
         for target in parsed_query.target_name:
             if parsed_query.target == TargetType.STATE:
@@ -465,6 +467,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_the_cols_to_check(df):
+        #print(df.columns)
         if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
             cols_to_check = [c for c in df.columns if c != "Time"]
         else:
@@ -473,6 +476,7 @@ class MaBoSSEvaluator:
                 cols_to_check = [f"{name}_state" for name in cols_to_check]
 
             for name in MaBoSSEvaluator.parsed_query.target_name:
+                #print(f"name : {name}")
                 if MaBoSSEvaluator.parsed_query.target == TargetType.STATE:
                     if name + "_state" not in df.columns:
                             cols_to_check.remove(name+"_state")

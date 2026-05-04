@@ -1,11 +1,10 @@
 from unittest import TestCase
 import os
 from maboss.temporal_logic.evaluator import MaBoSSEvaluator
-from maboss.temporal_logic.formulas import *
-from maboss.temporal_logic.custom_exceptions import *
 from maboss.temporal_logic.temporal_parser import *
 import pandas as pd
-from pandas import testing
+from maboss.temporal_logic import visualiser
+
 
 
 QUERY = "P(node:name) <= 0.623"
@@ -522,6 +521,13 @@ class TestEvaluator(TestCase):
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
+
+    def test_query_state(self):
+        df_nodes = pd.read_csv(get_test_path('test_data.csv'))
+        df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        res = MaBoSSEvaluator.querying(["P(state:AKT1--AKT3) > 0.1"], FakeResult(df_nodes,df_states,None))[0]
+        print(f"Result:\n {res}\n")
+        res.viz.evolution_over_time()
 
 
     def test_sand_box(self):
