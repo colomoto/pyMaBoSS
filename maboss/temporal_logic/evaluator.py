@@ -1,6 +1,6 @@
 
 import warnings
-
+import maboss
 import numpy as np
 
 from maboss import Result
@@ -81,14 +81,63 @@ class MaBoSSEvaluator:
         print("In case of any question you can contact me at : oscardufossez@gmail.com")
 
     @staticmethod
-    def querying(query, results):
-        list_of_df = []
+    def mutation_to_string(mutation_constraint: list[str]):
+        if not mutation_constraint:
+            return ""
+        else:
+            return f"{mutation_constraint[0]} {mutation_constraint[1]}"
+
+    @staticmethod
+    def querying(query, sim_cfg, sim_bnd):
+        list_of_df = [] #results of computation and evaluation
+        checked_query = [] #queries that are checked for errors
+        df_sorted_mutations = pd.DataFrame({
+            'master_simulation ' : [] #the master simulation is the simulation run without any mutation or changed param
+        })
+
+        # Reading of the queries
         for q in query:
+            parsed_query = Parser.parse_query(q)
             try:
+                FormulaChecker.check_formula(parsed_query)
+                checked_query.append(q)
+            except FormulaException:
+                warnings.warn(f"Formula is not correct : {q} , will not be evaluated.")
+                continue
+            if parsed_query.mutation_constraint:
+                if MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint) not in df_sorted_mutations.columns:
+                    df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)] = []
+                df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)] = (
+                    df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)].append(q))
+            else:
+                df_sorted_mutations['master_simulation'] = df_sorted_mutations['master_simulation'].append(q)
+
+        #Running the simulations and stocked the results
+        model_sim = maboss.load(sim_cfg, sim_bnd)
+        res_master = model_sim.run()
+        df_sim_results = pd.DataFrame({
+            'master_simulation ' : [res_master]
+        })
+
+        if len(df_sorted_mutations.columns) > 1:
+            for col in df_sorted_mutations.columns:
+                if col == 'master_simulation': continue
+                df_sim_results[col] = []
+
+                mutated_model = model_sim.copy()
+                mutated_model.mutate(MaBoSSEvaluator.mutation_to_string(col.split(' ')))
+                res_mutated = mutated_model.run()
+                df_sim_results[col] = [res_mutated]
+
+        for q in checked_query:
+            try:
+                col_query = df_sorted_mutations.columns[(df_sorted_mutations == q).any()].tolist()
+                results = df_sim_results[col_query[0]]
                 list_of_df.append(MaBoSSEvaluator.evaluate_query(q, results))
                 print(f"Query {q} evaluated successfully !")
             except FormulaException:
                 raise FormulaException(f"Formula is not correct : {q}")
+
         for i,df in enumerate(list_of_df):
             if df is None:
                 print(f"df {i} is empty. Query was : {query[i]}")
