@@ -131,12 +131,12 @@ class ComputeLogicalExpression:
                         if name_checker[1]:
 
                             temp = Extractor.extract_column(states_df, member_name, logical_no, is_state=True)
-                            print(f"State temp : {temp}")
+                            #print(f"State temp : {temp}")
                         else:
                             warnings.warn(f"The name {member_name} has been provided for a state but no state with that "
                                           f"name has been found in the dataframe")
 
-                    print(f"{member_name} : Data temp before merge and :\n {temp}\n Data work before merge fusion: {fusion} :\n {work_df} \n")
+                    #print(f"{member_name} : Data temp before merge and :\n {temp}\n Data work before merge fusion: {fusion} :\n {work_df} \n")
 
                     if temp.empty:
                         if name_checker[0] and not name_checker[1] and not logical_no: # node only getting the column if is activated

@@ -17,27 +17,23 @@ class Extractor(object):
 
     @staticmethod
     def extract_column(df, column_name, exclusion: bool = False, is_state: bool = False):
-        out_df = df[["Time"]].copy()
-        print(f"column_name : {column_name} , df columns : {df.columns}")
+        cols_to_keep = ["Time"]
+        #print(f"column_name : {column_name}")
 
-        if not is_state:
-            for col_name in df.columns:
-                if col_name == "Time":
-                    continue
+        for col_name in df.columns:
+            if col_name == "Time": continue
 
+            if not is_state:
                 if exclusion and column_name not in col_name:
-                    out_df[col_name] = df[col_name]
+                    cols_to_keep.append(col_name)
                 elif not exclusion and column_name in col_name:
-                    out_df[col_name] = df[col_name]
-        else:
-            for col_name in df.columns:
-                if col_name == "Time":
-                    continue
+                    cols_to_keep.append(col_name)
+            else:
                 clean_col_name = col_name.replace(" ", "").replace("_state", "")
                 if (clean_col_name == column_name and not exclusion) or (clean_col_name != column_name and exclusion):
-                    out_df[col_name] = df[col_name]
+                    cols_to_keep.append(col_name)
 
-        return out_df
+        return df[cols_to_keep].copy()
 
     @staticmethod
     def extract_column_numerical(df, column_name: str, sim_res, op: Operators, value: float, exclusion: bool = False, is_state: bool = False):
