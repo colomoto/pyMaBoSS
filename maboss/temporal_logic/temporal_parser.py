@@ -48,7 +48,9 @@ class Parser:
             mutation_param_final = []
         else:
             mutation_param_striped = [n.strip() for n in mutation_param.split(" ")]
-            mutation_param_final = [mutation_param_striped[2], mutation_param_striped[4]] #2 being name of the mutation, 4 being the value (0 or 1)
+            if mutation_param_striped[4] not in ["ON", "OFF"]:
+                raise ValueError(f"Mutation parameter \"{mutation_param_striped[4]}\" is not supported, try ON or OFF")
+            mutation_param_final = [mutation_param_striped[2], mutation_param_striped[4]] #2 being name of the mutation, 4 being the value (OFF or ON)
 
         # Conversion of types, with try/catch to handle errors
         try:
