@@ -17,18 +17,19 @@ QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION = "P(node:A,B,C) >= 0.5 [ B | ( C &
 QUERY_MUTATION_CONSTRAINT = "P(node:name) <= 0.5 [ ] [ AKT:ON ]"
 QUERY_INCREASE = "Inc(state:name) / [ A & B ] [ AKT:ON ]"
 QUERY_INCREASE_NO_LOGICAL = "Inc(state:name) / [ ] [ AKT:ON ]"
+QUERY_DECREASE_MULTIPLE_MUTATIONS = "Dec(state:name) / [ A & B ] [ AKT:ON AKT2:OFF BRAF:ON ]"
 
 # FORMULA CHECKER test Formulas
 NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], [], QUERY)
 #NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], [],"T(state:name) = ?")
 NO_ERROR_INTERROGATION = Formula(QueryType.P, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], [], "P(state:name) = ? [ !A & B | C ]")
-NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], ['AKT','ON'], "Inc(state:name) [ A & B ] [ AKT:ON ]")
-NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], ['AKT','ON'], "Dec(node:name) [ A & B ] [ AKT:ON ]")
+NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], "Inc(state:name) [ A & B ] [ AKT:ON ]")
+NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], "Dec(node:name) [ A & B ] [ AKT:ON ]")
 
 ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Dec(node:name) [ A & B ]")
 ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Inc(state:name) [ A & B ]")
-ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.LE, "0.5", ['A','&','B'], ['AKT','OFF'], "Dec(node:name) [ A & B ] <= 0.5")
-ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], ['AKT', 'OFF'], "Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
+ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.LE, "0.5", ['A','&','B'], [['AKT','OFF']], "Dec(node:name) [ A & B ] <= 0.5")
+ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], [['AKT', 'OFF']], "Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
 
 ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [],[], QUERY)
 ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [],[], QUERY)
@@ -129,7 +130,7 @@ class TestParser(TestCase):
         assert formula7.value == ""
         assert formula7.target_name == ['name']
         assert formula7.logical_equation == ['A', '&', 'B']
-        assert formula7.mutation_constraint == ['AKT', 'ON']
+        assert formula7.mutation_constraint == [['AKT', 'ON']]
 
     def test_increase_parser_no_logical(self):
         formula8 = Parser.parse_query(QUERY_INCREASE_NO_LOGICAL)
@@ -138,7 +139,16 @@ class TestParser(TestCase):
         assert formula8.value == ""
         assert formula8.target_name == ['name']
         assert formula8.logical_equation == []
-        assert formula8.mutation_constraint == ['AKT', 'ON']
+        assert formula8.mutation_constraint == [['AKT', 'ON']]
+
+    def test_multiple_mutations(self):
+        formula9 = Parser.parse_query(QUERY_DECREASE_MULTIPLE_MUTATIONS)
+        assert formula9.type == QueryType.DECREASE
+        assert formula9.operator == Operators.NONE
+        assert formula9.value == ""
+        assert formula9.target_name == ['name']
+        assert formula9.logical_equation == ['A', '&', 'B']
+        assert formula9.mutation_constraint == [['AKT', 'ON'], ['AKT2', 'OFF'], ['BRAF', 'ON']]
 # -------------------------------- FORMULA CHECKER TESTS -------------------------------------
     def test_formula_checker_no_error(self):
         try:

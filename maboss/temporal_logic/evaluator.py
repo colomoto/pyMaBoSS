@@ -103,7 +103,14 @@ class MaBoSSEvaluator:
             'master_simulation ' : [] #the master simulation is the simulation run without any mutation or changed param
         })
 
-        # Reading of the queries
+        # Running the simulations and stocked the results
+        model_sim = maboss.load(sim_cfg, sim_bnd)
+        res_master = model_sim.run()
+        df_sim_results = pd.DataFrame({
+            'master_simulation ': [res_master]
+        })
+
+        # Reading of the queries and launching the simulation for a mutation if it was not done before
         for q in query:
             parsed_query = Parser.parse_query(q)
             try:
@@ -113,29 +120,18 @@ class MaBoSSEvaluator:
                 warnings.warn(f"Formula is not correct : {q} , will not be evaluated.")
                 continue
             if parsed_query.mutation_constraint:
-                if MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint) not in df_sorted_mutations.columns:
-                    df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)] = []
-                df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)] = (
-                    df_sorted_mutations[MaBoSSEvaluator.mutation_to_string(parsed_query.mutation_constraint)].append(q))
+                mutated_model = model_sim.copy()
+                col_name = ""
+                for c in parsed_query.mutation_constraint:
+                    col_name += MaBoSSEvaluator.mutation_to_string(c) + " __ "
+                    mutated_model.mutate(c[0], str(c[1]))
+                if col_name not in df_sorted_mutations.columns:
+                    df_sorted_mutations[col_name] = []
+                    res_mutated = mutated_model.run()
+                    df_sim_results[col_name] = [res_mutated]
+                df_sorted_mutations[col_name] = (df_sorted_mutations[col_name].append(q))
             else:
                 df_sorted_mutations['master_simulation'] = df_sorted_mutations['master_simulation'].append(q)
-
-        #Running the simulations and stocked the results
-        model_sim = maboss.load(sim_cfg, sim_bnd)
-        res_master = model_sim.run()
-        df_sim_results = pd.DataFrame({
-            'master_simulation ' : [res_master]
-        })
-
-        if len(df_sorted_mutations.columns) > 1:
-            for col in df_sorted_mutations.columns:
-                if col == 'master_simulation': continue
-                df_sim_results[col] = []
-
-                mutated_model = model_sim.copy()
-                mutated_model.mutate(MaBoSSEvaluator.mutation_to_string(col.split(' ')))
-                res_mutated = mutated_model.run()
-                df_sim_results[col] = [res_mutated]
 
         for q in checked_query:
             try:
@@ -147,8 +143,14 @@ class MaBoSSEvaluator:
                     match Parser.parse_query(q).type:
                         case QueryType.DEPENDENCIE: pass
                         case QueryType.MUTATION: pass
-                        case QueryType.INCREASE: list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(q), results, res_master, q))
-                        case QueryType.DECREASE: pass
+                        case QueryType.INCREASE:
+                            list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(q), results, res_master, q))
+                            break
+                        case QueryType.DECREASE:
+                            list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(q), results, res_master, q))
+                            break
+                        case _:
+                            raise ValueError("Query type is not supported, for comparison over mutation, try increase (Inc) or decrease (Dec)")
 
 
             except FormulaException:
@@ -387,7 +389,6 @@ class MaBoSSEvaluator:
             new_df = df.copy()
 
         return new_df
-
 
     @staticmethod
     def get_df_target_value_proba(df, value, query_type=QueryType.P):
