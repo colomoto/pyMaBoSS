@@ -5,7 +5,7 @@ from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpre
 
 class Parser:
     QUERY_PATTERN = \
-        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D)\((node|state|mutation|increase|decrease)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?))?(?:\s*\[(.+?)\])?(?:\s*\[(.+?)\])?"
+        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D|M|Inc|Dec)\((node|state)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=|/)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?|))?(?:\s*\[(.+?)\])?(?:\s*\[(.+?)\])?"
 
     @staticmethod
     def parse_query(input: str) -> Formula:
@@ -24,7 +24,7 @@ class Parser:
         value = match.group(5)
         logical_equation = match.group(6)
         mutation_param = match.group(7)
-
+        #print(f"Query type : {query_type}, target : {target}, target name : {target_name}, operator : {operator}, value : {value}, logical equation : {logical_equation}, mutation param : {mutation_param}")
 
         if target_name.__contains__(","):
             names_list = [n.strip() for n in target_name.split(",")]
@@ -47,26 +47,28 @@ class Parser:
         if mutation_param is None:
             mutation_param_final = []
         else:
-            mutation_param_striped = [n.strip() for n in mutation_param.split(" ")]
-            if mutation_param_striped[4] not in ["ON", "OFF"]:
-                raise ValueError(f"Mutation parameter \"{mutation_param_striped[4]}\" is not supported, try ON or OFF")
-            mutation_param_final = [mutation_param_striped[2], mutation_param_striped[4]] #2 being name of the mutation, 4 being the value (OFF or ON)
+            mutation_param_striped = [n.strip() for n in mutation_param.split(":")]
+            if mutation_param_striped[1] not in ["ON", "OFF"]:
+                raise ValueError(f"Mutation parameter \"{mutation_param_striped[1]}\" is not supported, try ON or OFF")
+            mutation_param_final = [mutation_param_striped[0], mutation_param_striped[1]] #0 being name of the mutation, 1 being the value (OFF or ON)
 
         # Conversion of types, with try/catch to handle errors
         try:
             _type = QueryType(query_type)
         except ValueError:
-            raise ValueError(f"Query type \"{query_type}\" is not supported, try P, T, Pmax, Pmin, Tmax, Tmin")
+            raise ValueError(f"Query type \"{query_type}\" is not supported, try P, T, Pmax, Pmin, Tmax, Tmin, M, D, "
+                             f"Inc or Dec")
 
         try:
+            print(operator)
             _op = Operators(operator)
         except ValueError:
-            raise ValueError(f"Operator \"{operator}\" is not supported, try <, <=, =, !=, >=, >")
+            raise ValueError(f"Operator \"{operator}\" is not supported, try <, <=, =, !=, >=, >, /")
 
         try:
             _target = TargetType(target)
         except ValueError:
-            raise ValueError(f"Target \"{target}\" is not supported, try node, state, mutation, increase, decrease")
+            raise ValueError(f"Target \"{target}\" is not supported, try node, state")
 
         return Formula(
             type=_type,

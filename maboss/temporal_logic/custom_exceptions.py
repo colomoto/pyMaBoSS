@@ -3,11 +3,15 @@ class FormulaException(Exception):
         self.message = message
         super().__init__(self.message)
 
+class ErrorNotRightAmountOfNames(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
 class EmptyTargetException(FormulaException):
     def __init__(self):
-        super().__init__("Target name is empty, the formula must apply to node or state")
+        super().__init__("Target name is empty, the formula must apply to node or state or have a indicator of increase or decrease")
 
-class EmptyNameException(FormulaException):
+class EmptyNameException(ErrorNotRightAmountOfNames):
     def __init__(self):
         super().__init__("One of the target name is empty, the formula must apply to one or multiple columns")
 
@@ -47,10 +51,23 @@ class ErrorInLogicalExpressionNonOpeningParenthesis(FormulaException):
     def __init__(self, message):
         super().__init__(message)
 
-class ErrorMinMaxOnlyForOneEntity(FormulaException):
+class ErrorMinMaxOnlyForOneEntity(ErrorNotRightAmountOfNames):
     def __init__(self, message):
         super().__init__(message)
         
 class ErrorInDependencieEvaluation(FormulaException):
     def __init__(self, message):
         super().__init__(message)
+
+class ErrorInMutationEvaluation(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
+class ErrorInIncreaseDecreaseEvaluation(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
+class NoCommonTimes(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+

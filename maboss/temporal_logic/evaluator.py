@@ -5,10 +5,10 @@ import numpy as np
 
 from maboss import Result
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
-    FormulaException
+    FormulaException, NoCommonTimes
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import Parser
-from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker
+from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker, Formula
 import pandas as pd
 
 class MaBoSSEvaluator:
@@ -33,12 +33,15 @@ class MaBoSSEvaluator:
         print("\t - Pmin : will return the lowest value of the target probability while meeting the criteria of value.")
         print("\t - Tmax : will return the last period of time where the target probability is meeting the criteria of value.")
         print("\t - Tmin : will return the first period of time where the target probability is meeting the criteria of value.")
+        print("\t - D : will check if the two nodes passed in parameters are always activate at the same time. Names must be separated by commas.")
+        print("\t - Inc : check if the node or the state passed in parameters sees its probability increase on the last time period after the mutation. Mutation constraint are required.")
+        print("\t - Dec : check if the node or the state passed in parameters sees its probability decrease on the last time period after the mutation. Mutation constraint are required.")
         print("[target_type] : The type of target to look for, can be node or state.")
         print("\t - node : will look for the probability of the target node.")
         print("\t - state : will look for the probability of the target state.")
         print("[name] : The name of the target to look for. If target_type is node, name is the name of the node. "
-              "If target_type is state, name is the name of the state. No spaces or \"\". For all targets use *. Can handle multiple names separated by commas.")
-        print("[operator] : The operator to use to compare the target to the value. Can be <, <=, =, !=, >=, >.")
+              "If target_type is state, name is the name of the state. No spaces or \"\". For all targets use *. Can handle multiple names separated by commas, no spaces or \"\" even for multiple names.")
+        print("[operator] : The operator to use to compare the target to the value. Can be <, <=, =, !=, >=, > or /.")
         print("Note that != might return very broad results and = might not return anything.")
         print("\t - < : the probability of the target must be less than the value.")
         print("\t - <= : the probability of the target must be less than or equal to the value.")
@@ -46,8 +49,9 @@ class MaBoSSEvaluator:
         print("\t - != : the probability of the target must not be equal to the value.")
         print("\t - >= : the probability of the target must be greater than or equal to the value.")
         print("\t - > : the probability of the target must be greater than the value.")
+        print("\t - / : only for query type D, M, Inc and Dec. No value or operator is required.")
         print("[value] : The value to compare the target to. Can be a number between 0 and 1 or \"?\" ONLY IF the operator used is \'=\' and query type P. If value is \"?\", the query will return the probability of the target.")
-        print("With a value of \'?\' the logical equation must not be empty.")
+        print("With a value of \'?\' the logical equation must not be empty. The value must be empty for D, M, Dec or Inc type.")
         print("[logical_equation] : An optional logical equation to apply to the results. Can be a string or a list of strings.")
         print("\t - The logical equation is a string that contains the following elements : [ [name]  [operator] [value] ]")
         print("\t - The operator can be &, | (pipe). A logical-not ! can be used in front of a name : !name.")
@@ -68,6 +72,9 @@ class MaBoSSEvaluator:
         print("Tmax(node:A,B) <= 0.7 : returns the last period of time where node A and node B are active with a probability less than or equal to 0.7.")
         print("Pmax(node:A) >= 0.5 : returns the greatest probability of node A being above 0.5 in any period of time. Can return nothing.")
         print("Pmin(node:A) <= 0.5 : returns the lowest probability of node A being under 0.5 in any period of time. Can return nothing.")
+        print("Inc(node:A) / [ ] [ B:ON ] : returns the last time code comparison and a print saying if the node A was increased or not.")
+        print("Dec(node:A) / [ A & C ] [ B:ON ] : returns the last time code comparison and print saying if the node A was decreased or not. The logical equation is applied before the comparison.")
+        print("Inc(state:A--B) / [ ] [ B:ON ] : returns the last time code comparison and print saying if the state A--B was increased or not.")
         print("------------------------------------------------------------------------------------------------------")
         print("Exemple of questions and the query to provide : ")
         print("What is the probability of node A and B being active at the same time while C is inactive and D above 0.5 ?\n\t -> P(node:A,B) = ? [ node:!C & ( D > 0.5 ) ]")
@@ -76,8 +83,9 @@ class MaBoSSEvaluator:
         print("When does the probability of state <nil> exceeds 0.5 ?\n\t -> T(state:<nil>) >= 0.5")
         print("When does the probability of state <nil> exceeds 0.5 for the first time ?\n\t -> Tmin(state:<nil>) >= 0.5")
         print("When does the probability of state <nil> exceeds 0.5 for the last time ?\n\t -> Tmax(state:<nil>) >= 0.5")
+        print("Does the probability for A--B state increase when C is activated ?\n\t -> Inc(state:A--B) / [ ] [ C:ON ]")
         print("--------------------------------------------------------------------------------------------------------")
-        print("For more exemples and output exemples you can check the test_evaluator.py file.")
+        print("For more exemples and output exemples you can check the test_evaluator.py file. Check the notebook Tuto Temporal Logic for more info.")
         print("In case of any question you can contact me at : oscardufossez@gmail.com")
 
     @staticmethod
@@ -133,8 +141,16 @@ class MaBoSSEvaluator:
             try:
                 col_query = df_sorted_mutations.columns[(df_sorted_mutations == q).any()].tolist()
                 results = df_sim_results[col_query[0]]
-                list_of_df.append(MaBoSSEvaluator.evaluate_query(q, results))
-                print(f"Query {q} evaluated successfully !")
+                if Parser.parse_query(q).type not in [QueryType.DEPENDENCIE, QueryType.MUTATION, QueryType.INCREASE, QueryType.DECREASE]:
+                    list_of_df.append(MaBoSSEvaluator.evaluate_query(Parser.parse_query(q), results))
+                else:
+                    match Parser.parse_query(q).type:
+                        case QueryType.DEPENDENCIE: pass
+                        case QueryType.MUTATION: pass
+                        case QueryType.INCREASE: list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(q), results, res_master, q))
+                        case QueryType.DECREASE: pass
+
+
             except FormulaException:
                 raise FormulaException(f"Formula is not correct : {q}")
 
@@ -144,12 +160,122 @@ class MaBoSSEvaluator:
 
         return list_of_df
 
+    @staticmethod
+    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master,query):
+        if results_mutation is None:
+            raise ValueError("Results are empty")
+        if results_master is None:
+            raise ValueError("Results Master simulation are empty")
 
+        # get the column from the results_mutation
+        MaBoSSEvaluator.simulation_results = results_mutation
+        MaBoSSEvaluator.parsed_query = parsed_query_input
+        df_mutation = MaBoSSEvaluator.get_df_target(parsed_query_input.target)
+        if df_mutation.empty:
+            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
+        df_mutation = MaBoSSEvaluator.get_df_target_name(df_mutation, parsed_query_input.target_name)
+        if parsed_query_input.logical_equation:
+            log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query_input.logical_equation, MaBoSSEvaluator.simulation_results)
+            df_mutation = ComputeLogicalExpression.merge_or(df_mutation, log_df, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),
+                                                               MaBoSSEvaluator.simulation_results.get_states_probtraj()
+                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}),True)
+        df_mutation.dropna(inplace=True)
+        print(f"DF mutation : \n {df_mutation}")
+        # now we do the same with the master results
+        MaBoSSEvaluator.simulation_results = results_master
+        df_master = MaBoSSEvaluator.get_df_target(parsed_query_input.target)
+        if df_master.empty:
+            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
+        df_master = MaBoSSEvaluator.get_df_target_name(df_master, parsed_query_input.target_name)
+        if parsed_query_input.logical_equation:
+            log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query_input.logical_equation, MaBoSSEvaluator.simulation_results)
+            df_master = ComputeLogicalExpression.merge_or(df_master, log_df, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),MaBoSSEvaluator.simulation_results.get_states_probtraj()
+                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}),True)
+        df_master.dropna(inplace=True)
+        print(f"DF master : \n {df_master}")
+        #then we compare the last line of each dataframe and establish if it is true or not depending on the type of the query
+        last_line_mutation = df_mutation.tail(1)
+        last_line_master = df_master.tail(1)
+
+
+        #the df have supposedly two columns each, Time and the target.
+        # First we check that the last line of each dataframe is the same time code.
+
+        if last_line_mutation["Time"].iloc[0] != last_line_master["Time"].iloc[0]:
+            #if not we look for the last line where they are in common
+            last_line_mutation, last_line_master = MaBoSSEvaluator.get_last_common_row(df_master,df_mutation)
+
+        name_target = parsed_query_input.target_name[0]
+
+        if parsed_query_input.target == TargetType.STATE:
+            name_target = name_target + "_state"
+
+        df_out = pd.DataFrame()
+
+        #print(f"name target : {name_target} \n, last line master {last_line_master} \n, last line mutation {last_line_mutation}")
+
+        if parsed_query_input.type == QueryType.INCREASE:
+            if last_line_mutation[name_target].iloc[0] > last_line_master[name_target].iloc[0]:
+                print( f"query: {query}, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff"] = last_line_mutation[name_target] - last_line_master[name_target]
+                df_out[name_target + " mutation_diff_perc"] = (last_line_mutation[name_target] - last_line_master[name_target]) / last_line_master[name_target] * 100
+
+            elif last_line_mutation[name_target].iloc[0] == last_line_master[name_target].iloc[0]:
+                print (f"False, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+            else:
+                print (f"False, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff"] = last_line_mutation[name_target] - last_line_master[name_target]
+                df_out[name_target + " mutation_diff_perc"] = (last_line_mutation[name_target] - last_line_master[name_target]) / last_line_master[name_target] * 100
+        elif parsed_query_input.type == QueryType.DECREASE:
+            if last_line_mutation[name_target].iloc[0] < last_line_master[name_target].iloc[0]:
+                print (f"True, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff"] = last_line_master[name_target] - last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff_perc"] = (last_line_master[name_target] - last_line_mutation[name_target]) / last_line_master[name_target] * 100
+            elif last_line_mutation[name_target].iloc[0] == last_line_master[name_target].iloc[0]:
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+                print (f"False, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+            else:
+                print (f"False, mutation value: {last_line_mutation[name_target].iloc[0]}, value master : {last_line_master[name_target].iloc[0]}")
+                df_out["Time"] = last_line_master["Time"]
+                df_out[name_target + " master_sim"] = last_line_master[name_target]
+                df_out[name_target + " mutation"] = last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff"] = last_line_master[name_target] - last_line_mutation[name_target]
+                df_out[name_target + " mutation_diff_perc"] = (last_line_master[name_target] - last_line_mutation[
+                    name_target]) / last_line_master[name_target] * 100
+        else:
+            raise ValueError("Query type is not supported, for comparison over mutation, try increase (Inc) or decrease (Dec)")
+
+        return df_out.reset_index(drop=True, inplace=False)
 
     @staticmethod
-    def evaluate_query(query, results):  # maybe pass the results as an array to compute more than one simulation
-        if query == "" or query is None:
-            raise ValueError("Query is empty")
+    def get_last_common_row(df_master, df_mutation):
+        common_times = pd.Series(list(set(df_mutation["Time"]) & set(df_master["Time"])))
+        if common_times.empty:
+            raise NoCommonTimes("No common times found between the two dataframes")
+        last_common_time = common_times.max()
+
+        row_mutation = df_mutation[df_mutation["Time"] == last_common_time]
+        row_master = df_master[df_master["Time"] == last_common_time]
+
+        return row_mutation, row_master
+
+    @staticmethod
+    def evaluate_query(parsed_query_input: Formula, results):  # maybe pass the results as an array to compute more than one simulation
+
         if results is None:
             raise ValueError("Results are empty")
 
@@ -166,7 +292,7 @@ class MaBoSSEvaluator:
         else: df_nodes = results.get_nodes_probtraj().copy()
 
         MaBoSSEvaluator.simulation_results = [df_nodes,df_states]
-        query_input = query
+        query_input = parsed_query_input
 
         # Decomposition of the query
         parsed_query = Parser.parse_query(query_input)
@@ -194,7 +320,7 @@ class MaBoSSEvaluator:
             case QueryType.TMIN.value:
                 filtered_data = MaBoSSEvaluator.get_df_target_value_time_minmax(df_target, MaBoSSEvaluator.parsed_query.value, QueryType.TMIN)
             case _:
-                raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax") #min and max in wip
+                raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax")
 
         #print(f"DF after value selection : \n {filtered_data}")
 
@@ -516,6 +642,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_the_cols_to_check(df):
+        df.columns = df.columns.str.replace(' ', '')
         #print(df.columns)
         if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
             cols_to_check = [c for c in df.columns if c != "Time"]
