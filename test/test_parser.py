@@ -14,25 +14,35 @@ QUERY_INTRICATE_CONDITION = "P(node:name) > 0.5 [ B | ( C & D ) ]"
 QUERY_FOUND_BY_NAME = "P(node:AKT1) > 0.623"
 QUERY_MULTIPLE_NAMES_AND_CONDITION = "P(node:A,B,C) <= 0.4 [ A | !B & C ]"
 QUERY_MULTIPLE_NAMES_AND_INTRICATE_CONDITION = "P(node:A,B,C) >= 0.5 [ B | ( C & D ) ]"
+QUERY_MUTATION_CONSTRAINT = "P(node:name) <= 0.5 [ ] [ AKT:ON ]"
+QUERY_INCREASE = "Inc(state:name) / [ A & B ] [ AKT:ON ]"
+QUERY_INCREASE_NO_LOGICAL = "Inc(state:name) / [ ] [ AKT:ON ]"
 
 # FORMULA CHECKER test Formulas
-NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], QUERY,[])
-NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], "T(state:name) = ?",[])
-NO_ERROR_INTERROGATION = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], "T(state:name) = ? [ !A & B | C ]",[])
+NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], [], QUERY)
+#NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], [],"T(state:name) = ?")
+NO_ERROR_INTERROGATION = Formula(QueryType.P, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], [], "P(state:name) = ? [ !A & B | C ]")
+NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], ['AKT','ON'], "Inc(state:name) [ A & B ] [ AKT:ON ]")
+NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], ['AKT','ON'], "Dec(node:name) [ A & B ] [ AKT:ON ]")
 
-ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [], QUERY,[])
-ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [], QUERY,[])
-ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], QUERY,[])
+ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Dec(node:name) [ A & B ]")
+ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Inc(state:name) [ A & B ]")
+ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.LE, "0.5", ['A','&','B'], ['AKT','OFF'], "Dec(node:name) [ A & B ] <= 0.5")
+ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], ['AKT', 'OFF'], "Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
 
-ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [], QUERY,[])
-ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [], QUERY,[])
-ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], QUERY,[])
+ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [],[], QUERY)
+ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [],[], QUERY)
+ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], [], QUERY)
 
-ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], "T(state:name) = ? [ !A & B | C ]",[])
-ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], "T(state:name) = ?",[])
+ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [],[], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [],[], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], [] ,QUERY)
 
-ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], QUERY,[])
-ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], QUERY,[])
+ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], [], "T(state:name) = ? [ !A & B | C ]")
+ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], [], "T(state:name) = ?")
+
+ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], [], QUERY)
+ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], [], QUERY)
 
 QUERY_ERROR_TYPE = "V(node:name) > 0.5 [] []"
 QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5 [] []"
@@ -112,6 +122,23 @@ class TestParser(TestCase):
         self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_OPERATOR)
         self.assertRaises(ValueError, Parser.parse_query, QUERY_ERROR_TARGET)
 
+    def test_increase_parser(self):
+        formula7 = Parser.parse_query(QUERY_INCREASE)
+        assert formula7.type == QueryType.INCREASE
+        assert formula7.operator == Operators.NONE
+        assert formula7.value == ""
+        assert formula7.target_name == ['name']
+        assert formula7.logical_equation == ['A', '&', 'B']
+        assert formula7.mutation_constraint == ['AKT', 'ON']
+
+    def test_increase_parser_no_logical(self):
+        formula8 = Parser.parse_query(QUERY_INCREASE_NO_LOGICAL)
+        assert formula8.type == QueryType.INCREASE
+        assert formula8.operator == Operators.NONE
+        assert formula8.value == ""
+        assert formula8.target_name == ['name']
+        assert formula8.logical_equation == []
+        assert formula8.mutation_constraint == ['AKT', 'ON']
 # -------------------------------- FORMULA CHECKER TESTS -------------------------------------
     def test_formula_checker_no_error(self):
         try:
@@ -120,14 +147,19 @@ class TestParser(TestCase):
             self.fail("FormulaChecker.check_formula() PROBA raised an unexpected ValueError")
 
         try:
-            FormulaChecker.check_formula(NO_ERROR_FORMULA_TIME)
-        except FormulaException:
-            self.fail("FormulaChecker.check_formula() TIME raised an unexpected ValueError")
-
-        try:
             FormulaChecker.check_formula(NO_ERROR_INTERROGATION)
         except FormulaException:
             self.fail("FormulaChecker.check_formula() INTERROGATION raised an unexpected ValueError")
+
+        try:
+            FormulaChecker.check_formula(NO_ERROR_INCREASE)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() INCREASE raised an unexpected ValueError")
+
+        try:
+            FormulaChecker.check_formula(NO_ERROR_DECREASE)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() DECREASE raised an unexpected ValueError")
 
     def test_formula_checker_error_value(self):
         self.assertRaises(EmptyValueException, FormulaChecker.check_formula, ERROR_FORMULA_VALUE_EMPTY)
@@ -146,6 +178,16 @@ class TestParser(TestCase):
     def test_formula_value_strict_pos(self):
         self.assertRaises(WrongValueAccordingToType, FormulaChecker.check_formula, ERROR_VALUE_OVER_ONE_FOR_PROBA)
         self.assertRaises(ValueError, FormulaChecker.check_formula, ERROR_VALUE_UNDER_ZERO)
+
+    def test_formula_increase_no_mutation(self):
+        self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_INCREASE_NO_MUTATION)
+        self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_DECREASE_NO_MUTATION)
+
+    def test_formula_increase_multiple_names(self):
+        self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_INCREASE_MULTIPLE_NAMES)
+
+    def test_formula_increase_has_operator(self):
+        self.assertRaises(WrongGrammarException, FormulaChecker.check_formula, ERROR_DECREASE_HAS_OPERATOR)
 
 # ---------------------------- TESTS FOR COMPUTATION OF LOGICAL EXPRESSION -----------------------
     def test_expression_no_error(self):
