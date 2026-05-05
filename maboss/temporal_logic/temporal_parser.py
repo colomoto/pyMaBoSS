@@ -47,10 +47,20 @@ class Parser:
         if mutation_param is None:
             mutation_param_final = []
         else:
-            mutation_param_striped = [n.strip() for n in mutation_param.split(":")]
-            if mutation_param_striped[1] not in ["ON", "OFF"]:
-                raise ValueError(f"Mutation parameter \"{mutation_param_striped[1]}\" is not supported, try ON or OFF")
-            mutation_param_final = [mutation_param_striped[0], mutation_param_striped[1]] #0 being name of the mutation, 1 being the value (OFF or ON)
+            mutation_param_final = []
+            #print(mutation_param)
+            mutations_striped = [n.strip() for n in mutation_param.split(" ")]
+            for m in iter(mutations_striped):
+                if m == '':
+                    mutations_striped.remove(m)
+            print(mutations_striped)
+            if len(mutations_striped) == 0:
+                raise ValueError("Mutation parameter cannot be empty")
+            for mut in mutations_striped:
+                mutation_param_striped = [n.strip() for n in mut.split(":")]
+                if mutation_param_striped[1] not in ["ON", "OFF"]:
+                    raise ValueError(f"Mutation parameter \"{mutation_param_striped[1]}\" is not supported, try ON or OFF")
+                mutation_param_final.append([mutation_param_striped[0], mutation_param_striped[1]]) #0 being name of the mutation, 1 being the value (OFF or ON)
 
         # Conversion of types, with try/catch to handle errors
         try:
