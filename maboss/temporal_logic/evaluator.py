@@ -315,7 +315,7 @@ class MaBoSSEvaluator:
                 return MaBoSSEvaluator.simulation_results[0]
             elif target.value == TargetType.STATE.value:
                 return (MaBoSSEvaluator.simulation_results[1]
-                        .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}))
+                        .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results[1].columns if c != 'Time'}))
             else:
                 raise ValueError("Target is not supported, try node or state")
 
