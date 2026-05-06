@@ -20,8 +20,8 @@ class NoNameException(FormulaException):
         super().__init__("No target name is given, the formula must apply to one or multiple columns. For all columns type : *")
 
 class NoNameValidException(FormulaException):
-    def __init__(self):
-        super().__init__("No valid target name was given, the formula must apply to one or multiple columns")
+    def __init__(self, message="No valid target name was given, the formula must apply to one or multiple columns"):
+        super().__init__(message)
 
 class EmptyValueException(FormulaException):
     def __init__(self):
