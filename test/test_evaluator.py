@@ -13,10 +13,10 @@ QUERY_INTERROGATION = "P(node:AKT1) = ? [ AKT2 | AKT3 ]"
 
 #Generation of a random dataframe
 class FakeResult:
-    def __init__(self, nodes_df, states_df, traj_df):
+    def __init__(self, nodes_df, states_df, fpdf):
         self._nodes_df = nodes_df
         self._states_df = states_df
-        self._traj_df = traj_df
+        self._fpdf = fpdf
 
     def get_nodes_probtraj(self):
         return self._nodes_df
@@ -24,8 +24,8 @@ class FakeResult:
     def get_states_probtraj(self):
         return self._states_df
 
-    def get_probtraj(self):
-        return self._traj_df
+    def get_fptable(self):
+        return self._fpdf
 
 # DO NOT REMOVE ELSE BUGS -----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -547,21 +547,23 @@ class TestEvaluator(TestCase):
     def test_increase_true(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master,df_states_master,None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master,df_states_master,df_fp_master)
 
         df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
         df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mutant,df_states_mutant,None)
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant,df_states_mutant,df_fp_mutant)
 
-        query = "Inc(state:AKT2) / [ ] [ AKT1:ON ]"
+        query = "Inc(state:AKT1--AKT2--AKT3) / [ ] [ AKT1:ON ]"
         res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
 
         expected = pd.DataFrame({
-            'Time' : [2.0],
-            'AKT2_state master_sim': [0.11],
-            'AKT2_state mutation': [0.13],
-            'AKT2_state mutation_diff': [0.02],
-            'AKT2_state mutation_diff_perc': [18.181818],
+            "AKT1--AKT2--AKT3 from master" : [0.1854],
+            "AKT1--AKT2--AKT3 from mutation" : [0.8146],
+            "Difference" : [0.6292],
+            "Percentage" : ["339.37%"],
+            "Increase AKT1--AKT2--AKT3" : [True],
         })
         res.to_csv('test/result_increase_true.csv')
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -570,20 +572,22 @@ class TestEvaluator(TestCase):
     def test_increase_false_decrease(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
 
         df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
         df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, None)
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
 
-        query = "Inc(state:<nil>) / [ ] [ AKT1:OFF ]"
+        query = "Inc(state:AKT2) / [ ] [ AKT1:OFF ]"
         res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
         expected = pd.DataFrame({
-            'Time': [2.0],
-            '<nil>_state master_sim': [0.67],
-            '<nil>_state mutation': [0.4],
-            '<nil>_state mutation_diff': [-0.27],
-            '<nil>_state mutation_diff_perc': [-40.2985074626],
+            'AKT2 from master' : [0.8146],
+            'AKT2 from mutation' : [0.1854],
+            'Difference' : [-0.6292],
+            'Percentage' : ["-77.24%"],
+            'Increase AKT2' : [False],
         })
         res.to_csv('test/result_increase_false.csv')
         assert res.round(5).equals(expected.round(5))
@@ -591,35 +595,40 @@ class TestEvaluator(TestCase):
     def test_increase_false_equality(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
 
-        query = "Inc(state:<nil>) / [ ] [ AKT1:ON ]"
+        query = "Inc(state:AKT2) / [ ] [ AKT1:ON ]"
         #using master results twice just for testing equality logic
         res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),master_results,master_results, query)
         expected = pd.DataFrame({
-            'Time': [2.0],
-            '<nil>_state master_sim': [0.67],
-            '<nil>_state mutation': [0.67],
+            'AKT2 from master' : [0.8146],
+            'AKT2 from mutation' : [0.8146],
+            'Difference' : [0.0],
+            'Percentage' : ["0.00%"],
+            'Increase AKT2' : [False],
         })
         assert res.equals(expected)
 
     def test_decrease_true(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
 
         df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
         df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, None)
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
 
-        query = "Dec(state:<nil>) / [ ] [ AKT1:ON ]"
+        query = "Dec(state:AKT2) / [ ] [ AKT1:ON ]"
         res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
         expected = pd.DataFrame({
-            'Time': [2.0],
-            '<nil>_state master_sim': [0.67],
-            '<nil>_state mutation': [0.4],
-            '<nil>_state mutation_diff': [0.27],
-            '<nil>_state mutation_diff_perc': [40.2985074626],
+            'AKT2 from master' : [0.8146],
+            'AKT2 from mutation' : [0.1854],
+            'Difference' : [-0.6292],
+            'Percentage' : ["-77.24%"],
+            'Decrease AKT2' : [True],
         })
 
         assert res.round(5).equals(expected.round(5))
@@ -627,81 +636,46 @@ class TestEvaluator(TestCase):
     def test_decrease_false_increase(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
 
         df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
         df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, None)
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
 
-        query = "Dec(state:AKT1--AKT3) / [ ] [ AKT1:OFF ]"
+        query = "Dec(state:AKT1--AKT2--AKT3) / [ ] [ AKT1:ON ]"
+        res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results,
+                                                         query)
 
-        res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
         expected = pd.DataFrame({
-            'Time': [2.0],
-            'AKT1--AKT3_state master_sim': [0.11],
-            'AKT1--AKT3_state mutation': [0.15],
-            'AKT1--AKT3_state mutation_diff': [-0.0399999999],
-            'AKT1--AKT3_state mutation_diff_perc': [-36.363636363636363],
+            "AKT1--AKT2--AKT3 from master": [0.1854],
+            "AKT1--AKT2--AKT3 from mutation": [0.8146],
+            "Difference": [0.6292],
+            "Percentage": ["339.37%"],
+            "Decrease AKT1--AKT2--AKT3": [False],
         })
-        res.to_csv('test/result_decrease_false.csv')
+
+        print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.round(5).equals(expected.round(5))
 
     def test_decrease_false_equality(self):
         df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
         df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
 
-        query = "Dec(state:AKT1--AKT3) / [ ] [ AKT1:OFF ]"
+        query = "Dec(state:AKT1--AKT2--AKT3) / [ ] [ AKT1:OFF ]"
         #same results twice to test the equality logic
         res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), master_results, master_results,
                                                          query)
-
         expected = pd.DataFrame({
-            "Time" : [2.0],
-            'AKT1--AKT3_state master_sim': [0.11],
-            'AKT1--AKT3_state mutation': [0.11],
+            "AKT1--AKT2--AKT3 from master": [0.1854],
+            "AKT1--AKT2--AKT3 from mutation": [0.1854],
+            "Difference": [0.0],
+            "Percentage": ["0.00%"],
+            "Decrease AKT1--AKT2--AKT3": [False],
         })
         assert res.equals(expected)
 
-    def test_increase_logical_equation(self):
-        df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
-        df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
 
-        df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
-        df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, None)
-
-        query = "Inc(state:<nil>) / [ ( AKT1 > 0.3 ) ] [ AKT1:OFF ]"
-        res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
-        expected = pd.DataFrame({
-            'Time': [0.0],
-            '<nil>_state master_sim': [0.32],
-            '<nil>_state mutation': [0.05],
-            '<nil>_state mutation_diff': [-0.27],
-            '<nil>_state mutation_diff_perc': [-84.375],
-        })
-        res.to_csv('test/result_increase_logical_equation.csv')
-        assert res.round(5).equals(expected.round(5))
-
-    def test_decrease_logical_equation(self):
-        df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
-        df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
-        master_results = FakeResult(df_nodes_master, df_states_master, None)
-
-        df_nodes_mut = pd.read_csv(get_test_path('test_data_mut.csv'))
-        df_states_mut = pd.read_csv(get_test_path('test_data_states_mut.csv'))
-        mutant_results = FakeResult(df_nodes_mut, df_states_mut, None)
-
-        query = "Dec(state:AKT1--AKT2--AKT3) / [ ( node:AKT2 < 0.4 ) ] [ AKT1:OFF ]"
-
-        res =  MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query),mutant_results,master_results, query)
-        expected = pd.DataFrame({
-            'Time': [1.0],
-            'AKT1--AKT2--AKT3_state master_sim': [0.15],
-            'AKT1--AKT2--AKT3_state mutation': [0.3],
-            'AKT1--AKT2--AKT3_state mutation_diff': [-0.15],
-            'AKT1--AKT2--AKT3_state mutation_diff_perc': [-100.0],
-        })
-        res.to_csv('test/result_decrease_logical_equation.csv')
-        assert res.round(5).equals(expected.round(5))
