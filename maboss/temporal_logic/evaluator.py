@@ -1,4 +1,3 @@
-
 import warnings
 import maboss
 import numpy as np
@@ -167,7 +166,9 @@ class MaBoSSEvaluator:
         if results_mutation is None or results_master is None:
             raise ValueError("Results are empty")
 
-        name_target = parsed_query_input.target_name[0].strip().replace(' ', '') #cleaning the name to avoid spaces
+        name_target = []
+        for name in parsed_query_input.target_name:
+            name_target.append(name.strip().replace(' ',''))
 
         def prepare_df(results):
             MaBoSSEvaluator.simulation_results = results
@@ -191,45 +192,44 @@ class MaBoSSEvaluator:
         df_master = prepare_df(results_master)
 
         data_out = {}
+        for name in name_target:
+            if parsed_query_input.target == TargetType.STATE:
+                try:
+                    #getting the probability of the state in each simulation
+                    proba_master = df_master.loc[df_master["State"] == name, "Proba"].values[0]
+                    proba_mutation = df_mutation.loc[df_mutation["State"] == name, "Proba"].values[0]
+                except (KeyError, IndexError):
+                    raise NoNameValidException(f"State {name} not found")
 
-        if parsed_query_input.target == TargetType.STATE:
-            try:
-                #getting the probability of the state in each simulation
-                proba_master = df_master.loc[df_master["State"] == name_target, "Proba"].values[0]
-                proba_mutation = df_mutation.loc[df_mutation["State"] == name_target, "Proba"].values[0]
-            except (KeyError, IndexError):
-                raise NoNameValidException(f"State {name_target} not found")
 
+                res_diff = proba_mutation - proba_master
+                data_out[f"{name} from master"] = [proba_master]
+                data_out[f"{name} from mutation"] = [proba_mutation]
 
-            res_diff = proba_mutation - proba_master
-            data_out[f"{name_target} from master"] = [proba_master]
-            data_out[f"{name_target} from mutation"] = [proba_mutation]
+            else:
+                if name not in df_master.columns or name not in df_mutation.columns:
+                    raise NoNameValidException(f"Node column '{name}' not found in results")
 
-        else:
-            if name_target not in df_master.columns or name_target not in df_mutation.columns:
-                raise NoNameValidException(f"Node column '{name_target}' not found in results")
+                # keeping the lines where node is 1 and summing all the probas
+                sum_master = df_master.loc[df_master[name].astype(float) == 1, 'Proba'].sum()
+                sum_mutation = df_mutation.loc[df_mutation[name].astype(float) == 1, 'Proba'].sum()
 
-            # keeping the lines where node is 1 and summing all the probas
-            sum_master = df_master.loc[df_master[name_target].astype(float) == 1, 'Proba'].sum()
-            sum_mutation = df_mutation.loc[df_mutation[name_target].astype(float) == 1, 'Proba'].sum()
+                data_out[f"{name} prob_cumul_master"] = [sum_master]
+                data_out[f"{name} prob_cumul_mutant"] = [sum_mutation]
+                res_diff = sum_mutation - sum_master
+                proba_master = sum_master
+                proba_mutation = sum_mutation
 
-            data_out[f"{name_target} prob_cumul_master"] = [sum_master]
-            data_out[f"{name_target} prob_cumul_mutant"] = [sum_mutation]
-            res_diff = sum_mutation - sum_master
-            proba_master = sum_master
-            proba_mutation = sum_mutation
+            percentage = (res_diff / proba_master) if proba_master != 0 else 0.0
+            data_out[f"Difference {name}"] = [res_diff]
+            data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
 
-        percentage = (res_diff / proba_master) if proba_master != 0 else 0.0
-        data_out["Difference"] = [res_diff]
-        data_out["Percentage"] = [f"{percentage:.2%}"]
-
-        if QueryType.INCREASE == parsed_query_input.type:
-            data_out[f"Increase {name_target}"] = proba_mutation > proba_master
-        else:
-            data_out[f"Decrease {name_target}"] = proba_mutation < proba_master
+            if QueryType.INCREASE == parsed_query_input.type:
+                data_out[f"Increase {name}"] = proba_mutation > proba_master
+            else:
+                data_out[f"Decrease {name}"] = proba_mutation < proba_master
 
         return pd.DataFrame(data_out)
-
 
     @staticmethod
     def evaluate_query(parsed_query_input: Formula, results):  # maybe pass the results as an array to compute more than one simulation
@@ -527,7 +527,6 @@ class MaBoSSEvaluator:
                 return df.loc[:last_true_idx].copy()
             return df.loc[first_false_backward[0]: last_true_idx].iloc[1:].copy()
 
-
     @staticmethod
     def remove_double_columns(df):
         #print(isinstance(df,pd.DataFrame))
@@ -592,7 +591,6 @@ class MaBoSSEvaluator:
                 out_df[f"P({target})"] = joint_proba
 
         return out_df
-
 
     @staticmethod
     def get_the_cols_to_check(df):

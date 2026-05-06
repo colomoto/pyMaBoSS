@@ -590,8 +590,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             "AKT1--AKT2--AKT3 from master" : [0.1854],
             "AKT1--AKT2--AKT3 from mutation" : [0.8146],
-            "Difference" : [0.6292],
-            "Percentage" : ["339.37%"],
+            "Difference AKT1--AKT2--AKT3" : [0.6292],
+            "Percentage AKT1--AKT2--AKT3" : ["339.37%"],
             "Increase AKT1--AKT2--AKT3" : [True],
         })
         res.to_csv('test/result_increase_true.csv')
@@ -614,8 +614,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT2 from master' : [0.8146],
             'AKT2 from mutation' : [0.1854],
-            'Difference' : [-0.6292],
-            'Percentage' : ["-77.24%"],
+            'Difference AKT2' : [-0.6292],
+            'Percentage AKT2' : ["-77.24%"],
             'Increase AKT2' : [False],
         })
         res.to_csv('test/result_increase_false.csv')
@@ -633,8 +633,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT2 from master' : [0.8146],
             'AKT2 from mutation' : [0.8146],
-            'Difference' : [0.0],
-            'Percentage' : ["0.00%"],
+            'Difference AKT2' : [0.0],
+            'Percentage AKT2' : ["0.00%"],
             'Increase AKT2' : [False],
         })
         assert res.equals(expected)
@@ -655,8 +655,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT2 from master' : [0.8146],
             'AKT2 from mutation' : [0.1854],
-            'Difference' : [-0.6292],
-            'Percentage' : ["-77.24%"],
+            'Difference AKT2' : [-0.6292],
+            'Percentage AKT2' : ["-77.24%"],
             'Decrease AKT2' : [True],
         })
 
@@ -680,8 +680,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             "AKT1--AKT2--AKT3 from master": [0.1854],
             "AKT1--AKT2--AKT3 from mutation": [0.8146],
-            "Difference": [0.6292],
-            "Percentage": ["339.37%"],
+            "Difference AKT1--AKT2--AKT3": [0.6292],
+            "Percentage AKT1--AKT2--AKT3": ["339.37%"],
             "Decrease AKT1--AKT2--AKT3": [False],
         })
 
@@ -701,8 +701,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             "AKT1--AKT2--AKT3 from master": [0.1854],
             "AKT1--AKT2--AKT3 from mutation": [0.1854],
-            "Difference": [0.0],
-            "Percentage": ["0.00%"],
+            "Difference AKT1--AKT2--AKT3": [0.0],
+            "Percentage AKT1--AKT2--AKT3": ["0.00%"],
             "Decrease AKT1--AKT2--AKT3": [False],
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -726,8 +726,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT1 prob_cumul_master' : [0.1854],
             'AKT1 prob_cumul_mutant' : [0.8146],
-            'Difference' : [0.6292],
-            'Percentage' : ["339.37%"],
+            'Difference AKT1' : [0.6292],
+            'Percentage AKT1' : ["339.37%"],
             'Increase AKT1' : [True],
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -751,8 +751,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT1 prob_cumul_master': [0.1854],
             'AKT1 prob_cumul_mutant': [0.8146],
-            'Difference': [0.6292],
-            'Percentage': ["339.37%"],
+            'Difference AKT1' : [0.6292],
+            'Percentage AKT1': ["339.37%"],
             'Decrease AKT1' : [False]
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -776,8 +776,8 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'AKT2 prob_cumul_master': [1.0],
             'AKT2 prob_cumul_mutant': [1.0],
-            'Difference': [0.0],
-            'Percentage': ["0.00%"],
+            'Difference AKT2': [0.0],
+            'Percentage AKT2': ["0.00%"],
             'Increase AKT2' : [False]
 
         })
