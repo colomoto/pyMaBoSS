@@ -163,96 +163,70 @@ class MaBoSSEvaluator:
         return list_of_df
 
     @staticmethod
-    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master,query):
-        if results_mutation is None:
+    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, query):
+        if results_mutation is None or results_master is None:
             raise ValueError("Results are empty")
-        if results_master is None:
-            raise ValueError("Results Master simulation are empty")
 
-        # get the column from the results_mutation
-        MaBoSSEvaluator.simulation_results = results_mutation
-        MaBoSSEvaluator.parsed_query = parsed_query_input
-        df_mutation = MaBoSSEvaluator.get_df_target(parsed_query_input.target)
-        if df_mutation.empty:
-            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
-        df_mutation = MaBoSSEvaluator.get_df_target_name(df_mutation, parsed_query_input.target_name)
-        if parsed_query_input.logical_equation:
-            log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query_input.logical_equation, MaBoSSEvaluator.simulation_results)
-            df_mutation = ComputeLogicalExpression.merge_or(df_mutation, log_df, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),
-                                                               MaBoSSEvaluator.simulation_results.get_states_probtraj()
-                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}),True)
-        df_mutation.dropna(inplace=True)
-        print(f"DF mutation : \n {df_mutation}")
-        # now we do the same with the master results
-        MaBoSSEvaluator.simulation_results = results_master
-        df_master = MaBoSSEvaluator.get_df_target(parsed_query_input.target)
-        if df_master.empty:
-            raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
-        df_master = MaBoSSEvaluator.get_df_target_name(df_master, parsed_query_input.target_name)
-        if parsed_query_input.logical_equation:
-            log_df = ComputeLogicalExpression.compute_logical_expression(parsed_query_input.logical_equation, MaBoSSEvaluator.simulation_results)
-            df_master = ComputeLogicalExpression.merge_or(df_master, log_df, MaBoSSEvaluator.simulation_results.get_nodes_probtraj(),MaBoSSEvaluator.simulation_results.get_states_probtraj()
-                                                               .rename(columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results.get_states_probtraj().columns if c != 'Time'}),True)
-        df_master.dropna(inplace=True)
-        print(f"DF master : \n {df_master}")
-        #then we compare the last line of each dataframe and establish if it is true or not depending on the type of the query
-        last_line_mutation = df_mutation.tail(1)
-        last_line_master = df_master.tail(1)
-
-
-        #the df have supposedly two columns each, Time and the target.
-        # First we check that the last line of each dataframe is the same time code.
-
-        if last_line_mutation["Time"].iloc[0] != last_line_master["Time"].iloc[0]:
-            #if not we look for the last line where they are in common
-            last_line_mutation, last_line_master = MaBoSSEvaluator.get_last_common_row(df_master,df_mutation)
-
-        name_target = parsed_query_input.target_name[0]
+        name_target = parsed_query_input.target_name[0].strip().replace(' ', '') #cleaning the name to avoid spaces
 
         def prepare_df(results):
             MaBoSSEvaluator.simulation_results = results
             MaBoSSEvaluator.parsed_query = parsed_query_input
+
             df = MaBoSSEvaluator.get_df_target(parsed_query_input.target, True)
 
             if df.empty:
                 raise DataFrameIsEmpty(f"The dataframe is empty for target \"{parsed_query_input.target}\"")
 
             df = df.dropna().copy()
+            #removing the spaces on the values
             df.columns = df.columns.str.replace(' ', '')
+
             if 'State' in df.columns:
                 df['State'] = df['State'].astype(str).str.replace(' ', '')
             return df
 
+        #the fixpoints table for each of the results
         df_mutation = prepare_df(results_mutation)
         df_master = prepare_df(results_master)
 
-        try:
-            proba_master = df_master.loc[df_master["State"] == name_target, "Proba"].values[0]
-        except (KeyError, IndexError):
-            raise NoNameValidException()
+        data_out = {}
 
-        try:
-            proba_mutation = df_mutation.loc[df_mutation["State"] == name_target, "Proba"].values[0]
-        except (KeyError, IndexError):
-            raise NoNameValidException()
+        if parsed_query_input.target == TargetType.STATE:
+            try:
+                #getting the probability of the state in each simulation
+                proba_master = df_master.loc[df_master["State"] == name_target, "Proba"].values[0]
+                proba_mutation = df_mutation.loc[df_mutation["State"] == name_target, "Proba"].values[0]
+            except (KeyError, IndexError):
+                raise NoNameValidException(f"State {name_target} not found")
 
-        res_diff = proba_mutation - proba_master
 
-        percentage = (res_diff / proba_master) if proba_master != 0 else float('inf')
+            res_diff = proba_mutation - proba_master
+            data_out[f"{name_target} from master"] = [proba_master]
+            data_out[f"{name_target} from mutation"] = [proba_mutation]
 
-        data_out = {
-            f"{name_target} from master": [proba_master],
-            f"{name_target} from mutation": [proba_mutation],
-            "Difference": [res_diff],
-            "Percentage": [f"{percentage:.2%}"]
-        }
-
-        if parsed_query_input.type == QueryType.INCREASE:
-            data_out[f"Increase {name_target}"] = [proba_mutation > proba_master]
-        elif parsed_query_input.type == QueryType.DECREASE:
-            data_out[f"Decrease {name_target}"] = [proba_mutation < proba_master]
         else:
-            raise ValueError("Query type not supported. Use Increase or Decrease.")
+            if name_target not in df_master.columns or name_target not in df_mutation.columns:
+                raise NoNameValidException(f"Node column '{name_target}' not found in results")
+
+            # keeping the lines where node is 1 and summing all the probas
+            sum_master = df_master.loc[df_master[name_target].astype(float) == 1, 'Proba'].sum()
+            sum_mutation = df_mutation.loc[df_mutation[name_target].astype(float) == 1, 'Proba'].sum()
+
+            data_out[f"{name_target} prob_cumul_master"] = [sum_master]
+            data_out[f"{name_target} prob_cumul_mutant"] = [sum_mutation]
+            res_diff = sum_mutation - sum_master
+            proba_master = sum_master
+            proba_mutation = sum_mutation
+
+        percentage = (res_diff / proba_master) if proba_master != 0 else 0.0
+        data_out["Difference"] = [res_diff]
+        data_out["Percentage"] = [f"{percentage:.2%}"]
+
+        if QueryType.INCREASE == parsed_query_input.type:
+            data_out[f"Increase {name_target}"] = proba_mutation > proba_master
+        else:
+            data_out[f"Decrease {name_target}"] = proba_mutation < proba_master
 
         return pd.DataFrame(data_out)
 
@@ -334,7 +308,7 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target(target, fp: bool=False):
-        if fp and target.value == TargetType.STATE.value:
+        if fp:
             return MaBoSSEvaluator.simulation_results.get_fptable()
         else:
             if target.value == TargetType.NODE.value:

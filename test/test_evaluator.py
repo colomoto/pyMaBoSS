@@ -676,6 +676,81 @@ class TestEvaluator(TestCase):
             "Percentage": ["0.00%"],
             "Decrease AKT1--AKT2--AKT3": [False],
         })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
 
 
+    def test_increase_node_true(self):
+        df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
+        df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
+
+        df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
+        df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
+
+        query = "Inc(node:AKT1) / [ ] [ AKT1:ON ]"
+        res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results, query)
+
+        expected = pd.DataFrame({
+            'AKT1 prob_cumul_master' : [0.1854],
+            'AKT1 prob_cumul_mutant' : [0.8146],
+            'Difference' : [0.6292],
+            'Percentage' : ["339.37%"],
+            'Increase AKT1' : [True],
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.round(5).equals(expected.round(5))
+
+    def test_node_decrease_falsen(self):
+        df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
+        df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
+
+        df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
+        df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
+
+        query = "Dec(node:AKT1) / [ ] [ AKT1:ON ]"
+        res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results,
+                                                         query)
+
+        expected = pd.DataFrame({
+            'AKT1 prob_cumul_master': [0.1854],
+            'AKT1 prob_cumul_mutant': [0.8146],
+            'Difference': [0.6292],
+            'Percentage': ["339.37%"],
+            'Decrease AKT1' : [False]
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.round(5).equals(expected.round(5))
+
+    def test_node_check_sum(self):
+        df_nodes_master = pd.read_csv(get_test_path('test_data.csv'))
+        df_states_master = pd.read_csv(get_test_path('test_data_states.csv'))
+        df_fp_master = pd.read_csv(get_test_path('test_data_fp_master.csv'))
+        master_results = FakeResult(df_nodes_master, df_states_master, df_fp_master)
+
+        df_nodes_mutant = pd.read_csv(get_test_path('test_data_mut.csv'))
+        df_states_mutant = pd.read_csv(get_test_path('test_data_states_mut.csv'))
+        df_fp_mutant = pd.read_csv(get_test_path('test_data_fp_mut.csv'))
+        mutant_results = FakeResult(df_nodes_mutant, df_states_mutant, df_fp_mutant)
+
+        query = "Inc(node:AKT2) / [ ] [ AKT1:ON ]"
+        res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results,
+                                                         query)
+
+        expected = pd.DataFrame({
+            'AKT2 prob_cumul_master': [1.0],
+            'AKT2 prob_cumul_mutant': [1.0],
+            'Difference': [0.0],
+            'Percentage': ["0.00%"],
+            'Increase AKT2' : [False]
+
+        })
+        print(f"Results : \n{res}\n Expected : \n{expected}")
+        assert res.round(5).equals(expected.round(5))
