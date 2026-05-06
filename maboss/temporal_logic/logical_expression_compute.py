@@ -22,7 +22,7 @@ class ComputeLogicalExpression:
         Operators.LE: operator.le,  # <=
         Operators.GT: operator.gt,  # >
         Operators.GE: operator.ge,  # >=
-        Operators.EQ: operator.eq,  # == (ou = dans ton Enum)
+        Operators.EQ: operator.eq,  # == (or =)
         Operators.NE: operator.ne,  # !=
     }
 
