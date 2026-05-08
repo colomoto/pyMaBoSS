@@ -18,32 +18,33 @@ QUERY_MUTATION_CONSTRAINT = "P(node:name) <= 0.5 [ ] [ AKT:ON ]"
 QUERY_INCREASE = "Inc(state:name) / [ A & B ] [ AKT:ON ]"
 QUERY_INCREASE_NO_LOGICAL = "Inc(state:name) / [ ] [ AKT:ON ]"
 QUERY_DECREASE_MULTIPLE_MUTATIONS = "Dec(state:name) / [ A & B ] [ AKT:ON AKT2:OFF BRAF:ON ]"
+QUERY_TEST = "Inc(node:Proliferation_b1,Proliferation_b2) / [ ] [ PI3K:ON BRAF:ON ]"
 
 # FORMULA CHECKER test Formulas
-NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], [], QUERY)
+NO_ERROR_FORMULA_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1", [], [], [], QUERY)
 #NO_ERROR_FORMULA_TIME = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", ['A','&','B'], [],"T(state:name) = ?")
-NO_ERROR_INTERROGATION = Formula(QueryType.P, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], [], "P(state:name) = ? [ !A & B | C ]")
-NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], "Inc(state:name) [ A & B ] [ AKT:ON ]")
-NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], "Dec(node:name) [ A & B ] [ AKT:ON ]")
+NO_ERROR_INTERROGATION = Formula(QueryType.P, TargetType.STATE , ["name"], Operators.EQ, "?", ['!A','&','B','|','C'], [], [], "P(state:name) = ? [ !A & B | C ]")
+NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", [], [['AKT','ON']], [], "Inc(state:name) [ ] [ AKT:ON ]")
+NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.FIXPOINT, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], [], "Dec(fp:name) [ A & B ] [ AKT:ON ]")
 
-ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Dec(node:name) [ A & B ]")
-ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [], "Inc(state:name) [ A & B ]")
-ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.LE, "0.5", ['A','&','B'], [['AKT','OFF']], "Dec(node:name) [ A & B ] <= 0.5")
-ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], [['AKT', 'OFF']], "Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
+ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Dec(node:name) [ A & B ]")
+ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Inc(state:name) [ A & B ]")
+ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.FIXPOINT, ["name"], Operators.LE, "0.5", ['A','&','B'], [['AKT','OFF']], [], "Dec(fp:name) [ A & B ] <= 0.5")
+ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], [['AKT', 'OFF']], [],"Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
 
-ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [],[], QUERY)
-ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [],[], QUERY)
-ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], [], QUERY)
+ERROR_FORMULA_VALUE_EMPTY = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "", [],[],[], QUERY)
+ERROR_FORMULA_VALUE_WRONG_SYMBOL = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "!", [],[], [], QUERY)
+ERROR_FORMULA_VALUE_NOT_A_NUMBER = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "a", [], [], [],QUERY)
 
-ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [],[], QUERY)
-ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [],[], QUERY)
-ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], [] ,QUERY)
+ERROR_FORMULA_TARGET_EMPTY_TAB = Formula(QueryType.P, TargetType.NODE , [], Operators.LE, "0.567", [],[], [], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_NAME = Formula(QueryType.P, TargetType.NODE , [""], Operators.LE, "0.567", [],[], [], QUERY)
+ERROR_FORMULA_TARGET_EMPTY_MULTIPLE_NAMES = Formula(QueryType.P, TargetType.NODE , ["name","","name2"], Operators.LE, "0.567", [], [] , [], QUERY)
 
-ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], [], "T(state:name) = ? [ !A & B | C ]")
-ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], [], "T(state:name) = ?")
+ERROR_FORMULA_INTERROGATION_GRAMMAR =  Formula(QueryType.T, TargetType.STATE , ["name"], Operators.LE, "?", [], [], [], "T(state:name) = ? [ !A & B | C ]")
+ERROR_FORMULA_INTERROGATION_GRAMMAR_NO_CONDITIONS = Formula(QueryType.T, TargetType.STATE , ["name"], Operators.EQ, "?", [], [], [], "T(state:name) = ?")
 
-ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], [], QUERY)
-ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], [], QUERY)
+ERROR_VALUE_OVER_ONE_FOR_PROBA = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "1.1", [], [], [], QUERY)
+ERROR_VALUE_UNDER_ZERO = Formula(QueryType.P, TargetType.NODE , ["name"], Operators.LE, "-0.1", [], [], [], QUERY)
 
 QUERY_ERROR_TYPE = "V(node:name) > 0.5 [] []"
 QUERY_ERROR_OPERATOR = "P(node:name) !< 0.5 [] []"
@@ -193,9 +194,6 @@ class TestParser(TestCase):
         self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_INCREASE_NO_MUTATION)
         self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_DECREASE_NO_MUTATION)
 
-    def test_formula_increase_multiple_names(self):
-        self.assertRaises(ErrorInIncreaseDecreaseEvaluation, FormulaChecker.check_formula, ERROR_INCREASE_MULTIPLE_NAMES)
-
     def test_formula_increase_has_operator(self):
         self.assertRaises(WrongGrammarException, FormulaChecker.check_formula, ERROR_DECREASE_HAS_OPERATOR)
 
@@ -224,3 +222,11 @@ class TestParser(TestCase):
         assert Parser.counting_members_logical_query(['B', '|', ['C', '&', 'D']]) == 5
         assert Parser.counting_members_logical_query([['AKT2','>=','0.2'],'|','AKT3']) == 5
 
+    def test_sandbox(self):
+        formula = Parser.parse_query(QUERY_TEST)
+        try:
+            FormulaChecker.check_formula(formula)
+            print("Formula is correct : " , formula)
+        except FormulaException as e:
+            print(e.message)
+            self.fail("FormulaChecker.check_formula() raised an unexpected ValueError")

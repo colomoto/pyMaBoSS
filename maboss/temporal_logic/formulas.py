@@ -22,6 +22,7 @@ class QueryType(Enum):
 class TargetType(Enum):
     NODE = "node"
     STATE = "state"
+    FIXPOINT = "fp"
 
 class Operators(Enum):
     NONE = "/"
@@ -45,12 +46,43 @@ class Formula:
     operator: Operators
     value: str
     logical_equation: list # the list of the component of the logical equation
-    mutation_constraint: list
+    mutation_constraint: list # the list of the component of the mutation constraint
+    initial_state_constraint: list # the list of the component of the initial state constraint
     expression: str
 
 class FormulaChecker:
+
+    @staticmethod
+    def check_logical_equation_fixpoint(logical_equation: list[str]):
+        for member in logical_equation:
+            if isinstance(member, list):
+                FormulaChecker.check_logical_equation_fixpoint(member)
+            else:
+                try:
+                    float(member)
+                    raise FloatValueInFixpointLogicalEquation(f"Fixpoint target cannot contain float value in the logical equation : {member}")
+                except ValueError:
+                    pass
+
+                if str(member).__contains__("--") or str(member).__contains__("state:"):
+                    raise StateNameInFixpointLogicalEquation(f"Fixpoint logical equation cannot contain state name : {member}. Try 'node:name' or 'name'.")
+
+
     @staticmethod
     def check_formula(formula: Formula):
+        # temporary-----------------------------------------------------------------------------------------------------
+        if formula.type == QueryType.MUTATION: raise ValueError("Mutation is not handle at the moment.")
+        if formula.type != QueryType.INCREASE and formula.type != QueryType.DECREASE and formula.target == TargetType.FIXPOINT:
+            raise FormulaException(f"The target cannot be a fixpoint for this evaluation : {formula.type}. Only for DECREASE and INCREASE.")
+        # --------------------------------------------------------------------------------------------------------------
+
+        if formula.target != TargetType.FIXPOINT and (formula.type == QueryType.DECREASE or formula.type == QueryType.INCREASE): #node or state and Inc or Dec
+            if formula.logical_equation:
+                try:
+                    FormulaChecker.check_logical_equation_fixpoint(formula.logical_equation)
+                except (FloatValueInFixpointLogicalEquation, StateNameInFixpointLogicalEquation) as e:
+                    print(f"An error has occurred in the logical equation, please check it. Result : {formula.logical_equation}")
+                    raise e
 
         if formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE:
             if formula.mutation_constraint is None or formula.mutation_constraint == []:
@@ -71,8 +103,6 @@ class FormulaChecker:
                 raise ErrorInDependencieEvaluation("A dependencie evaluation must have 2 names exactly.")
             if formula.type == QueryType.MUTATION :
                 raise ErrorInMutationEvaluation("A mutation evaluation can only have \'?\' has name.")
-            if formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE:
-                raise ErrorInIncreaseDecreaseEvaluation("An increase/decrease evaluation must have 1 name exactly.")
             for name in formula.target_name:
                 if name == "":
                     raise EmptyNameException()
@@ -98,7 +128,7 @@ class FormulaChecker:
                                                        formula.type == QueryType.DECREASE or
                                                        formula.type == QueryType.MUTATION or
                                                        formula.type == QueryType.DEPENDENCIE):
-            raise WrongGrammarException("Operator is required except for Inc, Dec, M and D that require \'/\' and no value")
+            raise WrongGrammarException("Operator is required except for Inc, Dec, M and D that require \'/\' and no value or an integer for sensibility comparison.")
         if formula.operator != Operators.NONE and (formula.type == QueryType.INCREASE or
                                                        formula.type == QueryType.DECREASE or
                                                        formula.type == QueryType.MUTATION or
@@ -121,10 +151,11 @@ class FormulaChecker:
             except Exception:
                 raise WrongSymbolForValue("Wrong symbol for value, it must be a number or \"?\"")
 
-            if float(formula.value) > 1 :
-                raise WrongValueAccordingToType("Value is greater than 1, the formula must be a probability : between 0 and 1")
-            if float(formula.value) < 0:
-                raise ValueError("Value can not be negative")
+            if formula.type != QueryType.INCREASE and formula.type != QueryType.DECREASE:
+                if float(formula.value) > 1 :
+                    raise WrongValueAccordingToType("Value is greater than 1, the formula must be a probability : between 0 and 1")
+                if float(formula.value) < 0:
+                    raise ValueError("Value can not be negative")
 
             if formula.operator.value == Operators.EQ.value:
                 warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")

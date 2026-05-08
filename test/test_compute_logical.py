@@ -379,3 +379,73 @@ class TestLogicalCompute(TestCase):
         })
         print(f"Result : \n{res} \n Expected : \n{expected}")
         assert res.equals(expected)
+
+    def test_logical_check_fixpoint(self):
+        log_exp = ['AKT','>','3']
+        self.assertRaises(ErrorInLogicalExpression, ComputeLogicalExpression.check_logical_exp_fixpoint, log_exp)
+
+        try:
+            log_exp = ['AKT', '|' , 'PMD']
+            ComputeLogicalExpression.check_logical_exp_fixpoint(log_exp)
+        except ErrorInLogicalExpression:
+            self.fail("Erreur lors de l'analyse de l'expression logique " + str(log_exp))
+
+    def test_merge_or_on_lines(self):
+        df1 = pd.DataFrame({
+            "Col 1": ["Name 1", "Name 2"],
+            "Col 2": [123, 456],
+            "Col 3": [False, True]
+        })
+
+        df2 = pd.DataFrame({
+            "Col 1": ["Name 1", "Name 3"],
+            "Col 2": [123, 789],
+            "Col 3": [False, False]
+        })
+
+        df_out = ComputeLogicalExpression.merge_or_on_lines(df1, df2)
+        expected = pd.DataFrame({
+            "Col 1" : ["Name 1", "Name 2", "Name 3"],
+            "Col 2" : [123,456,789],
+            "Col 3" : [False,True,False]
+        })
+        print(f"\nResult : \n{df_out} \n Expected : \n{expected}")
+        assert df_out.equals(expected)
+
+    def test_merge_and_on_lines(self):
+        df1 = pd.DataFrame({
+            "Col 1" : ["Name 1", "Name 2"],
+            "Col 2" : [123,456],
+            "Col 3" : [False , True]
+        })
+
+        df2 = pd.DataFrame({
+            "Col 1": ["Name 1", "Name 3"],
+            "Col 2" : [123,789],
+            "Col 3" : [False , False]
+        })
+
+        res = ComputeLogicalExpression.merge_and_on_lines(df1, df2)
+        expected = pd.DataFrame({
+            "Col 1" : ["Name 1"],
+            "Col 2" : [123],
+            "Col 3" : [False]
+        })
+        print(f"\nResult : \n{res} \n Expected : \n{expected}")
+        assert res.equals(expected)
+
+    def test_check_name_fp(self):
+        fp_df = pd.DataFrame({
+            "State": ["Name 1", "Name 2", "Name 3"],
+            "Col 2": [123, 456, 789],
+            "Col 3": [False, True, False]
+        })
+        try:
+            ComputeLogicalExpression.check_name_in_fp("Name 1", fp_df)
+            ComputeLogicalExpression.check_name_in_fp("Name 3", fp_df)
+            ComputeLogicalExpression.check_name_in_fp("!Name 2", fp_df)
+        except ValueError:
+            self.fail("An error occurred while checking the name in the fixed point")
+
+        self.assertRaises(ValueError, ComputeLogicalExpression.check_name_in_fp, "Name 4", fp_df)
+
