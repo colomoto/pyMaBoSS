@@ -122,6 +122,30 @@ class TestExtractor(unittest.TestCase):
         print(f"Res : \n {res} \n Expected : \n {expected}")
         assert expected.round(5).equals(res.round(5))
 
+    def test_extractor_lines(self):
+        df = pd.DataFrame({
+            "AKT1" : [1,0,1],
+            "AKT2" : [0, 1, 1],
+            "AKT3" : [1, 0, 1]
+        })
+        res = Extractor.extract_lines(df, False, "AKT3")
+        expected = pd.DataFrame({
+            "AKT1" : [1,1],
+            "AKT2" : [0,1],
+            "AKT3" : [1,1]
+        })
+        print(f"Res : \n {res} \n Expected : \n {expected}")
+        assert res.equals(expected)
+
+        res2 = Extractor.extract_lines(df, True, "AKT3")
+        expected2 = pd.DataFrame({
+            "AKT1" : [0],
+            "AKT2" : [1],
+            "AKT3" : [0]
+        })
+        print(f"Res : \n {res2} \n Expected : \n {expected2}")
+        assert res2.equals(expected2)
+
 
 if __name__ == '__main__':
     unittest.main()

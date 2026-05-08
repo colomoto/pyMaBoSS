@@ -71,3 +71,10 @@ class Extractor(object):
         res_df = df[df['Time'].isin(final_df['Time'])].reset_index(drop=True).copy()
         #print("Exiting extract_column_numerical")
         return res_df
+
+    @staticmethod
+    def extract_lines(fp_df, exclusion: bool, name: str):
+        if exclusion:
+            return fp_df[fp_df[name] == 0].reset_index(drop=True)
+        else:
+            return fp_df[fp_df[name] == 1].reset_index(drop=True)

@@ -71,3 +71,11 @@ class NoCommonTimes(FormulaException):
     def __init__(self, message):
         super().__init__(message)
 
+class FloatValueInFixpointLogicalEquation(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
+class StateNameInFixpointLogicalEquation(FormulaException):
+    def __init__(self, message):
+        super().__init__(message)
+
