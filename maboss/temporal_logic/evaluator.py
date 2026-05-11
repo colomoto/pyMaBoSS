@@ -94,13 +94,37 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def mutation_to_string(mutation_constraint: list[str]):
+        """
+        Simple method that returns the mutation as string. Basically concatenates the two members.
+        :param mutation_constraint: a list with two members, the first being the node's name, the second ON or OFF
+        :return: a string of the mutation
+        """
         if not mutation_constraint:
             return ""
         else:
             return f"{mutation_constraint[0]} {mutation_constraint[1]}"
 
     @staticmethod
-    def querying(query, sim_cfg, sim_bnd, initial_state: list[dict]=None):
+    def querying(queries: list[str], sim_cfg, sim_bnd, initial_state: list[dict]=None):
+        """
+        Interaction method between the user and the program.
+        First it runs all the necessary simulations, a dictionary avoids two identical simulations to be run twice. It always
+        run the master simulation (aka, the simulation without any mutation)
+        Then for all the queries that were passed in the parameter query, the method parses it, checks the grammar, checks
+        for mutation, runs a simulation if needed and sorts the validate query in the right places to link the simulation
+        results to it.
+        For all the queries that were'nt containing any grammar mistakes, gets the query, the simulation results (master
+        and mutation if needed) and passes them all to the evaluation methods depending on the query type (P, T ...)
+        Finally, the results of the evaluation are all appended in a list that is returned at the end of the function.
+
+        :param queries: a list of string each being an assertion or query to be evaluated, contains a lot of information regarding
+        the simulation to which it is linked (see formula)
+        :param sim_cfg: the config file of the simulation
+        :param sim_bnd: the binarie file of the simulation
+        :param initial_state: optionnal, if you want to set some nodes in certain states at the beginning of the simulation.
+        This state will be used for all the simulations relative to the list of queries passed
+        :return: a list of dataframes that are the results of the evaluations
+        """
         list_of_df = [] #results of computation and evaluation
         checked_query = [] #queries that are checked for errors
 
@@ -117,7 +141,7 @@ class MaBoSSEvaluator:
         #sim_results['master_simulation'].plot_piechart()
 
         # Reading of the queries and launching the simulation for a mutation if it was not done before
-        for q in query:
+        for q in queries:
             parsed_query = Parser.parse_query(q)
             try:
                 FormulaChecker.check_formula(parsed_query)
@@ -184,7 +208,22 @@ class MaBoSSEvaluator:
         return list_of_df
 
     @staticmethod
-    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, digits: int=4):
+    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, digits: int=4, evaluate_on_percentage=0):
+        """
+        Method of evaluation specifically for INCREASE and DECREASE query types. An utilitary method in into this one
+        just used to get the dataframe that is needed and apply the logical expression to it.
+        Different logics are applied whether the target type is a node/state or a fixpoint. In fixpoint the name that the
+        loop in currently on, is automatically searched and if a single node state is detected, both outcome are processed.
+        (see test_last_state_inc_dec_with_single_node_state in test_evaluator.py).
+
+        :param evaluate_on_percentage: wip, when not 0, the % difference is took into account to validate or not the
+        comparison
+        :param parsed_query_input: the query currently treated in a parsed form
+        :param results_mutation: the result of the mutation that was applied to the model
+        :param results_master: the results of the master simulation
+        :param digits: sensibility of the digits after dot for the probability numbers.
+        :return: a dataframe of the evaluated data
+        """
         if results_mutation is None or results_master is None:
             raise ValueError("Results are empty")
 
@@ -254,7 +293,6 @@ class MaBoSSEvaluator:
 
                 if not found_node and not found_state: raise NoNameValidException(f"Name : {name} has not been found "
                                                                                   f"in results neither has a state nor node.")
-
                 if found_state:
                     #print(f"Proba master : {proba_master}\n Proba mutation : {proba_mutation}\n")
                     res_diff_state = proba_mutation - proba_master
@@ -331,7 +369,21 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def evaluate_query(parsed_query_input: Formula, results):  # maybe pass the results as an array to compute more than one simulation
-
+        """
+        This method might need reformating for more cleaniness (11th may of 2026)
+        Method to evaluate query of any other query type aside of Dec and Inc.
+        It first clean the columns' name, then things are going to be treated :
+        - first the right dataframe is get (nodes for node target, states for state target)
+        - then the comparisons based on values
+        - if the query requires it, a filter on the name is applied (P or T)
+        - if a logical equation was passed, it is applied (it removes mainly time codes)
+        - in the end, if the value was not a float but the "?", the result is computed
+        Then the results are returned.
+        :param parsed_query_input: the query that is evaluated, already parsed
+        :param results: the results of the simulation to evaluate the query on. The program does not care if it is
+        a mutation or a master simulation.
+        :return: a dataframe of the evaluated data
+        """
         if results is None:
             raise ValueError("Results are empty")
 
@@ -407,8 +459,14 @@ class MaBoSSEvaluator:
         return filtered_data.dropna(inplace=False, ignore_index=True)
 
     @staticmethod
-    def get_df_target(target, fp: bool=False, get_last: bool=False):
-
+    def get_df_target(target: TargetType, fp: bool=False, get_last: bool=False):
+        """
+        A method to return the right type of dataframe depending on the query
+        :param target: the target type passed in the query (node, state or fp)
+        :param fp: if the dataframe required is the fixpoint one (bool)
+        :param get_last: if the dataframe required is the "last_nodes/states_probtraj" (bool)
+        :return: the dataframe that was computed by the simulation
+        """
         if fp and not get_last:
             return MaBoSSEvaluator.simulation_results_raw.get_fptable()
         elif get_last and not fp:
@@ -430,6 +488,12 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target_name(df, target_name):
+        """
+        A method to return a dataframe that only has as columns the names that were requested.
+        :param df: the dataframe to truncate
+        :param target_name: the names to keep
+        :return: a dataframe filtered
+        """
         if df is None :
             raise ValueError(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\"")
 
@@ -438,15 +502,12 @@ class MaBoSSEvaluator:
         except NoNameValidException:
             raise NoNameValidException()
 
-
         new_df = pd.DataFrame()
 
         if target_name[0] != '*':
             new_df["Time"] = df["Time"]
-
             for name in cols_to_check:
                 new_df[name] = df[name]
-
         else:
             new_df = df.copy()
 
@@ -454,6 +515,13 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target_value_proba(df, value, query_type=QueryType.P):
+        """
+        Method that is called when the query requests a comparison on the probability of a node or a state to be active
+        :param df: the dataframe to look on
+        :param value: the value to compare to
+        :param query_type: the type of query (P, T...)
+        :return: a filtered dataframe
+        """
         op = MaBoSSEvaluator.parsed_query.operator
         #print(f"target_name : {MaBoSSEvaluator.parsed_query.target_name}")
 
@@ -541,6 +609,12 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target_value_time(df, value):
+        """
+        A method to create a dataframe containing the interval(s) of time that meet the value's requirement
+        :param df: the df to compute
+        :param value: the value to compare
+        :return: a dataframe of time sequences
+        """
         op = MaBoSSEvaluator.parsed_query.operator
         #todo here do the check "?"
         value = float(value)
@@ -582,6 +656,14 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_df_target_value_time_minmax(df, value, query_type=QueryType.TMIN):
+        """
+        A method to do a dataframe that contains the first (TMIN) or the last (TMAX) moments where the value meets the
+        requirements
+        :param df: the dataframe to compute
+        :param value: the value to compare to
+        :param query_type: the type of query (TMIN or TMAX)
+        :return: a dataframe
+        """
         #todo here the "?" check
         value = float(value)
         query_type = query_type.value
@@ -638,6 +720,12 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def remove_double_columns(df):
+        """
+        Does exactly what it is said, handles the possibility of a node column and a state column having the same name
+        (single node state) so it keeps both columns with _state at the end of the state one.
+        :param df: the dataframe to clean
+        :return: a cleaned dataframe
+        """
         #print(isinstance(df,pd.DataFrame))
         df = df.rename(columns=lambda x: "".join(x.split()))
         current_cols = list(df.columns)
@@ -669,6 +757,14 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def compute_interrogation_proba(filtered_data, parsed_query, df_nodes, df_states):
+        """
+        Compute the probability when the query asks to compute it. (value = "?"). It computes a joint probability
+        :param filtered_data: the data that will be used to compute
+        :param parsed_query: the parsed query to have all the informations
+        :param df_nodes: the dataframe containing the nodes_probtraj
+        :param df_states: the dataframe containing the states_probtraj
+        :return: a dataframe containing the probability of the query
+        """
         filtered_data.reset_index(inplace=True, drop=True)
         valid_times = filtered_data["Time"].values
         out_df = pd.DataFrame({"Time" : valid_times})
@@ -703,6 +799,11 @@ class MaBoSSEvaluator:
 
     @staticmethod
     def get_the_cols_to_check(df):
+        """
+        Utilitary method to get all the columns where a comparison is needed. Whether with a name of a value
+        :param df: the dataframe where the columns are
+        :return: a list of names
+        """
         df.columns = df.columns.str.replace(' ', '')
         #print(df.columns)
         if MaBoSSEvaluator.parsed_query.target_name[0] == '*':
