@@ -27,8 +27,8 @@ NO_ERROR_INTERROGATION = Formula(QueryType.P, TargetType.STATE , ["name"], Opera
 NO_ERROR_INCREASE = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", [], [['AKT','ON']], [], "Inc(state:name) [ ] [ AKT:ON ]")
 NO_ERROR_DECREASE = Formula(QueryType.DECREASE, TargetType.FIXPOINT, ["name"], Operators.NONE, "", ['A','&','B'], [['AKT','ON']], [], "Dec(fp:name) [ A & B ] [ AKT:ON ]")
 
-ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.NODE, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Dec(node:name) [ A & B ]")
-ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.STATE, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Inc(state:name) [ A & B ]")
+ERROR_DECREASE_NO_MUTATION = Formula(QueryType.DECREASE, TargetType.FIXPOINT, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Dec(fp:name) [ A & B ]")
+ERROR_INCREASE_NO_MUTATION = Formula(QueryType.INCREASE, TargetType.FIXPOINT, ["name"], Operators.NONE, "", ['A','&','B'], [], [], "Inc(fp:name) [ A & B ]")
 ERROR_DECREASE_HAS_OPERATOR = Formula(QueryType.DECREASE, TargetType.FIXPOINT, ["name"], Operators.LE, "0.5", ['A','&','B'], [['AKT','OFF']], [], "Dec(fp:name) [ A & B ] <= 0.5")
 ERROR_INCREASE_MULTIPLE_NAMES = Formula(QueryType.INCREASE, TargetType.STATE, ["name","name2"], Operators.NONE, "", ['A','&','B'], [['AKT', 'OFF']], [],"Inc(state:name,name2) [ A & B ] [ AKT:OFF ]")
 
@@ -222,11 +222,15 @@ class TestParser(TestCase):
         assert Parser.counting_members_logical_query(['B', '|', ['C', '&', 'D']]) == 5
         assert Parser.counting_members_logical_query([['AKT2','>=','0.2'],'|','AKT3']) == 5
 
-    def test_sandbox(self):
-        formula = Parser.parse_query(QUERY_TEST)
+    def test_decrease_increase_with_logical_check_raise(self):
+        query = Parser.parse_query("Dec(node:AKT1) / [ A & B ] [ AKT:ON ]")
+        self.assertRaises(FormulaException, FormulaChecker.check_formula, query)
+
+        query = Parser.parse_query("Inc(state:AKT1) / [ A & B ] [ AKT:ON ]")
+        self.assertRaises(FormulaException, FormulaChecker.check_formula, query)
+
         try:
-            FormulaChecker.check_formula(formula)
-            print("Formula is correct : " , formula)
-        except FormulaException as e:
-            print(e.message)
-            self.fail("FormulaChecker.check_formula() raised an unexpected ValueError")
+            query = Parser.parse_query("Dec(fp:AKT1) / [ A & B ] [ AKT:ON ]")
+            FormulaChecker.check_formula(query)
+        except FormulaException:
+            self.fail("FormulaChecker.check_formula() raised an unexpected Error")

@@ -36,6 +36,21 @@ class Extractor(object):
         return df[cols_to_keep].copy()
 
     @staticmethod
+    def extract_column_last_states(df: pd.DataFrame, node_name: str, exclusion=False):
+        cols_to_keep = []
+        if exclusion: node_name = node_name.replace("!", "")
+        for col_name in df.columns:
+            list_nodes = col_name.replace(" ","").split("--")
+            if node_name in list_nodes and not exclusion:
+                cols_to_keep.append(col_name)
+            elif node_name not in list_nodes and exclusion:
+                cols_to_keep.append(col_name)
+
+        #print(f"(extractors) cols_to_keep :\n {df[cols_to_keep].copy()}")
+        return df[cols_to_keep].copy()
+
+
+    @staticmethod
     def extract_column_numerical(df, column_name: str, sim_res, op: Operators, value: float, exclusion: bool = False, is_state: bool = False):
         #print("Entering extract_column_numerical")
         #print(f"df : \n {df}\n")
