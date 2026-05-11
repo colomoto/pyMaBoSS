@@ -146,6 +146,26 @@ class TestExtractor(unittest.TestCase):
         print(f"Res : \n {res2} \n Expected : \n {expected2}")
         assert res2.equals(expected2)
 
+    def test_extractor_last_state(self):
+        df_last_states = pd.DataFrame({
+            'A--B--C': [0.1],
+            'A--B--D': [0.2],
+            'A--C': [0.3],
+            'C--D--E--F': [0.4],
+            'A--F--G--E': [0.5],
+            'F--G--H': [0.6],
+        })
+
+        expected = pd.DataFrame({
+            'A--B--C': [0.1],
+            'A--B--D': [0.2],
+            'A--C': [0.3],
+            'A--F--G--E': [0.5],
+        })
+
+        res = Extractor.extract_column_last_states(df_last_states, 'A', False)
+        assert res.equals(expected)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,4 +1,5 @@
 from maboss.temporal_logic import MaBoSSEvaluator
+from maboss.temporal_logic.extractors import Extractor
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import *
 from maboss.temporal_logic.formulas import *
@@ -448,4 +449,108 @@ class TestLogicalCompute(TestCase):
             self.fail("An error occurred while checking the name in the fixed point")
 
         self.assertRaises(ValueError, ComputeLogicalExpression.check_name_in_fp, "Name 4", fp_df)
+
+    def test_merge_or_last_states(self):
+        df1 = pd.DataFrame({
+            "State_1" : [0.345],
+            "State_2" : [0.678]
+        })
+
+        df2 = pd.DataFrame({
+            "State_1" : [0.345],
+            "State_3" : [0.123]
+        })
+
+        expected = pd.DataFrame({
+            "State_1" : [0.345],
+            "State_2" : [0.678],
+            "State_3" : [0.123]
+        })
+
+        res = ComputeLogicalExpression.merge_or_last_states(df1, df2)
+        print(f"Res:\n{res}\nExpected:\n{expected}")
+        assert res.equals(expected)
+
+    def test_merge_and_last_states(self):
+        df1 = pd.DataFrame({
+            "State_1": [0.345],
+            "State_2": [0.678]
+        })
+
+        df2 = pd.DataFrame({
+            "State_1": [0.345],
+            "State_3": [0.123]
+        })
+
+        expected = pd.DataFrame({
+            "State_1": [0.345],
+        })
+
+        res = ComputeLogicalExpression.merge_and_last_states(df1, df2)
+        print(f"Res:\n{res}\nExpected:\n{expected}")
+        assert res.equals(expected)
+
+    def test_compute_last_states(self):
+        df_last_states = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--B--D' : [0.2],
+            'A--C' : [0.3],
+            'C--D--E--F': [0.4],
+            'A--F--G--E' : [0.5],
+            'F--G--H' : [0.6],
+        })
+
+        expression = ['A', '|', 'C']
+
+        expected = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--B--D' : [0.2],
+            'A--C' : [0.3],
+            'A--F--G--E' : [0.5],
+            'C--D--E--F': [0.4],
+        })
+
+        res = ComputeLogicalExpression.compute_last_states(expression, df_last_states)
+        print(f"Results:\n{res}\nExpected:\n{expected}")
+        assert res.equals(expected)
+
+    def test_compute_last_and_merge_or(self):
+        df_last_states = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--B--D' : [0.2],
+            'A--C' : [0.3],
+            'C--D--E--F': [0.4],
+            'A--F--G--E' : [0.5],
+            'F--G--H' : [0.6],
+        })
+
+        df_A = Extractor.extract_column_last_states(df_last_states, 'A')
+        df_A_expected = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--B--D' : [0.2],
+            'A--C' : [0.3],
+            'A--F--G--E' : [0.5],
+        })
+
+        assert df_A.equals(df_A_expected)
+
+        df_C = Extractor.extract_column_last_states(df_last_states, 'C')
+        df_C_expected = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--C' : [0.3],
+            'C--D--E--F': [0.4],
+        })
+
+        assert df_C.equals(df_C_expected)
+
+        merged_df = ComputeLogicalExpression.merge_or_last_states(df_A, df_C)
+        expected = pd.DataFrame({
+            'A--B--C' : [0.1],
+            'A--B--D' : [0.2],
+            'A--C' : [0.3],
+            'A--F--G--E' : [0.5],
+            'C--D--E--F': [0.4],
+        })
+        print(f"res:\n{merged_df}\nexpected:\n{expected}")
+        assert merged_df.equals(expected)
 

@@ -1,5 +1,6 @@
 from unittest import TestCase
 import os
+
 from maboss.temporal_logic.evaluator import MaBoSSEvaluator
 from maboss.temporal_logic.temporal_parser import *
 import pandas as pd
@@ -706,3 +707,43 @@ class TestEvaluator(TestCase):
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.round(5).equals(expected.round(5))
+
+    def test_last_state_inc_dec_with_logical(self):
+        master_results = load_fake_result('test_data.csv', 'test_data_states.csv', 'test_data_fp_master.csv', 'test_data_last_states_master.csv', 'test_data_last_nodes_master.csv')
+        mutant_results = load_fake_result('test_data_mut.csv', 'test_data_states_mut.csv', 'test_data_fp_mut.csv', 'test_data_last_states_mutation.csv', 'test_data_last_nodes_mutation.csv')
+
+        query = "Inc(fp:AKT1) / 2 [ AKT2 & AKT3 ] [ AKT1:ON ]"
+        res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results, 2)
+        expected = pd.DataFrame({
+            'P(AKT1) cumul from master' : [0.19],
+            'P(AKT1) cumul from mutation' : [0.81],
+            'Difference AKT1' : [0.62],
+            'Percentage AKT1' : ["326.32%"],
+            'Increase AKT1' : [True]
+        })
+        print(f"Res:\n {res}")
+        res.to_csv('test/result_last_state_inc_dec_with_logical.csv')
+        assert res.equals(expected)
+
+    def test_last_state_inc_dec_with_single_node_state(self):
+        master_results = load_fake_result('test_data.csv', 'test_data_states.csv', 'test_data_fp_master.csv',
+                                          'test_data_last_states_master.csv', 'test_data_last_nodes_master.csv')
+        mutant_results = load_fake_result('test_data_mut.csv', 'test_data_states_mut.csv', 'test_data_fp_mut.csv',
+                                          'test_data_last_states_mutation.csv', 'test_data_last_nodes_mutation.csv')
+
+        query = Parser.parse_query("Inc(fp:AKT2) / 2 [ ] [ AKT1:ON ]")
+        res = MaBoSSEvaluator.evaluate_increase_decrease(query, mutant_results, master_results, 2)
+        expected = pd.DataFrame({
+            'AKT2 state from master' : [0.81],
+            'AKT2 state from mutation' : [0.19],
+            'Difference state AKT2' : [-0.62],
+            'Percentage state AKT2' : ["-76.54%"],
+            'Increase AKT2 state' : [False],
+            'P(AKT2) cumul from master' : [1.0], #may happen for node active in all states
+            'P(AKT2) cumul from mutation' : [1.0],
+            'Difference AKT2' : [0.0],
+            'Percentage AKT2' : ["0.00%"],
+            'Increase AKT2' : [False]
+        })
+        res.to_csv('test/result_last_state_inc_dec_with_single_node_state.csv')
+        assert res.equals(expected)

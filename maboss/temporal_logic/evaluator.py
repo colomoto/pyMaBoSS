@@ -8,7 +8,7 @@ import numpy as np
 
 from maboss import Result, Network
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
-    FormulaException, NoCommonTimes
+    FormulaException, NoCommonTimes, ErrorInLogicalExpression
 from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpression
 from maboss.temporal_logic.temporal_parser import Parser
 from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, FormulaChecker, Formula
@@ -146,7 +146,7 @@ class MaBoSSEvaluator:
 
         for q in checked_query:
             try:
-                print(f"query : {q}")
+                #print(f"query : {q}")
                 sim_key = query_to_sim[q]
                 res = sim_results[sim_key]
                 #print(f"Nodes for this query : {res.get_nodes_probtraj()}")
@@ -211,8 +211,14 @@ class MaBoSSEvaluator:
             if 'State' in df.columns:
                 df['State'] = df['State'].astype(str).str.replace(' ', '')
 
-            #todo the logical computing
-            #df = ComputeLogicalExpression.
+            if parsed_query_input.target == TargetType.FIXPOINT and parsed_query_input.logical_equation:
+                try:
+                    ComputeLogicalExpression.check_logical_exp_fixpoint(parsed_query_input.logical_equation)
+                except ErrorInLogicalExpression as e:
+                    print(f"Error in the logical expression : {e.message}. Logical expression not applied.")
+
+                df=ComputeLogicalExpression.compute_logical_fixpoint(parsed_query_input.logical_equation, df)
+
 
             #print(f"df from prepare df:\n{df}")
 
@@ -228,49 +234,56 @@ class MaBoSSEvaluator:
         data_out = {}
         for name in name_target:
 
-            if parsed_query_input.type == TargetType.FIXPOINT:
+            if parsed_query_input.target == TargetType.FIXPOINT:
+                print("Computing fixpoint")
                 found_state = False
 
                 try:
                     # getting the probability of the state in each simulation
-                    proba_master = df_master.loc[df_master["State"] == name, "Proba"].values[0]
-                    proba_mutation = df_mutation.loc[df_mutation["State"] == name, "Proba"].values[0]
+                    proba_master = df_master.loc[df_master["State"] == name, "Proba"].values[0].round(digits)
+                    proba_mutation = df_mutation.loc[df_mutation["State"] == name, "Proba"].values[0].round(digits)
                     found_state = True
                 except (KeyError, IndexError):
                     pass
 
-                    if name not in df_master.columns or name not in df_mutation.columns:
-                        found_node = False
-                    else: found_node = True
+                if name not in df_master.columns or name not in df_mutation.columns:
+                    found_node = False
+                else: found_node = True
 
-                    if not found_node and not found_state: raise NoNameValidException(f"Name : {name} has not been found "
-                                                                                      f"in results neither has a state nor node.")
+                print(f"founds node and state : {found_node} and {found_state} \n")
 
+                if not found_node and not found_state: raise NoNameValidException(f"Name : {name} has not been found "
+                                                                                  f"in results neither has a state nor node.")
 
-
-                    if found_state:
-                        #print(f"Proba master : {proba_master}\n Proba mutation : {proba_mutation}\n")
-                        res_diff_state = proba_mutation - proba_master
-                        data_out[f"{name} state from master"] = [proba_master]
-                        data_out[f"{name} state from mutation"] = [proba_mutation]
-                        percentage = (res_diff_state / proba_master) if proba_master != 0 else 0.0
-                        data_out[f"Difference state {name}"] = [res_diff_state]
-                        data_out[f"Percentage state {name}"] = [f"{percentage:.2%}"]
-
-                    # keeping the lines where node is 1 and summing all the probas
-                    sum_master = df_master.loc[df_master[name].astype(float) == 1, 'Proba'].sum()
-                    sum_mutation = df_mutation.loc[df_mutation[name].astype(float) == 1, 'Proba'].sum()
-                    res_diff = sum_mutation - sum_master
-                    proba_master = sum_master
-                    proba_mutation = sum_mutation
-                    percentage = (res_diff / proba_master) if proba_master != 0 else 0.0
-                    data_out[f"Difference {name}"] = [res_diff]
-                    data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
-
+                if found_state:
+                    #print(f"Proba master : {proba_master}\n Proba mutation : {proba_mutation}\n")
+                    res_diff_state = proba_mutation - proba_master
+                    data_out[f"{name} state from master"] = [proba_master]
+                    data_out[f"{name} state from mutation"] = [proba_mutation]
+                    percentage = (res_diff_state / proba_master) if proba_master != 0 else 0.0
+                    data_out[f"Difference state {name}"] = [res_diff_state.round(digits)]
+                    data_out[f"Percentage state {name}"] = [f"{percentage:.2%}"]
                     if QueryType.INCREASE == parsed_query_input.type:
-                        data_out[f"Increase {name}"] = proba_mutation > proba_master
+                        data_out[f"Increase {name} state"] = proba_mutation > proba_master
                     else:
-                        data_out[f"Decrease {name}"] = proba_mutation < proba_master
+                        data_out[f"Decrease {name} state"] = proba_mutation < proba_master
+
+                # keeping the lines where node is 1 and summing all the probas
+                sum_master = df_master.loc[df_master[name].astype(float) == 1, 'Proba'].round(digits).sum()
+                sum_mutation = df_mutation.loc[df_mutation[name].astype(float) == 1, 'Proba'].round(digits).sum()
+                data_out[f"P({name}) cumul from master"] = [sum_master]
+                data_out[f"P({name}) cumul from mutation"] = [sum_mutation]
+                res_diff = (sum_mutation - sum_master).round(digits)
+                proba_master = sum_master
+                proba_mutation = sum_mutation
+                percentage = (res_diff / proba_master) if proba_master != 0 else 0.0
+                data_out[f"Difference {name}"] = [res_diff]
+                data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
+
+                if QueryType.INCREASE == parsed_query_input.type:
+                    data_out[f"Increase {name}"] = proba_mutation > proba_master
+                else:
+                    data_out[f"Decrease {name}"] = proba_mutation < proba_master
 
             else: #si pas fixpoint
                 #print(f"df_master : \n{df_master}\ndf_mutation:\n{df_mutation}")

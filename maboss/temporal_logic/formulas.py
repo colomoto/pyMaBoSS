@@ -53,10 +53,16 @@ class Formula:
 class FormulaChecker:
 
     @staticmethod
-    def check_logical_equation_fixpoint(logical_equation: list[str]):
+    def check_logical_equation_no_float_no_state(logical_equation: list[str]):
+        """
+        Only checks if the logical equation does not contain float value or state name explicitly. Does not check the syntax.
+        :param logical_equation:
+        :return: nothing
+        :raise: FloatValueInFixpointLogicalEquation, StateNameInFixpointLogicalEquation
+        """
         for member in logical_equation:
             if isinstance(member, list):
-                FormulaChecker.check_logical_equation_fixpoint(member)
+                FormulaChecker.check_logical_equation_no_float_no_state(member)
             else:
                 try:
                     float(member)
@@ -76,13 +82,15 @@ class FormulaChecker:
             raise FormulaException(f"The target cannot be a fixpoint for this evaluation : {formula.type}. Only for DECREASE and INCREASE.")
         # --------------------------------------------------------------------------------------------------------------
 
-        if formula.target != TargetType.FIXPOINT and (formula.type == QueryType.DECREASE or formula.type == QueryType.INCREASE): #node or state and Inc or Dec
-            if formula.logical_equation:
+        if formula.type == QueryType.DECREASE or formula.type == QueryType.INCREASE: #node, fp or state and Inc or Dec
+            if formula.target == TargetType.NODE or formula.target == TargetType.STATE:
+                if formula.logical_equation:
+                    raise FormulaException(f"The logical equation cannot be filled for this evaluation : {formula.type} and target {formula.target}")
+            if formula.logical_equation and formula.target == TargetType.FIXPOINT:
                 try:
-                    FormulaChecker.check_logical_equation_fixpoint(formula.logical_equation)
+                    FormulaChecker.check_logical_equation_no_float_no_state(formula.logical_equation)
                 except (FloatValueInFixpointLogicalEquation, StateNameInFixpointLogicalEquation) as e:
-                    print(f"An error has occurred in the logical equation, please check it. Result : {formula.logical_equation}")
-                    raise e
+                    raise FormulaException(e.message)
 
         if formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE:
             if formula.mutation_constraint is None or formula.mutation_constraint == []:

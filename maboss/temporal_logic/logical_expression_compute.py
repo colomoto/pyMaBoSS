@@ -1,6 +1,7 @@
 """
-Class to compute the logical expression. Returns dataframes containing the columns needed
+Class to compute the logical expression. Returns dataframes containing the columns or lines needed
 accordingly to the logical expression.
+Also contains methods to check the grammar of the logical expression.
 
 Author: Oscar Dufossez
 Date: 2026-04
@@ -8,6 +9,8 @@ Date: 2026-04
 
 import pandas as pd
 import operator
+
+from numpy.f2py.auxfuncs import isattr_value
 from pandas import Series as series
 
 from pyparsing import warnings
@@ -38,8 +41,8 @@ class ComputeLogicalExpression:
 
         try:
             ComputeLogicalExpression.check_logical_expression(logical_expression)
-        except ErrorInLogicalExpression:
-            raise ErrorInLogicalExpression("")
+        except ErrorInLogicalExpression as e:
+            raise ErrorInLogicalExpression(e.message)
 
         work_df = pd.DataFrame()
         temp = pd.DataFrame()
@@ -444,6 +447,17 @@ class ComputeLogicalExpression:
         return res.loc[:, ~res.columns.duplicated()].copy()
 
     @staticmethod
+    def merge_or_last_states(df1, df2):
+        #print(f"col1:{df1}\ncol2:{df2}")
+        all_df = pd.merge(df1, df2, how='outer')
+        return all_df.loc[:, ~all_df.columns.duplicated()].copy()
+
+    @staticmethod
+    def merge_and_last_states(df1, df2):
+        common_cols = df1.columns.intersection(df2.columns)
+        return df1[common_cols].head(1)
+
+    @staticmethod
     def check_if_node(name: str, col, nodes_df, state_df):
         if name.endswith('_state'): return False
 
@@ -491,15 +505,15 @@ class ComputeLogicalExpression:
                 continue
             if isinstance(m, list):
                 try:
-                    ComputeLogicalExpression.check_logical_expression(m)
-                except ErrorInLogicalExpression:
-                    raise ErrorInLogicalExpression("")
+                    ComputeLogicalExpression.check_logical_exp_fixpoint(m)
+                except ErrorInLogicalExpression as e:
+                    raise ErrorInLogicalExpression(e.message)
 
             if ComputeLogicalExpression.is_any_symb_check(m) and last_member_is_logical_symb:
                 raise ErrorInLogicalExpression("Formula cannot contain two logical symbols in a row")
             elif ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
                 if not ComputeLogicalExpression.is_logical_symb(m):
-                    raise ErrorInLogicalExpression("Query type Inc and Dec do not handle comparator value")
+                    raise ErrorInLogicalExpression("Target type 'fp' does not handle numerical comparator value")
                 last_member_is_logical_symb = True
             elif not ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
                 raise ErrorInLogicalExpression("Formula cannot contain two nodes in a row")
@@ -507,7 +521,52 @@ class ComputeLogicalExpression:
                 last_member_is_logical_symb = False
 
     @staticmethod
+    def check_logical_exp_last_nodes(logical_expression):
+        last_member = logical_expression[-1]
+        first_member = logical_expression[0]
+
+        if first_member == last_member: return
+
+        if ComputeLogicalExpression.is_any_symb_check(first_member):
+            raise ErrorInLogicalExpression(
+                "Formula cannot start with '&', '|' it must start with a node or state name (V1)")
+
+        if ComputeLogicalExpression.is_any_symb_check(last_member):
+            raise ErrorInLogicalExpression(
+                "Formula cannot end with '&' or '|', it must end with a node or state name (V1)")
+
+        last_member_is_logical_symb = False
+        for m in logical_expression:
+            if m==first_member: continue
+            if isinstance(m,list):
+                try:
+                    ComputeLogicalExpression.check_logical_exp_last_nodes(m)
+                except ErrorInLogicalExpression as e:
+                    raise ErrorInLogicalExpression(e.message)
+
+            if ComputeLogicalExpression.is_any_symb_check(m) and last_member_is_logical_symb:
+                raise ErrorInLogicalExpression("Formula cannot contain two logical symbols in a row")
+            elif ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
+                if not ComputeLogicalExpression.is_value_comparator(m):
+                    raise ErrorInLogicalExpression("Target type 'nodes' does not handle logical comparator, only numerical comparator")
+                last_member_is_logical_symb = True
+            elif not ComputeLogicalExpression.is_any_symb_check(m) and not last_member_is_logical_symb:
+                raise ErrorInLogicalExpression("Formula cannot contain two nodes in a row")
+            else:
+                last_member_is_logical_symb = False
+
+    @staticmethod
+    def is_value_comparator(symb: str):
+        return symb == '==' or symb == '!=' or symb == '>=' or symb == '<=' or symb == '>' or symb == '<'
+
+    @staticmethod
     def merge_or_on_lines(df1,df2):
+        """
+        Used for merging lines in computing on fixpoints
+        :param df1:
+        :param df2:
+        :return:
+        """
         if df1.empty: return df2
         if df2.empty: return df1
 
@@ -518,16 +577,85 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def merge_and_on_lines(df1,df2):
+        """
+        used for merging lines on fixpoints computing
+        :param df1:
+        :param df2:
+        :return:
+        """
         df_out = pd.merge(df1,df2, how="inner")
         return df_out
 
     @staticmethod
     def check_name_in_fp(name: str, fixpoint_df):
+        in_node, in_state = True, True
         if name.startswith("!"):
             name = name[1:]
 
         if "State" not in fixpoint_df.columns:
             raise ValueError("The fixpoint dataframe does not have a State column.")
+        else:
+            if name not in fixpoint_df["State"].values: in_state = False
 
-        if name not in fixpoint_df["State"].values:
-            raise ValueError(f"The name {name} is not in the fixpoint dataframe.")
+        if name not in fixpoint_df.columns: in_node = False
+
+        if not in_node and not in_state:
+            raise ValueError("The name is not in state or node in the fixpoint dataframe.")
+
+
+
+    @staticmethod
+    def compute_last_states(log_exp: list[str], in_df: pd.DataFrame):
+        """
+        Handles nodes boolean in the logical expression
+        :param log_exp:
+        :param in_df:
+        :return: a dataframe containing the columns of last states checking the logical expression
+        """
+        # garder les colonnes où le node répond à la logical expression
+        last_member_is_symb = False
+        fusion = True
+        temp = pd.DataFrame()
+        work_df = pd.DataFrame()
+        logical_no = False
+
+        #print(f"in_df:\n{in_df}\nlog_exp:{log_exp}")
+
+        list_nodes = []
+        for col_name in in_df.columns:
+            list_temp = col_name.replace(" ","").split("--")
+            for n in list_temp:
+                if n not in list_nodes:
+                    list_nodes.append(n)
+
+        #print(f"Listes des nodes:\n{list_nodes}")
+
+        for m in log_exp:
+            #print(f"member:{m}")
+            if isinstance(m,list):
+                temp = ComputeLogicalExpression.compute_last_states(m,in_df)
+                if work_df.empty: work_df = temp
+                elif fusion: work_df=ComputeLogicalExpression.merge_or_last_states(temp,work_df)
+                else: work_df=ComputeLogicalExpression.merge_and_last_states(temp,work_df)
+                temp = pd.DataFrame()
+
+            elif ComputeLogicalExpression.is_logical_symb(m):
+                match m:
+                    case '&':
+                        fusion = False
+                    case '|':
+                        fusion = True
+                    case _:
+                        raise ValueError(f"Logical symbol {m} is not supported.")
+            else:
+                logical_no = ComputeLogicalExpression.check_logical_no(m)
+                temp = Extractor.extract_column_last_states(in_df,m,logical_no)
+                #print(f"Temporary after column extraction:\n{temp}\nWork_df:\n{work_df}")
+                #print(f"Fusion:{fusion}")
+                if work_df.empty: work_df=temp
+                elif fusion: work_df=ComputeLogicalExpression.merge_or_last_states(temp,work_df)
+                else: work_df=ComputeLogicalExpression.merge_and_last_states(temp,work_df)
+                temp = pd.DataFrame()
+
+        work_df = work_df.reindex(sorted(work_df.columns), axis=1)
+        return work_df
