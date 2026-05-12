@@ -712,7 +712,7 @@ class TestEvaluator(TestCase):
         master_results = load_fake_result('test_data.csv', 'test_data_states.csv', 'test_data_fp_master.csv', 'test_data_last_states_master.csv', 'test_data_last_nodes_master.csv')
         mutant_results = load_fake_result('test_data_mut.csv', 'test_data_states_mut.csv', 'test_data_fp_mut.csv', 'test_data_last_states_mutation.csv', 'test_data_last_nodes_mutation.csv')
 
-        query = "Inc(fp:AKT1) / 2 [ AKT2 & AKT3 ] [ AKT1:ON ]"
+        query = "Inc(fp:AKT1) / [ AKT2 & AKT3 ] [ AKT1:ON ] [ digits:2 ]"
         res = MaBoSSEvaluator.evaluate_increase_decrease(Parser.parse_query(query), mutant_results, master_results, 2)
         expected = pd.DataFrame({
             'P(AKT1) cumul from master' : [0.19],
@@ -731,7 +731,7 @@ class TestEvaluator(TestCase):
         mutant_results = load_fake_result('test_data_mut.csv', 'test_data_states_mut.csv', 'test_data_fp_mut.csv',
                                           'test_data_last_states_mutation.csv', 'test_data_last_nodes_mutation.csv')
 
-        query = Parser.parse_query("Inc(fp:AKT2) / 2 [ ] [ AKT1:ON ]")
+        query = Parser.parse_query("Inc(fp:AKT2) / [ ] [ AKT1:ON ] [ digits:2 ]")
         res = MaBoSSEvaluator.evaluate_increase_decrease(query, mutant_results, master_results, 2)
         expected = pd.DataFrame({
             'AKT2 state from master' : [0.81],

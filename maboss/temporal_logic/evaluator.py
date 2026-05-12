@@ -183,18 +183,36 @@ class MaBoSSEvaluator:
                     #print(f"Query is a dependency, increase or decrease : {q}")
                     match parsed_query.type:
                         case QueryType.INCREASE | QueryType.DECREASE:
-                            if parsed_query.value:
-                                try:
-                                    digits = int(parsed_query.value)
-                                except ValueError:
-                                    warnings.warn(f"Value of the query is not an integer : {q} , digits set to 4")
-                                    digits = 4
-                            else:
-                                digits = 4
+                            percentage_value_int = 0
+                            digits = 4
+
+                            for opt in parsed_query.options:
+                                if "digits:" in opt or "digit:" in opt:
+                                    val = opt.split(":")[1]
+                                    if  digits != 4:
+                                        warnings.warn(f"Two digits options were passed in the same query, the second one will be used. Options : {opt} and {digits} digits")
+                                    try:
+                                        digits = int(val)
+                                    except ValueError:
+                                        print(f"Digits value must be an integer, digits set to 4")
+
+                                elif "%" in opt:
+                                    val = opt.split("%")[0]
+                                    if percentage_value_int != 0:
+                                        warnings.warn(f"Two percentages options were passed in the same query, the second one will be used. Options : {opt} and {percentage_value_int}%")
+                                    try:
+                                        percentage_value_int = int(val)
+                                    except ValueError:
+                                        print(f"Percentage value must be an integer, percentage set to 0")
+
+                                else:
+                                    print(f"The option {opt} is not handle, try {opt}% or digits:{opt}")
+
+                            #print(f"Percentage : {percentage_value_int} , digits : {digits}")
                             #print(f"type res_mas : {type(sim_results['master_simulation'])}")
                             #print(f"last nodes master :\n {sim_results['master_simulation'].get_last_nodes_probtraj()}\n last nodes mut :\n {res.get_last_nodes_probtraj()}")
                             list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query, res, sim_results[
-                                'master_simulation'],digits))
+                                'master_simulation'],digits, evaluate_on_percentage=percentage_value_int))
                         case _:
                             pass
             except FormulaException as fe:
@@ -258,9 +276,7 @@ class MaBoSSEvaluator:
 
                 df=ComputeLogicalExpression.compute_logical_fixpoint(parsed_query_input.logical_equation, df)
 
-
             #print(f"df from prepare df:\n{df}")
-
             return df
 
         #the table for each of the results
@@ -274,7 +290,7 @@ class MaBoSSEvaluator:
         for name in name_target:
 
             if parsed_query_input.target == TargetType.FIXPOINT:
-                print("Computing fixpoint")
+                #print("Computing fixpoint")
                 found_state = False
 
                 try:
@@ -301,10 +317,20 @@ class MaBoSSEvaluator:
                     percentage = (res_diff_state / proba_master) if proba_master != 0 else 0.0
                     data_out[f"Difference state {name}"] = [res_diff_state.round(digits)]
                     data_out[f"Percentage state {name}"] = [f"{percentage:.2%}"]
-                    if QueryType.INCREASE == parsed_query_input.type:
-                        data_out[f"Increase {name} state"] = proba_mutation > proba_master
+                    val_mutation = proba_mutation
+                    val_master = proba_master
+                    if parsed_query_input.type == QueryType.INCREASE:
+                        if evaluate_on_percentage != 0:
+                            data_out[f"Increase {name} state"] = (val_mutation > val_master) and (
+                                        percentage*100 >= evaluate_on_percentage)
+                        else:
+                            data_out[f"Increase {name} state"] = val_mutation > val_master
                     else:
-                        data_out[f"Decrease {name} state"] = proba_mutation < proba_master
+                        if evaluate_on_percentage != 0:
+                            data_out[f"Decrease {name} state"] = (val_mutation < val_master) and (
+                                        abs(percentage)*100 >= evaluate_on_percentage)
+                        else:
+                            data_out[f"Decrease {name} state"] = val_mutation < val_master
 
                 # keeping the lines where node is 1 and summing all the probas
                 sum_master = df_master.loc[df_master[name].astype(float) == 1, 'Proba'].round(digits).sum()
@@ -318,12 +344,25 @@ class MaBoSSEvaluator:
                 data_out[f"Difference {name}"] = [res_diff]
                 data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
 
-                if QueryType.INCREASE == parsed_query_input.type:
-                    data_out[f"Increase {name}"] = proba_mutation > proba_master
-                else:
-                    data_out[f"Decrease {name}"] = proba_mutation < proba_master
+                print(f"query type : {parsed_query_input.type}, percentage = {evaluate_on_percentage} ")
 
-            else: #si pas fixpoint
+                if parsed_query_input.type == QueryType.INCREASE:
+                    if evaluate_on_percentage != 0:
+                        data_out[f"Increase {name}"] = (proba_mutation > proba_master) and (
+                                    percentage*100 >= evaluate_on_percentage)
+                    else:
+                        print("should appear")
+                        data_out[f"Increase {name}"] = proba_mutation > proba_master
+                else:
+                    if evaluate_on_percentage != 0:
+                        data_out[f"Decrease {name}"] = (proba_mutation < proba_master) and (
+                                    abs(percentage)*100 >= evaluate_on_percentage)
+                    else:
+                        data_out[f"Decrease {name}"] = proba_mutation < proba_master
+
+                print(f"Data_out :\n{data_out}")
+
+            else: #if not fixpoint
                 #print(f"df_master : \n{df_master}\ndf_mutation:\n{df_mutation}")
                 if parsed_query_input.target == TargetType.NODE:
                     if name not in df_master.columns:
@@ -342,8 +381,8 @@ class MaBoSSEvaluator:
                     percentage = (res_diff / val_master) if val_master != 0 else 0.0
                     data_out[f"Difference {name}"] = [res_diff]
                     data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
-                else:
-                    #cleaning the cols name
+                else: # if STATE
+                    #cleaning the cols name to remove spaces
                     df_master.columns = df_master.columns.str.replace(' ', '')
                     df_mutation.columns = df_mutation.columns.str.replace(' ', '')
 
@@ -357,13 +396,21 @@ class MaBoSSEvaluator:
                     data_out[f"{name} from mutation"] = [val_mutation]
                     res_diff = (val_mutation - val_master)
                     percentage = (res_diff / val_master) if val_master != 0 else 0.0
-                    data_out[f"Difference {name}"] = [res_diff.__round__(4)]
+                    data_out[f"Difference {name}"] = [res_diff.__round__(digits)]
                     data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
 
+                #print(f"percentage computed={percentage*100}, compared to {evaluate_on_percentage} -> {percentage*100 >= evaluate_on_percentage}")
+
                 if parsed_query_input.type == QueryType.INCREASE:
-                    data_out[f"Increase {name}"] = val_mutation > val_master
+                    if evaluate_on_percentage != 0:
+                        data_out[f"Increase {name}"] = (val_mutation > val_master) and (percentage*100 >= evaluate_on_percentage)
+                    else:
+                        data_out[f"Increase {name}"] = val_mutation > val_master
                 else:
-                    data_out[f"Decrease {name}"] = val_mutation < val_master
+                    if evaluate_on_percentage != 0:
+                        data_out[f"Decrease {name}"] = (val_mutation < val_master) and (abs(percentage)*100 >= evaluate_on_percentage)
+                    else:
+                        data_out[f"Decrease {name}"] = val_mutation < val_master
 
         return pd.DataFrame(data_out)
 
