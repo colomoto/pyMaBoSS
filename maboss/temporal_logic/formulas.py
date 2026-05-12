@@ -47,7 +47,7 @@ class Formula:
     value: str
     logical_equation: list # the list of the component of the logical equation
     mutation_constraint: list # the list of the component of the mutation constraint
-    initial_state_constraint: list # the list of the component of the initial state constraint
+    options: list # the list of the component of the initial state constraint
     expression: str
 
 class FormulaChecker:

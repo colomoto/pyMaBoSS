@@ -5,7 +5,7 @@ from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpre
 
 class Parser:
     QUERY_PATTERN = \
-        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D|M|Inc|Dec)\((node|state|fp)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=|/)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?|\d+|))?(?:\s*\[(.+?)\])?(?:\s*\[(.+?)\])?(?:\s*\[(.+?)\])?"
+        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D|M|Inc|Dec)\((node|state|fp)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=|/)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?|))?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?"
 
     @staticmethod
     def parse_query(input: str) -> Formula:
@@ -24,7 +24,7 @@ class Parser:
         value = match.group(5)
         logical_equation = match.group(6)
         mutation_param = match.group(7)
-        initial_state = match.group(8)
+        options = match.group(8)
         #print(f"Query type : {query_type}, target : {target}, target name : {target_name}, operator : {operator}, value : {value}, logical equation : {logical_equation}, mutation param : {mutation_param}")
 
         if target_name.__contains__(","):
@@ -65,16 +65,10 @@ class Parser:
                 mutation_param_final.append([mutation_param_striped[0], mutation_param_striped[1]]) #0 being name of the mutation, 1 being the value (OFF or ON)
         # -----------------------------------------------------------------------------------------------------------
 
-        if initial_state is None:
-            initial_state_final = []
+        if options is None:
+            options_final = []
         else:
-            initial_state_final = []
-            i_s_striped = [n.strip() for n in initial_state.split(" ")]
-            for i_s in iter(i_s_striped):
-                i_s_param = [n.strip() for n in i_s.split(":")]
-                if i_s_param[1] not in ["ON", "OFF"]:
-                    raise ValueError(f"Initial state parameter \"{i_s_param[1]}\" is not supported, try ON or OFF")
-                initial_state_final.append([i_s_param[0], i_s_param[1]])
+            options_final = [n.strip() for n in options.split(" ")]
 
         # Conversion of types, with try/catch to handle errors
         try:
@@ -102,7 +96,7 @@ class Parser:
             value=str(value),
             logical_equation=logical_equation_components,
             mutation_constraint=mutation_param_final,
-            initial_state_constraint=initial_state_final,
+            options=options_final,
 
             expression=input,
         )
