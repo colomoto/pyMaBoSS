@@ -20,6 +20,12 @@ class MaBoSSEvaluator:
     simulation_results_raw = None
     parsed_query = None
 
+    # Options
+    percentage_value_int = 0
+    threshold = 0.05 #sensibility on variations across time
+    digits = 4
+    compare_to = 'master'
+
     @staticmethod
     def help():
         print("MaBoSSEvaluator help :")
@@ -93,6 +99,18 @@ class MaBoSSEvaluator:
         print("In case of any question you can contact me at : oscardufossez@gmail.com")
 
     @staticmethod
+    def reset_default_values():
+        MaBoSSEvaluator.digits = 4
+        MaBoSSEvaluator.threshold = 0.05
+        MaBoSSEvaluator.percentage_value_int = 0
+        MaBoSSEvaluator.compare_to = 'master'
+        print("Default values have been reset !")
+
+    @staticmethod
+    def check_default_values():
+        print(f"Digits: {MaBoSSEvaluator.digits}\nThreshold: {MaBoSSEvaluator.threshold}\nPercentage value: {MaBoSSEvaluator.percentage_value_int}\nCompare to: {MaBoSSEvaluator.compare_to}")
+
+    @staticmethod
     def mutation_to_string(mutation_constraint: list[str]):
         """
         Simple method that returns the mutation as string. Basically concatenates the two members.
@@ -103,6 +121,69 @@ class MaBoSSEvaluator:
             return ""
         else:
             return f"{mutation_constraint[0]} {mutation_constraint[1]}"
+
+    @staticmethod
+    def parsing_options(options: list[str], res_master: Result, list_results: dict, model_sim):
+        for opt in options:
+            if opt == "": continue
+            if "digits:" in opt or "digit:" in opt:
+                val = opt.split(":")[1]
+                if MaBoSSEvaluator.digits != 4:
+                    warnings.warn(
+                        f"Two digits options were passed in the same query, the second one will be used. Options : {opt} and {MaBoSSEvaluator.digits} digits")
+                try:
+                    MaBoSSEvaluator.digits = int(val)
+                except ValueError:
+                    print(f"Digits value must be an integer, digits set to 4")
+
+            elif "%" in opt:
+                val = opt.split("%")[0]
+                if MaBoSSEvaluator.percentage_value_int != 0:
+                    warnings.warn(
+                        f"Two percentages options were passed in the same query, the second one will be used. Options : {opt} and {MaBoSSEvaluator.percentage_value_int}%")
+                try:
+                    MaBoSSEvaluator.percentage_value_int = int(val)
+                except ValueError:
+                    print(f"Percentage value must be an integer, percentage set to 0")
+
+            elif "transient" in opt:
+                if ':' in opt:
+                    parsed_opt = opt.split(':')
+                    try:
+                        MaBoSSEvaluator.threshold = float(parsed_opt[1])
+                    except ValueError:
+                        print(f"Transient value must be a float, transient set to 0.05")
+                # if only transient is passed, the threshold stays the same as the default value
+
+            elif "compare" in opt: #only handles one mutation rn
+                parsed_opt = opt.split(':')
+                if len(parsed_opt) < 3:
+                    print(f"Invalid format for compare option. Format is : compare:node_name:ON/OFF")
+                    continue
+                node_name = parsed_opt[1]
+                state = parsed_opt[2]
+
+                if state not in ['ON','OFF']:
+                    print(f"Invalid state for compare option. State must be ON or OFF. State : {state}")
+                    continue
+                if node_name not in res_master.get_nodes_probtraj().columns.tolist():
+                    print(f"Node {node_name} not found in the results. Check the name and try again.")
+                    continue
+
+                mutation_key = f"{node_name} {state}"
+
+                if not mutation_key in list_results:
+                    try:
+                        mutated_model = model_sim.copy()
+                        mutated_model.mutate(node_name, state)
+                        list_results[mutation_key] = mutated_model.run()
+                    except Exception as e:
+                        print(f"Error while mutating the model : {e}")
+                        continue
+                MaBoSSEvaluator.compare_to = mutation_key
+
+            else:
+                print(f"The option {opt} is not handle. See MaBoSSEvaluator.help() for more informations or Tuto Temporal Logic")
 
     @staticmethod
     def querying(queries: list[str], sim_cfg, sim_bnd, initial_state: list[dict]=None):
@@ -130,6 +211,7 @@ class MaBoSSEvaluator:
 
         sim_results = {} #dictionary associating the name's mutation with its result
         query_to_sim = {} #dictionary associating each query with the simulation it is related to
+        query_to_compare = {}
 
         # Running the simulations and stocked the results
         model_sim = maboss.load(sim_cfg, sim_bnd)
@@ -149,6 +231,7 @@ class MaBoSSEvaluator:
             except FormulaException as fe:
                 warnings.warn(f"Formula is not correct : {q} , will not be evaluated. This error occurred : {fe.message}")
                 continue
+
             if parsed_query.mutation_constraint:
                 col_name = " __ ".join([MaBoSSEvaluator.mutation_to_string(c) for c in parsed_query.mutation_constraint])
                 #if the simulation was not done yet for this mutation
@@ -161,12 +244,19 @@ class MaBoSSEvaluator:
                     for c in parsed_query.mutation_constraint:
                         mutated_model.mutate(c[0], str(c[1]))
                     sim_results[col_name] = mutated_model.run()
-                    #temp
-                    #sim_results[col_name].plot_piechart()
-                    #-------
                 query_to_sim[q] = col_name
             else:
                 query_to_sim[q] = 'master_simulation'
+
+            if parsed_query.options:
+                MaBoSSEvaluator.parsing_options(parsed_query.options, res_master, sim_results, model_sim)
+            #if there are no options, default values are kept.
+
+            if MaBoSSEvaluator.compare_to == 'master':
+                query_to_compare[q] = 'master_simulation'
+            else:
+                query_to_compare[q] = MaBoSSEvaluator.compare_to #name was changed in parse_options
+
 
         for q in checked_query:
             try:
@@ -183,36 +273,12 @@ class MaBoSSEvaluator:
                     #print(f"Query is a dependency, increase or decrease : {q}")
                     match parsed_query.type:
                         case QueryType.INCREASE | QueryType.DECREASE:
-                            percentage_value_int = 0
-                            digits = 4
-
-                            for opt in parsed_query.options:
-                                if "digits:" in opt or "digit:" in opt:
-                                    val = opt.split(":")[1]
-                                    if  digits != 4:
-                                        warnings.warn(f"Two digits options were passed in the same query, the second one will be used. Options : {opt} and {digits} digits")
-                                    try:
-                                        digits = int(val)
-                                    except ValueError:
-                                        print(f"Digits value must be an integer, digits set to 4")
-
-                                elif "%" in opt:
-                                    val = opt.split("%")[0]
-                                    if percentage_value_int != 0:
-                                        warnings.warn(f"Two percentages options were passed in the same query, the second one will be used. Options : {opt} and {percentage_value_int}%")
-                                    try:
-                                        percentage_value_int = int(val)
-                                    except ValueError:
-                                        print(f"Percentage value must be an integer, percentage set to 0")
-
-                                else:
-                                    print(f"The option {opt} is not handle, try {opt}% or digits:{opt}")
-
-                            #print(f"Percentage : {percentage_value_int} , digits : {digits}")
-                            #print(f"type res_mas : {type(sim_results['master_simulation'])}")
-                            #print(f"last nodes master :\n {sim_results['master_simulation'].get_last_nodes_probtraj()}\n last nodes mut :\n {res.get_last_nodes_probtraj()}")
-                            list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query, res, sim_results[
-                                'master_simulation'],digits, evaluate_on_percentage=percentage_value_int))
+                            #get the simulation results that must be compared to this one
+                            compare_key = query_to_compare.get(q, 'master_simulation')
+                            list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query,
+                                                                                         res, sim_results[compare_key],
+                                                                                         MaBoSSEvaluator.digits,
+                                                                                         evaluate_on_percentage=MaBoSSEvaluator.percentage_value_int))
                         case _:
                             pass
             except FormulaException as fe:
@@ -223,18 +289,20 @@ class MaBoSSEvaluator:
             if df is None:
                 print(f"df {i} is empty. Query was : {checked_query[i]}")
 
+        MaBoSSEvaluator.reset_default_values()
+        print("Evaluations done !")
         return list_of_df
 
     @staticmethod
     def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, digits: int=4, evaluate_on_percentage=0):
         """
-        Method of evaluation specifically for INCREASE and DECREASE query types. An utilitary method in into this one
+        Method of evaluation specifically for INCREASE and DECREASE query types. A utilitary method in into this one
         just used to get the dataframe that is needed and apply the logical expression to it.
         Different logics are applied whether the target type is a node/state or a fixpoint. In fixpoint the name that the
-        loop in currently on, is automatically searched and if a single node state is detected, both outcome are processed.
+        loop is currently on is automatically searched, and if a single node state is detected, both outcomes are processed.
         (see test_last_state_inc_dec_with_single_node_state in test_evaluator.py).
 
-        :param evaluate_on_percentage: wip, when not 0, the % difference is took into account to validate or not the
+        :param evaluate_on_percentage: wip, when not 0, the % difference is taken into account to validate or not the
         comparison
         :param parsed_query_input: the query currently treated in a parsed form
         :param results_mutation: the result of the mutation that was applied to the model
@@ -417,7 +485,7 @@ class MaBoSSEvaluator:
     @staticmethod
     def evaluate_query(parsed_query_input: Formula, results):  # maybe pass the results as an array to compute more than one simulation
         """
-        This method might need reformating for more cleaniness (11th may of 2026)
+        This method might need reformating for more cleanliness (11th may 2026)
         Method to evaluate query of any other query type aside of Dec and Inc.
         It first clean the columns' name, then things are going to be treated :
         - first the right dataframe is get (nodes for node target, states for state target)

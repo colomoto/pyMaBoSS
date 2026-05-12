@@ -13,7 +13,7 @@ class Parser:
 
         if not match:
             raise ValueError(f"Invalid query format, the query should be of the form: "
-                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ] [ [mutation constraint optional] ] [ [Initial State optional] ]. "
+                             f"P([targetType]:[name]) <= 0.5 [ [logic equation optional] ] [ [mutation constraint optional] ] [ [Options optional] ]. "
                              f"More info : MaBoSSEvaluator.help()\n Input : {input}")
 
         #print(f"\nInput : {input}\n Match : {match.group(0)}\n Match groups :\n {match.groups()}")
@@ -45,7 +45,6 @@ class Parser:
                      "A parenthesis is not opened or a space might be missing. Result : ",
                      logical_equation_components))
 
-    # ----- This might need reworking, for the moment this part of the query is not used. -----------------------
         if mutation_param is None:
             mutation_param_final = []
         else:
@@ -63,7 +62,6 @@ class Parser:
                 if mutation_param_striped[1] not in ["ON", "OFF"]:
                     raise ValueError(f"Mutation parameter \"{mutation_param_striped[1]}\" is not supported, try ON or OFF")
                 mutation_param_final.append([mutation_param_striped[0], mutation_param_striped[1]]) #0 being name of the mutation, 1 being the value (OFF or ON)
-        # -----------------------------------------------------------------------------------------------------------
 
         if options is None:
             options_final = []
