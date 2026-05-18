@@ -584,7 +584,7 @@ class TestEvaluator(TestCase):
     def test_mutation_to_string(self):
         mutation_constraints = ["AKT1","ON"]
         res = MaBoSSEvaluator.mutation_to_string(mutation_constraint=mutation_constraints)
-        expected = "AKT1 ON"
+        expected = "AKT1:ON"
         assert res == expected
 
 
