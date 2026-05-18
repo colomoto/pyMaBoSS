@@ -634,7 +634,7 @@ class TestEvaluator(TestCase):
             'AKT2 from mutation' : [0.0048],
             'Difference AKT2' : [0.0],
             'Percentage AKT2' : ["0.00%"],
-            'Increase AKT2' : [False],
+            'Increase AKT2' : ["Stable"],
         })
         res.to_csv('test/result_increase_false_equality.csv')
         assert res.equals(expected)
@@ -685,7 +685,7 @@ class TestEvaluator(TestCase):
             "AKT1--AKT2--AKT3 from mutation": [0.6],
             "Difference AKT1--AKT2--AKT3": [0.0],
             "Percentage AKT1--AKT2--AKT3": ["0.00%"],
-            "Decrease AKT1--AKT2--AKT3": [False],
+            "Decrease AKT1--AKT2--AKT3": ["Stable"],
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
@@ -743,7 +743,7 @@ class TestEvaluator(TestCase):
             'P(AKT2) cumul from mutation' : [1.0],
             'Difference AKT2' : [0.0],
             'Percentage AKT2' : ["0.00%"],
-            'Increase AKT2' : [False]
+            'Increase AKT2' : ["Stable"]
         })
         res.to_csv('test/result_last_state_inc_dec_with_single_node_state.csv')
         assert res.equals(expected)

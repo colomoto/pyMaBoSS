@@ -23,8 +23,12 @@ class MaBoSSEvaluator:
     # Options
     percentage_value_int = 0
     threshold = 0.05 #sensibility on variations across time
-    digits = 4
-    compare_to = 'master'
+    optimum = 0.1 #sensibility of max/min value for transient evaluation, authorised difference between compare and mut
+    start = 0.1 #sensibility of start value of transient evaluation, authorised difference between compare and mut
+    end = 0.1 #sensibility of end value of transient evaluation, authorised difference between compare and mut
+    digits = 4 #number of digits after the dot to take into account for computing
+    compare_to = 'master' #name of the results to compare to
+    transient = False #the evaluation has something to check across time
 
     @staticmethod
     def help():
@@ -102,25 +106,46 @@ class MaBoSSEvaluator:
     def reset_default_values():
         MaBoSSEvaluator.digits = 4
         MaBoSSEvaluator.threshold = 0.05
+        MaBoSSEvaluator.optimum = 0.1
+        MaBoSSEvaluator.start = 0.1
+        MaBoSSEvaluator.end = 0.1
         MaBoSSEvaluator.percentage_value_int = 0
         MaBoSSEvaluator.compare_to = 'master'
-        print("Default values have been reset !")
-
-    @staticmethod
-    def check_default_values():
-        print(f"Digits: {MaBoSSEvaluator.digits}\nThreshold: {MaBoSSEvaluator.threshold}\nPercentage value: {MaBoSSEvaluator.percentage_value_int}\nCompare to: {MaBoSSEvaluator.compare_to}")
+        MaBoSSEvaluator.transient = False
 
     @staticmethod
     def mutation_to_string(mutation_constraint: list[str]):
         """
         Simple method that returns the mutation as string. Basically concatenates the two members.
+        Format: "node_name:state" (e.g., "A:ON B:OFF")
+        When multiple constraints, they are sorted alphabetically by node_name.
         :param mutation_constraint: a list with two members, the first being the node's name, the second ON or OFF
-        :return: a string of the mutation
+        :return: a string of the mutation in format "node_name:state"
         """
         if not mutation_constraint:
             return ""
         else:
-            return f"{mutation_constraint[0]} {mutation_constraint[1]}"
+            return f"{mutation_constraint[0]}:{mutation_constraint[1]}"
+
+    @staticmethod
+    def format_mutation_key(mutation_constraints: list[list[str]]):
+        """
+        Formats the mutation key by creating a string from all mutation constraints,
+        with node names sorted alphabetically.
+        :param mutation_constraints: a list of mutation constraints, each being [node_name, state]
+        :return: a formatted string like "A:ON B:OFF C:ON"
+        """
+        if not mutation_constraints:
+            return ""
+
+        # Convert each constraint to "node:state" format
+        formatted_mutations = [MaBoSSEvaluator.mutation_to_string(c) for c in mutation_constraints]
+
+        # Sort alphabetically by the full "node:state" string
+        formatted_mutations.sort()
+
+        # Join with spaces
+        return " ".join(formatted_mutations)
 
     @staticmethod
     def parsing_options(options: list[str], res_master: Result, list_results: dict, model_sim):
@@ -147,43 +172,60 @@ class MaBoSSEvaluator:
                     print(f"Percentage value must be an integer, percentage set to 0")
 
             elif "transient" in opt:
-                if ':' in opt:
-                    parsed_opt = opt.split(':')
-                    try:
-                        MaBoSSEvaluator.threshold = float(parsed_opt[1])
-                    except ValueError:
-                        print(f"Transient value must be a float, transient set to 0.05")
-                # if only transient is passed, the threshold stays the same as the default value
+                if 'transient:' in opt:
+                    parsed_opt = opt.split('transient:')[1]
+                    for p_opt in parsed_opt.split(','):
+                        name, value_opt_transient = p_opt.split(':')
+                        try:
+                            match name:
+                                case 'threshold':
+                                    MaBoSSEvaluator.threshold = float(value_opt_transient)
+                                case 'start':
+                                    MaBoSSEvaluator.start = float(value_opt_transient)
+                                case 'end':
+                                    MaBoSSEvaluator.end = float(value_opt_transient)
+                                case 'optimum':
+                                    MaBoSSEvaluator.optimum = float(value_opt_transient)
+                                case _:
+                                    print(f"{name} is not a transient's option. Options : threshold, start, end, optimum. Value : {value_opt_transient}")
+                        except ValueError:
+                            print(f"Invalid value for transient option. Value must be a float. Value : {value_opt_transient}")
+                MaBoSSEvaluator.transient = True
+                # if only transient is passed, the threshold, start, end and optimum values stay the same as the default values
 
             elif "compare" in opt: #only handles one mutation rn
-                parsed_opt = opt.split(':')
-                if len(parsed_opt) < 3:
-                    print(f"Invalid format for compare option. Format is : compare:node_name:ON/OFF")
-                    continue
-                node_name = parsed_opt[1]
-                state = parsed_opt[2]
+                parsed_opt = opt.split('compare:')[1]
+                # print(f"parsed_opt : {parsed_opt}, parsed_split: {parsed_opt.split(',')}")
+                mutation_constraints = []
+                for mut in parsed_opt.split(','):
+                    if mut == "": continue
+                    #print(f"mut : {mut}")
+                    node_name, state = mut.split(':')
+                    #print(f"node:{node_name}, state:{state}")
+                    if state not in ['ON', 'OFF']:
+                        print(f"Invalid state for compare option. State must be ON or OFF. State : {state}")
+                        continue
+                    if node_name not in res_master.get_nodes_probtraj().columns.tolist():
+                        print(f"Node {node_name} not found in the results. Check the name and try again.")
+                        continue
 
-                if state not in ['ON','OFF']:
-                    print(f"Invalid state for compare option. State must be ON or OFF. State : {state}")
-                    continue
-                if node_name not in res_master.get_nodes_probtraj().columns.tolist():
-                    print(f"Node {node_name} not found in the results. Check the name and try again.")
-                    continue
+                    mutation_constraints.append([node_name, state])
 
-                mutation_key = f"{node_name} {state}"
-
-                if not mutation_key in list_results:
+                mutation_key = MaBoSSEvaluator.format_mutation_key(mutation_constraints)
+                #print(f"mutation key (options) : {mutation_key}")
+                if not mutation_key in list_results.keys():
                     try:
                         mutated_model = model_sim.copy()
-                        mutated_model.mutate(node_name, state)
+                        for mut in parsed_opt.split(','):
+                            if mut == "": continue
+                            # print(f"mut : {mut}")
+                            node_name, state = mut.split(':')
+                            mutated_model.mutate(node_name, state)
                         list_results[mutation_key] = mutated_model.run()
                     except Exception as e:
                         print(f"Error while mutating the model : {e}")
                         continue
                 MaBoSSEvaluator.compare_to = mutation_key
-
-            else:
-                print(f"The option {opt} is not handle. See MaBoSSEvaluator.help() for more informations or Tuto Temporal Logic")
 
     @staticmethod
     def querying(queries: list[str], sim_cfg, sim_bnd, initial_state: list[dict]=None):
@@ -212,9 +254,11 @@ class MaBoSSEvaluator:
         sim_results = {} #dictionary associating the name's mutation with its result
         query_to_sim = {} #dictionary associating each query with the simulation it is related to
         query_to_compare = {}
+        query_transient = {}
+        query_digits = {}
 
         # Running the simulations and stocked the results
-        model_sim = maboss.load(sim_cfg, sim_bnd)
+        model_sim = maboss.load(bnd_filename=sim_bnd, cfg_filename= sim_cfg)
         if initial_state:
             for e in initial_state:
                 maboss.set_nodes_istate(model_sim, [e['node']], e['istate'])
@@ -224,16 +268,18 @@ class MaBoSSEvaluator:
 
         # Reading of the queries and launching the simulation for a mutation if it was not done before
         for q in queries:
+            #print(f"Query to parse : {q}")
             parsed_query = Parser.parse_query(q)
             try:
                 FormulaChecker.check_formula(parsed_query)
                 checked_query.append(q)
             except FormulaException as fe:
+                print(fe.with_traceback())
                 warnings.warn(f"Formula is not correct : {q} , will not be evaluated. This error occurred : {fe.message}")
                 continue
 
             if parsed_query.mutation_constraint:
-                col_name = " __ ".join([MaBoSSEvaluator.mutation_to_string(c) for c in parsed_query.mutation_constraint])
+                col_name = MaBoSSEvaluator.format_mutation_key(parsed_query.mutation_constraint)
                 #if the simulation was not done yet for this mutation
                 if col_name not in sim_results:
                     mutated_model = model_sim.copy()
@@ -248,15 +294,21 @@ class MaBoSSEvaluator:
             else:
                 query_to_sim[q] = 'master_simulation'
 
+            #print(f"Simulation results columns : {sim_results}")
             if parsed_query.options:
+                #print(f"Query: {q} for options {parsed_query.options}")
                 MaBoSSEvaluator.parsing_options(parsed_query.options, res_master, sim_results, model_sim)
             #if there are no options, default values are kept.
+            #print(f"Simulation results columns : {sim_results}")
 
             if MaBoSSEvaluator.compare_to == 'master':
                 query_to_compare[q] = 'master_simulation'
             else:
                 query_to_compare[q] = MaBoSSEvaluator.compare_to #name was changed in parse_options
 
+            query_transient[q] = [MaBoSSEvaluator.transient, MaBoSSEvaluator.threshold, MaBoSSEvaluator.percentage_value_int, MaBoSSEvaluator.start, MaBoSSEvaluator.end, MaBoSSEvaluator.optimum]
+            query_digits[q] = MaBoSSEvaluator.digits
+            MaBoSSEvaluator.reset_default_values()
 
         for q in checked_query:
             try:
@@ -273,12 +325,18 @@ class MaBoSSEvaluator:
                     #print(f"Query is a dependency, increase or decrease : {q}")
                     match parsed_query.type:
                         case QueryType.INCREASE | QueryType.DECREASE:
-                            #get the simulation results that must be compared to this one
+                            # get the simulation results that must be compared to this one
                             compare_key = query_to_compare.get(q, 'master_simulation')
+                            #print(f"Query: {q}")
+                            #print(f"  Main simulation key: {sim_key}")
+                            #print(f"  Compare simulation key: {compare_key}")
+                            tab_options_query = query_transient[q]
+                            #print(f"  Digits: {query_digits[q]}")
                             list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query,
                                                                                          res, sim_results[compare_key],
-                                                                                         MaBoSSEvaluator.digits,
-                                                                                         evaluate_on_percentage=MaBoSSEvaluator.percentage_value_int))
+                                                                                         query_digits[q],
+                                                                                         tab_options_query
+                                                                                         ))
                         case _:
                             pass
             except FormulaException as fe:
@@ -294,7 +352,7 @@ class MaBoSSEvaluator:
         return list_of_df
 
     @staticmethod
-    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, digits: int=4, evaluate_on_percentage=0):
+    def evaluate_increase_decrease(parsed_query_input, results_mutation, results_master, digits: int=4,  options=None):
         """
         Method of evaluation specifically for INCREASE and DECREASE query types. A utilitary method in into this one
         just used to get the dataframe that is needed and apply the logical expression to it.
@@ -302,8 +360,7 @@ class MaBoSSEvaluator:
         loop is currently on is automatically searched, and if a single node state is detected, both outcomes are processed.
         (see test_last_state_inc_dec_with_single_node_state in test_evaluator.py).
 
-        :param evaluate_on_percentage: wip, when not 0, the % difference is taken into account to validate or not the
-        comparison
+        :param options:
         :param parsed_query_input: the query currently treated in a parsed form
         :param results_mutation: the result of the mutation that was applied to the model
         :param results_master: the results of the master simulation
@@ -312,6 +369,21 @@ class MaBoSSEvaluator:
         """
         if results_mutation is None or results_master is None:
             raise ValueError("Results are empty")
+
+        if options:
+            MaBoSSEvaluator.transient = options[0]
+            MaBoSSEvaluator.threshold = options[1]
+            MaBoSSEvaluator.percentage_value_int = options[2]
+            MaBoSSEvaluator.start = options[3]
+            MaBoSSEvaluator.end = options[4]
+            MaBoSSEvaluator.optimum = options[5]
+        else:
+            MaBoSSEvaluator.reset_default_values()
+
+        evaluate_on_percentage = MaBoSSEvaluator.percentage_value_int
+        #print(f"percentage : {evaluate_on_percentage}")
+        #print(f"digits : {digits}")
+
 
         name_target = []
         for name in parsed_query_input.target_name:
@@ -356,7 +428,6 @@ class MaBoSSEvaluator:
 
         data_out = {}
         for name in name_target:
-
             if parsed_query_input.target == TargetType.FIXPOINT:
                 #print("Computing fixpoint")
                 found_state = False
@@ -373,7 +444,7 @@ class MaBoSSEvaluator:
                     found_node = False
                 else: found_node = True
 
-                print(f"founds node and state : {found_node} and {found_state} \n")
+                #print(f"founds node and state : {found_node} and {found_state} \n")
 
                 if not found_node and not found_state: raise NoNameValidException(f"Name : {name} has not been found "
                                                                                   f"in results neither has a state nor node.")
@@ -391,14 +462,30 @@ class MaBoSSEvaluator:
                         if evaluate_on_percentage != 0:
                             data_out[f"Increase {name} state"] = (val_mutation > val_master) and (
                                         percentage*100 >= evaluate_on_percentage)
+                            if not data_out[f"Increase {name} state"]:
+                                if (val_mutation < val_master) and (
+                                        abs(percentage)*100 >= evaluate_on_percentage):
+                                    data_out[f"Increase {name} state"] = False
+                                else: data_out[f"Increase {name} state"] = "Stable"
                         else:
                             data_out[f"Increase {name} state"] = val_mutation > val_master
+                            if not data_out[f"Increase {name} state"]:
+                                if val_mutation < val_master: data_out[f"Increase {name} state"] = False
+                                else: data_out[f"Increase {name} state"] = "Stable"
                     else:
                         if evaluate_on_percentage != 0:
                             data_out[f"Decrease {name} state"] = (val_mutation < val_master) and (
                                         abs(percentage)*100 >= evaluate_on_percentage)
+                            if not data_out[f"Decrease {name} state"]:
+                                if (val_mutation > val_master) and (
+                                        percentage*100 >= evaluate_on_percentage):
+                                    data_out[f"Decrease {name} state"] = False
+                                else: data_out[f"Decrease {name} state"] = "Stable"
                         else:
                             data_out[f"Decrease {name} state"] = val_mutation < val_master
+                            if not data_out[f"Decrease {name} state"]:
+                                if val_mutation > val_master: data_out[f"Decrease {name} state"] = False
+                                else: data_out[f"Decrease {name} state"] = "Stable"
 
                 # keeping the lines where node is 1 and summing all the probas
                 sum_master = df_master.loc[df_master[name].astype(float) == 1, 'Proba'].round(digits).sum()
@@ -412,25 +499,42 @@ class MaBoSSEvaluator:
                 data_out[f"Difference {name}"] = [res_diff]
                 data_out[f"Percentage {name}"] = [f"{percentage:.2%}"]
 
-                print(f"query type : {parsed_query_input.type}, percentage = {evaluate_on_percentage} ")
+                #print(f"query type : {parsed_query_input.type}, percentage = {evaluate_on_percentage} ")
 
                 if parsed_query_input.type == QueryType.INCREASE:
                     if evaluate_on_percentage != 0:
                         data_out[f"Increase {name}"] = (proba_mutation > proba_master) and (
                                     percentage*100 >= evaluate_on_percentage)
+                        if not data_out[f"Increase {name}"]:
+                            if (proba_mutation < proba_master) and (
+                                    abs(percentage)*100 >= evaluate_on_percentage):
+                                data_out[f"Increase {name}"] = False
+                            else:
+                                data_out[f"Increase {name}"] = "Stable"
                     else:
-                        print("should appear")
+                        #print("should appear")
                         data_out[f"Increase {name}"] = proba_mutation > proba_master
+                        if not data_out[f"Increase {name}"]:
+                            if proba_mutation < proba_master: data_out[f"Increase {name}"] = False
+                            else: data_out[f"Increase {name}"] = "Stable"
                 else:
                     if evaluate_on_percentage != 0:
                         data_out[f"Decrease {name}"] = (proba_mutation < proba_master) and (
                                     abs(percentage)*100 >= evaluate_on_percentage)
+                        if not data_out[f"Decrease {name}"]:
+                            if (proba_mutation > proba_master) and (
+                                    percentage*100 >= evaluate_on_percentage):
+                                data_out[f"Decrease {name}"] = False
+                            else: data_out[f"Decrease {name}"] = "Stable"
                     else:
                         data_out[f"Decrease {name}"] = proba_mutation < proba_master
+                        if not data_out[f"Decrease {name}"]:
+                            if proba_mutation > proba_master: data_out[f"Decrease {name}"] = False
+                            else: data_out[f"Decrease {name}"] = "Stable"
 
-                print(f"Data_out :\n{data_out}")
-
+                #print(f"Data_out :\n{data_out}")
             else: #if not fixpoint
+                #print(f"Query: {parsed_query_input.expression}")
                 #print(f"df_master : \n{df_master}\ndf_mutation:\n{df_mutation}")
                 if parsed_query_input.target == TargetType.NODE:
                     if name not in df_master.columns:
@@ -472,13 +576,36 @@ class MaBoSSEvaluator:
                 if parsed_query_input.type == QueryType.INCREASE:
                     if evaluate_on_percentage != 0:
                         data_out[f"Increase {name}"] = (val_mutation > val_master) and (percentage*100 >= evaluate_on_percentage)
+                        if not data_out[f"Increase {name}"]:
+                            if (val_mutation < val_master) and (abs(percentage)*100 >= evaluate_on_percentage):
+                                data_out[f"Increase {name}"] = False
+                            else:
+                                data_out[f"Increase {name}"] = "Stable"
                     else:
                         data_out[f"Increase {name}"] = val_mutation > val_master
+                        if not data_out[f"Increase {name}"]:
+                            if val_mutation < val_master:
+                                data_out[f"Increase {name}"] = False
+                            else:
+                                data_out[f"Increase {name}"] = "Stable"
                 else:
                     if evaluate_on_percentage != 0:
                         data_out[f"Decrease {name}"] = (val_mutation < val_master) and (abs(percentage)*100 >= evaluate_on_percentage)
+                        if not data_out[f"Decrease {name}"]:
+                            if (val_mutation > val_master) and (percentage*100 >= evaluate_on_percentage):
+                                data_out[f"Decrease {name}"] = False
+                            else:
+                                data_out[f"Decrease {name}"] = "Stable"
                     else:
                         data_out[f"Decrease {name}"] = val_mutation < val_master
+                        if not data_out[f"Decrease {name}"]:
+                            if val_mutation > val_master:
+                                data_out[f"Decrease {name}"] = False
+                            else:
+                                data_out[f"Decrease {name}"] = "Stable"
+
+                if MaBoSSEvaluator.transient:
+                    data_out.update(MaBoSSEvaluator.check_transient(df_master,df_mutation, name))
 
         return pd.DataFrame(data_out)
 
@@ -915,7 +1042,7 @@ class MaBoSSEvaluator:
     @staticmethod
     def get_the_cols_to_check(df):
         """
-        Utilitary method to get all the columns where a comparison is needed. Whether with a name of a value
+        Utility method to get all the columns where a comparison is needed. Whether with a name of a value
         :param df: the dataframe where the columns are
         :return: a list of names
         """
@@ -944,3 +1071,55 @@ class MaBoSSEvaluator:
             raise NoNameValidException()
         else:
             return cols_to_check
+
+    @staticmethod
+    def check_transient(df_compare_to, df_mut, node):
+        """
+        Does the computing to check if an expected transition is occurring.
+        :param df_compare_to: the reference dataframe
+        :param df_mut: the mutated dataframe
+        :param node: the node that is checked for a non linear evolution
+        :return: a Series (pandas) containing the result of the check
+        """
+        threshold = MaBoSSEvaluator.threshold
+        optimum = MaBoSSEvaluator.optimum
+        end = MaBoSSEvaluator.end
+        start = MaBoSSEvaluator.start
+        digits = MaBoSSEvaluator.digits
+        data_out = {}
+
+        #print("in transient")
+
+        i_val_compare = df_compare_to[node].iloc[0].round(digits)
+        f_val_compare = df_compare_to[node].tail(10).mean().round(digits)
+        peak_compare = df_compare_to[node].max().round(digits) if MaBoSSEvaluator.parsed_query.type == QueryType.INCREASE else df_compare_to[node].min().round(digits)
+        move_compare = abs(peak_compare - i_val_compare) > threshold #checking it is moving enough
+        return_to_normal_compare = abs(f_val_compare - i_val_compare) < threshold #checking end of movement
+
+        i_val_mut = df_mut[node].iloc[0].round(digits)
+        f_val_mut = df_mut[node].tail(10).mean().round(digits)
+        peak_mut = df_mut[node].max().round(digits) if MaBoSSEvaluator.parsed_query.type==QueryType.INCREASE else df_mut[node].min().round(digits)
+        move_mut = abs(peak_mut - i_val_mut) > threshold
+        return_to_normal_mut = abs(f_val_mut - i_val_mut) < threshold
+
+        data_out[f"Initial {node} value reference"] = i_val_compare
+        data_out[f"Initial {node} value mutation"] = i_val_mut
+        data_out[f"Difference {node} initial value"] = abs(i_val_compare - i_val_mut) < start
+
+        data_out["Final value reference"] = f_val_compare
+        data_out["Final value mutation"] = f_val_mut
+        data_out[f"Difference {node} final value"] = abs(f_val_compare - f_val_mut) < end
+
+        data_out[f"Peak {node} reference value"] = peak_compare
+        data_out[f"Peak {node} mutation value"] = peak_mut
+        data_out[f"Difference {node} peak value"] = abs(peak_compare - peak_mut) < optimum
+
+        data_out[f"Movement {node} reference"] = move_compare
+        data_out[f"Movement {node} mutation"] = move_mut
+        data_out[f"Both simulation have moved"] = move_compare and move_mut
+
+        data_out[f"Return to normal {node} reference"] = return_to_normal_compare
+        data_out[f"Return to normal {node} mutation"] = return_to_normal_mut
+        data_out[f"Both simulation have returned to normal"] = return_to_normal_compare and return_to_normal_mut
+
+        return data_out
