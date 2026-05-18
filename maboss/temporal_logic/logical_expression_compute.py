@@ -20,6 +20,9 @@ from maboss.temporal_logic.extractors import Extractor
 
 
 class ComputeLogicalExpression:
+    """
+    A class that computes the logical expression. Returns dataframes containing the columns or lines needed
+    """
     OPERATOR_MAP = {
         Operators.LT: operator.lt,  # <
         Operators.LE: operator.le,  # <=
@@ -170,6 +173,13 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def compute_logical_fixpoint(logical_expression, df_in):
+        """
+        Logical expression computation on fixpoints is a bit different so it is handled separately. Same logic but handling
+        the structural differences between probtraj and fixpoint.
+        :param logical_expression: the logical expression to compute
+        :param df_in: the df to modify
+        :return: a df with the appropriate results
+        """
         #todo tester
         fusion = True
         work_df = pd.DataFrame()
@@ -448,17 +458,37 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def merge_or_last_states(df1, df2):
+        """
+        Merge with an OR logic the two dataframes. Meaning it keeps the values of both the df without causing doubling.
+        :param df1:
+        :param df2:
+        :return: a merge dataframe
+        """
         #print(f"col1:{df1}\ncol2:{df2}")
         all_df = pd.merge(df1, df2, how='outer')
         return all_df.loc[:, ~all_df.columns.duplicated()].copy()
 
     @staticmethod
     def merge_and_last_states(df1, df2):
+        """
+        Merge with an AND logic the two dataframes. Meaning it keeps only the common values of both the df.
+        :param df1:
+        :param df2:
+        :return: a merge dataframe
+        """
         common_cols = df1.columns.intersection(df2.columns)
         return df1[common_cols].head(1)
 
     @staticmethod
     def check_if_node(name: str, col, nodes_df, state_df):
+        """
+        Method to check if a column is a node or a state. Some states are single-node, method to differentiate them.
+        :param name: the name of the column
+        :param col: the column itself
+        :param nodes_df: the nodes_probtraj to compare
+        :param state_df: the states_probtraj to compare
+        :return: true if it is a node, false if it is a state
+        """
         if name.endswith('_state'): return False
 
         in_nodes = nodes_df is not None and name in nodes_df.columns
@@ -486,6 +516,12 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def check_logical_exp_fixpoint(logical_expression):
+        """
+        Logical expression for fixpoints do not handle the same things as the regular logical expression. Check coherency
+        accordingly
+        :param logical_expression:
+        :return: nothing but raises exception if an error occurs
+        """
         last_member = logical_expression[-1]
         first_member = logical_expression[0]
 
@@ -522,6 +558,12 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def check_logical_exp_last_nodes(logical_expression):
+        """
+        Logical expression for last nodes do not handle the same things as the regular logical expression. Check coherency
+        accordingly
+        :param logical_expression:
+        :return: nothing but raises exception if an error occurs
+        """
         last_member = logical_expression[-1]
         first_member = logical_expression[0]
 
@@ -588,6 +630,12 @@ class ComputeLogicalExpression:
 
     @staticmethod
     def check_name_in_fp(name: str, fixpoint_df):
+        """
+        Names in fixpoints dataframes are not title of column, they are in the state column so check if the name is in the state column.
+        :param name:
+        :param fixpoint_df:
+        :return: nothing but raises an exception if an error occurs
+        """
         in_node, in_state = True, True
         if name.startswith("!"):
             name = name[1:]

@@ -20,7 +20,7 @@ class Visualiser:
         top_nodes = mean_probs.head(top).index
         df_top = df_indexed[top_nodes]
 
-        df_top.plot(figsize=(12, 6))  # Ne pas oublier le .plot() !
+        df_top.plot(figsize=(12, 6))
 
         plt.title(f"Individual probabilities of activation for the top {top}")
         plt.xlabel("Time")
@@ -32,7 +32,7 @@ class Visualiser:
         plt.show()
 
 
-    def display_results_and_queries(self, title: str = None):
+    def display_results_and_queries(self, title: str = ""):
         import IPython.display as idp
         i=0
         pd.set_option('display.max_rows', None)
