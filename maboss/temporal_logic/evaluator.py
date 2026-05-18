@@ -15,7 +15,9 @@ from maboss.temporal_logic.formulas import Operators, QueryType, TargetType, For
 import pandas as pd
 
 class MaBoSSEvaluator:
-
+    """
+    The main class that evaluates the query and assemble and compute the results
+    """
     simulation_results = None
     simulation_results_raw = None
     parsed_query = None

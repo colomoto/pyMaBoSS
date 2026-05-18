@@ -51,7 +51,9 @@ class Formula:
     expression: str
 
 class FormulaChecker:
-
+    """
+    A class that checks the syntax of the formula.
+    """
     @staticmethod
     def check_logical_equation_no_float_no_state(logical_equation: list[str]):
         """
@@ -76,6 +78,11 @@ class FormulaChecker:
 
     @staticmethod
     def check_formula(formula: Formula):
+        """
+        checks that all the formula (query) is respecting the syntax.
+        :param formula: the parsed query
+        :return: nothing if everything is ok, raise an exception otherwise
+        """
         # temporary-----------------------------------------------------------------------------------------------------
         if formula.type == QueryType.MUTATION: raise ValueError("Mutation is not handle at the moment.")
         if formula.type != QueryType.INCREASE and formula.type != QueryType.DECREASE and formula.target == TargetType.FIXPOINT:

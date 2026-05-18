@@ -6,6 +6,9 @@ import operator
 
 
 class Extractor(object):
+    """
+    A class that extracts the columns or lines that are needed to compute the formula.
+    """
     OPERATOR_MAP = {
         Operators.LT: operator.lt,  # <
         Operators.LE: operator.le,  # <=
@@ -17,6 +20,14 @@ class Extractor(object):
 
     @staticmethod
     def extract_column(df, column_name, exclusion: bool = False, is_state: bool = False):
+        """
+        Extract a column depending on its name and whether it is an exclusion or not.
+        :param df: the df to modify
+        :param column_name:
+        :param exclusion: if true, the column is excluded thus not added to the final df
+        :param is_state: the name of the column is related to a state
+        :return: a dataframe with the column that was extracted
+        """
         cols_to_keep = ["Time"]
         #print(f"column_name : {column_name}")
 
@@ -37,6 +48,13 @@ class Extractor(object):
 
     @staticmethod
     def extract_column_last_states(df: pd.DataFrame, node_name: str, exclusion=False):
+        """
+        Extracts a column from a dataframe that contains the last step of the simulation so all the states and all the nodes
+        :param df: the dataframe to modify
+        :param node_name: the node name to extract. If the node is in a state name, column is kept (if exclusion is False) or excluded (if exclusion is True)
+        :param exclusion: if true, the column is excluded thus not added to the final df
+        :return: the dataframe with the column that was extracted
+        """
         cols_to_keep = []
         if exclusion: node_name = node_name.replace("!", "")
         for col_name in df.columns:
@@ -52,6 +70,17 @@ class Extractor(object):
 
     @staticmethod
     def extract_column_numerical(df, column_name: str, sim_res, op: Operators, value: float, exclusion: bool = False, is_state: bool = False):
+        """
+        extract from a column, the rows that meet the condition
+        :param df:
+        :param column_name:
+        :param sim_res: the results of the simulation (for comparison purpose)
+        :param op: the operator to use
+        :param value: the value to compare (float between 0 and 1)
+        :param exclusion: if the column is excluded or not
+        :param is_state: the column is related to a state
+        :return: a dataframe containing the rows that meet the condition on the column
+        """
         #print("Entering extract_column_numerical")
         #print(f"df : \n {df}\n")
         if sim_res is not None:
@@ -89,6 +118,13 @@ class Extractor(object):
 
     @staticmethod
     def extract_lines(fp_df, exclusion: bool, name: str):
+        """
+        extract a line from the fixpoint dataframe containing the name of the node or state
+        :param fp_df: fixpoint dataframe where the model does not evolve anymore
+        :param exclusion: the line to extract is the one that is excluded
+        :param name: the name of the state that we want to extract
+        :return: a dataframe containing the line that was extracted
+        """
         if exclusion:
             return fp_df[fp_df[name] == 0].reset_index(drop=True)
         else:
