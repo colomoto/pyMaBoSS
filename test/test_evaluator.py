@@ -601,7 +601,7 @@ class TestEvaluator(TestCase):
             "<nil> from mutation" : [0.6],
             "Difference <nil>" : [0.2616],
             "Percentage <nil>" : ["77.30%"],
-            "Increase <nil>" : [True],
+            "Increase <nil>" : ["True"],
         })
         res.to_csv('test/result_increase_true.csv')
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -618,7 +618,7 @@ class TestEvaluator(TestCase):
             'AKT1--AKT3 from mutation' : [0.0048],
             'Difference AKT1--AKT3' : [-0.052],
             'Percentage AKT1--AKT3' : ["-91.55%"],
-            'Increase AKT1--AKT3' : [False],
+            'Increase AKT1--AKT3' : ["False"],
         })
         res.to_csv('test/result_increase_false.csv')
         assert res.equals(expected)
@@ -650,7 +650,7 @@ class TestEvaluator(TestCase):
             'AKT1--AKT2--AKT3 from mutation' : [0.3384],
             'Difference AKT1--AKT2--AKT3' : [-0.2616],
             'Percentage AKT1--AKT2--AKT3' : ["-43.60%"],
-            'Decrease AKT1--AKT2--AKT3' : [True],
+            'Decrease AKT1--AKT2--AKT3' : ["True"],
         })
         res.to_csv('test/result_decrease_true.csv')
         assert res.round(5).equals(expected.round(5))
@@ -667,7 +667,7 @@ class TestEvaluator(TestCase):
             "<nil> from mutation": [0.6],
             "Difference <nil>": [0.2616],
             "Percentage <nil>": ["77.30%"],
-            "Decrease <nil>": [False],
+            "Decrease <nil>": ["False"],
         })
 
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -703,7 +703,7 @@ class TestEvaluator(TestCase):
             'AKT1 from mutation': [0.0345],
             'Difference AKT1' : [0.0335],
             'Percentage AKT1': ["3350.00%"],
-            'Decrease AKT1' : [False]
+            'Decrease AKT1' : ["False"]
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.round(5).equals(expected.round(5))
@@ -719,7 +719,7 @@ class TestEvaluator(TestCase):
             'P(AKT1) cumul from mutation' : [0.81],
             'Difference AKT1' : [0.62],
             'Percentage AKT1' : ["326.32%"],
-            'Increase AKT1' : [True]
+            'Increase AKT1' : ["True"]
         })
         print(f"Res:\n {res}")
         res.to_csv('test/result_last_state_inc_dec_with_logical.csv')
@@ -738,7 +738,7 @@ class TestEvaluator(TestCase):
             'AKT2 state from mutation' : [0.19],
             'Difference state AKT2' : [-0.62],
             'Percentage state AKT2' : ["-76.54%"],
-            'Increase AKT2 state' : [False],
+            'Increase AKT2 state' : ["False"],
             'P(AKT2) cumul from master' : [1.0], #may happen for node active in all states
             'P(AKT2) cumul from mutation' : [1.0],
             'Difference AKT2' : [0.0],
