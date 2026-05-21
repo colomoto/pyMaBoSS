@@ -14,7 +14,6 @@ class QueryType(Enum):
     T = "T" # time of an event
     TMIN = "Tmin" # time mini of an event (first time it happens)
     TMAX = "Tmax" # time maxi of an event (last time it happens)
-    DEPENDENCIE = "D"
     MUTATION = "M"
     INCREASE = "Inc"
     DECREASE = "Dec"
@@ -83,11 +82,20 @@ class FormulaChecker:
         :param formula: the parsed query
         :return: nothing if everything is ok, raise an exception otherwise
         """
-        # temporary-----------------------------------------------------------------------------------------------------
-        if formula.type == QueryType.MUTATION: raise ValueError("Mutation is not handle at the moment.")
-        if formula.type != QueryType.INCREASE and formula.type != QueryType.DECREASE and formula.target == TargetType.FIXPOINT:
-            raise FormulaException(f"The target cannot be a fixpoint for this evaluation : {formula.type}. Only for DECREASE and INCREASE.")
-        # --------------------------------------------------------------------------------------------------------------
+
+
+
+        if formula.type == QueryType.T or formula.type == QueryType.TMAX or formula.type == QueryType.TMIN:
+            if formula.target == TargetType.FIXPOINT:
+                raise FormulaException(f"The fixpoint target type for this operation: {formula.type} is not supported.")
+
+        if not (formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE):
+            if "comb" not in formula.options and formula.target == TargetType.FIXPOINT:
+                raise FormulaException(f"The fixpoint target type for this operation: {formula.type} is supported only with 'comb' option.")
+            if "transient" in formula.options:
+                raise FormulaException(f"The transient option is not supported for this operation: {formula.type}, only for Dec and Inc")
+            if "compare" in formula.options:
+                raise FormulaException(f"The compare option is not supported for this operation: {formula.type}, only for Dec and Inc")
 
         if formula.type == QueryType.DECREASE or formula.type == QueryType.INCREASE: #node, fp or state and Inc or Dec
             if formula.target == TargetType.NODE or formula.target == TargetType.STATE:
@@ -98,26 +106,14 @@ class FormulaChecker:
                     FormulaChecker.check_logical_equation_no_float_no_state(formula.logical_equation)
                 except (FloatValueInFixpointLogicalEquation, StateNameInFixpointLogicalEquation) as e:
                     raise FormulaException(e.message)
-
-        if formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE:
             if formula.mutation_constraint is None or formula.mutation_constraint == []:
                 raise ErrorInIncreaseDecreaseEvaluation(f"The mutation constraint cannot be empty for this evaluation : {formula.type}")
-
-        if formula.type == QueryType.MUTATION:
-            if formula.mutation_constraint is not None and formula.mutation_constraint != []:
-                raise ErrorInMutationEvaluation(f"The mutation constraint cannot be filled for this evaluation : {formula.type}")
-            if formula.logical_equation is None or formula.logical_equation == []:
-                raise ErrorInMutationEvaluation(f"The logical equation cannot be empty for this evaluation : {formula.type}")
 
         if formula.target_name is None or formula.target_name == []:
             raise EmptyNameException()
         if len(formula.target_name) > 1:
             if formula.type == QueryType.PMIN or formula.type == QueryType.PMAX:
                 raise ErrorMinMaxOnlyForOneEntity("A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
-            if formula.type == QueryType.DEPENDENCIE and len(formula.target_name) != 2:
-                raise ErrorInDependencieEvaluation("A dependencie evaluation must have 2 names exactly.")
-            if formula.type == QueryType.MUTATION :
-                raise ErrorInMutationEvaluation("A mutation evaluation can only have \'?\' has name.")
             for name in formula.target_name:
                 if name == "":
                     raise EmptyNameException()
@@ -125,30 +121,19 @@ class FormulaChecker:
             if formula.target_name[0] == "":
                 raise EmptyNameException()
 
-            if formula.target_name[0] != "?" and formula.type == QueryType.MUTATION:
-                raise ErrorInMutationEvaluation("A mutation evaluation can only have \'?\' has name.")
-
             if formula.target_name[0] == "*":
                 if formula.type != QueryType.P and formula.type != QueryType.T:
                     raise ErrorMinMaxOnlyForOneEntity(
                         "A min/max operation can only be performed on one entity, e.g: P(node:name) ... ")
 
-        if formula.type == QueryType.DEPENDENCIE:
-            if len(formula.target_name) != 2:
-                raise ErrorInDependencieEvaluation("A dependencie evaluation must have 2 names")
-
         if formula.operator == Operators.NE:
             warnings.warn("Operator \"!=\" may produce very broad results, consider using \"<\", \"<=\", \">=\" or \">\" instead")
         if formula.operator == Operators.NONE and not (formula.type == QueryType.INCREASE or
-                                                       formula.type == QueryType.DECREASE or
-                                                       formula.type == QueryType.MUTATION or
-                                                       formula.type == QueryType.DEPENDENCIE):
-            raise WrongGrammarException("Operator is required except for Inc, Dec, M and D that require \'/\' and no value or an integer for sensibility comparison.")
+                                                       formula.type == QueryType.DECREASE):
+            raise WrongGrammarException("Operator is required except for Inc, Dec that require \'/\' and no value.")
         if formula.operator != Operators.NONE and (formula.type == QueryType.INCREASE or
-                                                       formula.type == QueryType.DECREASE or
-                                                       formula.type == QueryType.MUTATION or
-                                                       formula.type == QueryType.DEPENDENCIE):
-            raise WrongGrammarException("Operator is not required for Inc, Dec, M and D")
+                                                       formula.type == QueryType.DECREASE):
+            raise WrongGrammarException("Operator is not required for Inc, Dec.")
 
         if formula.value is None or formula.value == "":
             if not ((formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE or formula.type == QueryType.MUTATION) and formula.operator == Operators.NONE):
@@ -176,5 +161,5 @@ class FormulaChecker:
                 warnings.warn("Value is not \"?\" but the operator is \"=\", there is a possibility of no result")
 
         if formula.value == "":
-            if not( formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE or formula.type == QueryType.MUTATION):
+            if not( formula.type == QueryType.INCREASE or formula.type == QueryType.DECREASE):
                 raise EmptyValueException()

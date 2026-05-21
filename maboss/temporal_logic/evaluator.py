@@ -1,7 +1,9 @@
 import warnings
 from itertools import combinations
+from unittest import case
 
 from jedi.inference.compiled import value
+from pexpect import expect
 from scipy.signal import lsim
 
 
@@ -370,23 +372,28 @@ class MaBoSSEvaluator:
                 res = sim_results[sim_key]
                 # print(f"Nodes for this query : {res.get_nodes_probtraj()}")
                 parsed_query = Parser.parse_query(q)
+                tab_options_query = query_options[q]
 
-                if parsed_query.type not in [QueryType.DEPENDENCIE, QueryType.INCREASE, QueryType.DECREASE,
-                                             QueryType.MUTATION]:
-                    # print(f"query is not a dependency, increase or decrease : {q}")
-                    list_of_df.append(MaBoSSEvaluator.evaluate_query(parsed_query, res))
+                if parsed_query.type in [QueryType.P, QueryType.PMAX, QueryType.PMIN, QueryType.T, QueryType.TMAX, QueryType.TMIN]:
+                    # print(f"query is not a dependency, increase or decrease: {q}")
+                    if query_options[q][6]:
+                        if parsed_query.logical_equation: warnings.warn("Logical equation will be ignored for this evaluation.")
+                        list_of_df.append(MaBoSSEvaluator.evaluate_query_combinatory(parsed_query, res))
+                    else:
+                        list_of_df.append(MaBoSSEvaluator.evaluate_query(parsed_query, res, tab_options_query, query_digits[q]))
                 else:
-                    # print(f"Query is a dependency, increase or decrease : {q}")
+                    # print(f"Query is a dependency, increase or decrease: {q}")
                     match parsed_query.type:
                         case QueryType.INCREASE | QueryType.DECREASE:
                             # get the simulation results that must be compared to this one
+
                             compare_key = query_to_compare.get(q, 'master_simulation')
                             # print(f"Query: {q}")
-                            #print(f"  Main simulation key: {sim_key}")
-                            #print(f"  Compare simulation key: {compare_key}")
+                            #print(f"Main simulation key: {sim_key}")
+                            #print(f"Compare simulation key: {compare_key}")
 
-                            tab_options_query = query_options[q]
-                            print(f"Combination : {tab_options_query[6]}")
+
+                            #print(f"Combination : {tab_options_query[6]}")
                             # print(f"  Digits: {query_digits[q]}")
                             list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query,
                                                                                          res, sim_results[compare_key],
@@ -394,7 +401,8 @@ class MaBoSSEvaluator:
                                                                                          tab_options_query
                                                                                          ))
                         case _:
-                            pass
+                            warnings.warn(f"Query type {parsed_query.type} is not supported yet, query ignored.")
+                            continue
             except FormulaException as fe:
                 print(f"Formula is not correct : {q} , will not be evaluated. This error occurred : {fe.message}")
                 continue
@@ -671,8 +679,7 @@ class MaBoSSEvaluator:
         return pd.DataFrame(data_out)
 
     @staticmethod
-    def evaluate_query(parsed_query_input: Formula,
-                       results):  # maybe pass the results as an array to compute more than one simulation
+    def evaluate_query(parsed_query_input: Formula, results, options, digits=4):  # maybe pass the results as an array to compute more than one simulation
         """
         This method might need reformating for more cleanliness (11th may 2026)
         Method to evaluate query of any other query type aside of Dec and Inc.
@@ -683,11 +690,27 @@ class MaBoSSEvaluator:
         - if a logical equation was passed, it is applied (it removes mainly time codes)
         - in the end, if the value was not a float but the "?", the result is computed
         Then the results are returned.
+        :param digits:
+        :param options:
         :param parsed_query_input: the query that is evaluated, already parsed
         :param results: the results of the simulation to evaluate the query on. The program does not care if it is
         a mutation or a master simulation.
         :return: a dataframe of the evaluated data
         """
+
+        if options:
+            MaBoSSEvaluator.transient = options[0]
+            MaBoSSEvaluator.threshold = options[1]
+            MaBoSSEvaluator.percentage_value_int = options[2]
+            MaBoSSEvaluator.start = options[3]
+            MaBoSSEvaluator.end = options[4]
+            MaBoSSEvaluator.optimum = options[5]
+            MaBoSSEvaluator.combination = options[6]
+        else:
+            MaBoSSEvaluator.reset_default_values()
+
+        MaBoSSEvaluator.digits = digits
+
         if results is None:
             raise ValueError("Results are empty")
 
@@ -736,7 +759,7 @@ class MaBoSSEvaluator:
                                                                                 MaBoSSEvaluator.parsed_query.value,
                                                                                 QueryType.TMIN)
             case _:
-                raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax")
+                raise ValueError("Query type is not supported, try P, Pmin, Pmax or T, Tmin, Tmax, Inc or Dec")
 
         # print(f"DF after value selection : \n {filtered_data}")
 
@@ -774,7 +797,82 @@ class MaBoSSEvaluator:
                                                                           MaBoSSEvaluator.simulation_results[1])
             return computed_values
 
-        return filtered_data.dropna(inplace=False, ignore_index=True)
+        return filtered_data.dropna(inplace=False, ignore_index=True).round(digits)
+
+    @staticmethod
+    def evaluate_query_combinatory(parsed_query_input: Formula, sim_res):
+        name_target = parsed_query_input.target_name
+        data_out = {}
+
+        if parsed_query_input.target == TargetType.STATE or parsed_query_input.target == TargetType.NODE:
+            # check all names exists
+            df_nodes = sim_res.get_nodes_probtraj().columns.tolist()
+            if not all(name in df_nodes for name in name_target):
+                warnings.warn(f"Not all name were found in the results, combinatory probability : 0.0")
+                data_out[f"Combinatory {', '.join(name_target)}"] = 0.0
+                return pd.DataFrame(data_out)
+
+            df_states = sim_res.get_states_probtraj()
+            #match columns in state df
+            matching_columns = [col for col in df_states.columns if all(name in col for name in name_target)]
+
+            data_out[f"Combinatory {', '.join(name_target)}"] = df_states[matching_columns].sum(axis=1)
+            data_out["Time"] = df_states["Time"]
+            #print(data_out)
+            df_out = pd.DataFrame(data_out).dropna(ignore_index=True)
+            # move the time column to first position
+            col = df_out.pop("Time")
+            df_out.insert(0, "Time", col)
+
+            #applying the constraint on the value
+            value = parsed_query_input.value
+            try:
+                value = float(value)
+            except ValueError:
+                return df_out
+
+            match parsed_query_input.operator:
+                case Operators.GE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] >= value)
+                case Operators.GT: mask = (df_out[f"Combinatory {', '.join(name_target)}"] > value)
+                case Operators.LE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] <= value)
+                case Operators.LT: mask = (df_out[f"Combinatory {', '.join(name_target)}"] < value)
+                case Operators.EQ: mask = (df_out[f"Combinatory {', '.join(name_target)}"] == value)
+                case Operators.NE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] != value)
+                case _: raise ValueError("Operator is not supported, try >=, >, <=, <, = or !=")
+
+            df_out = df_out[mask]
+        else: #fixpoints
+            df_fp = sim_res.get_fptable()
+
+            # check all the names exists
+            if not all(name in df_fp for name in name_target):
+                warnings.warn(f"Not all name were found in the results, combinatory probability : 0.0")
+                data_out[f"Combinatory {', '.join(name_target)}"] = 0.0
+                return pd.DataFrame(data_out)
+
+            matching_lines = df_fp[(df_fp[name_target] == 1).all(axis=1)]
+            # print(f"\n{matching_lines}")
+            cumul_proba = matching_lines["Proba"].sum()
+            data_out[f"P_cumul({','.join(name_target)})"] = [cumul_proba]
+
+
+            try:
+                val = float(parsed_query_input.value)
+                match parsed_query_input.operator:
+                    case Operators.GE: data_out["Comparison value"] = (cumul_proba >= val)
+                    case Operators.GT: data_out["Comparison value"] = (cumul_proba > val)
+                    case Operators.LE: data_out["Comparison value"] = (cumul_proba <= val)
+                    case Operators.LT: data_out["Comparison value"] = (cumul_proba < val)
+                    case Operators.EQ: data_out["Comparison value"] = (cumul_proba == val)
+                    case Operators.NE: data_out["Comparison value"] = (cumul_proba != val)
+                    case _: raise ValueError()
+            except ValueError:
+                df_out = pd.DataFrame(data_out)
+                return df_out
+
+            df_out = pd.DataFrame(data_out)
+        return df_out
+
 
     @staticmethod
     def get_df_target(target: TargetType, fp: bool = False, get_last: bool = False):
@@ -861,48 +959,94 @@ class MaBoSSEvaluator:
             match op:
                 case Operators.LT:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] < value).any(
-                            axis=1)  # just check the value, any column checking it is good passes the test
+                        if MaBoSSEvaluator.percentage_value_int == 0:
+                            mask = (df[cols_to_check] < value).any(
+                                axis=1)  # just check the value, any column checking it as good passes the test
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (value-df[cols_to_check] > perc).any(axis=1)
                     else:
-                        mask = (df[cols_to_check] < value).all(
-                            axis=1)  # all the values on the line must be less than the value
+                        if MaBoSSEvaluator.percentage_value_int == 0:
+                            mask = (df[cols_to_check] < value).all(
+                                axis=1)  # all the values on the line must be less than the value
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (value-df[cols_to_check] > perc).all(axis=1)
                 case Operators.EQ:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] == value).any(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] == value).any(axis=1)
+                        else:
+                            mask = (abs(df[cols_to_check] - value) < MaBoSSEvaluator.percentage_value_int/100).any(axis=1)
                     else:
-                        mask = (df[cols_to_check] == value).all(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] == value).all(axis=1)
+                        else:
+                            mask = (abs(df[cols_to_check] - value) < MaBoSSEvaluator.percentage_value_int/100).all(axis=1)
                 case Operators.GT:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] > value).any(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int == 0:
+                            mask = (df[cols_to_check] > value).any(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value > perc).any(axis=1)
                     else:
-                        mask = (df[cols_to_check] > value).all(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] > value).all(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value > value).all(axis=1)
                 case Operators.LE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] <= value).any(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] <= value).any(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value <= perc).any(axis=1)
                     else:
-                        mask = (df[cols_to_check] <= value).all(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] <= value).all(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value <= perc).all(axis=1)
                 case Operators.GE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] >= value).any(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] >= value).any(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value >= perc).any(axis=1)
                     else:
-                        mask = (df[cols_to_check] >= value).all(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int==0:
+                            mask = (df[cols_to_check] >= value).all(axis=1)
+                        else:
+                            perc = MaBoSSEvaluator.percentage_value_int/100
+                            mask = (df[cols_to_check]-value >= perc).all(axis=1)
                 case Operators.NE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        mask = (df[cols_to_check] != value).any(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int == 0:
+                            mask = (df[cols_to_check] != value).any(axis=1)
+                        else:
+                            mask = (abs(df[cols_to_check] - value) > MaBoSSEvaluator.percentage_value_int / 100).any(
+                                axis=1)
                     else:
-                        mask = (df[cols_to_check] != value).all(axis=1)
+                        if MaBoSSEvaluator.percentage_value_int == 0:
+                            mask = (df[cols_to_check] != value).all(axis=1)
+                        else:
+                            mask = (abs(df[cols_to_check] - value) > MaBoSSEvaluator.percentage_value_int / 100).all(
+                                axis=1)
                 case _:
                     raise ValueError("Operator is not supported, try <, <=, =, !=, >=, >")
 
             out_df = df[mask].copy()
             out_df["Time"] = df["Time"]  # restablish the correct time values
 
-            # print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} : \n {out_df} \n")
+            # print(f" value_proba, {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} : \n {out_df} \n")
 
             out_df = out_df.dropna(subset=out_df.columns.difference(['Time']), axis=0, how='all',
                                    ignore_index=True)  # remove the rows with all nan values
 
-            # print(f" value_proba , {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
+            # print(f" value_proba, {MaBoSSEvaluator.parsed_query.target_name} with type {query_type} after dropna : \n {out_df} \n")
             if TargetType.STATE == MaBoSSEvaluator.parsed_query.target:
                 name_to_search = MaBoSSEvaluator.parsed_query.target_name[0] + "_state"
             else:

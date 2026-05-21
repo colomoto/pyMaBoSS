@@ -5,7 +5,7 @@ from maboss.temporal_logic.logical_expression_compute import ComputeLogicalExpre
 
 class Parser:
     QUERY_PATTERN = \
-        r"^(Pmax|Pmin|P|T|Tmin|Tmax|D|M|Inc|Dec)\((node|state|fp)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=|/)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?|))?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?"
+        r"^(Pmax|Pmin|P|T|Tmin|Tmax|Inc|Dec)\((node|state|fp)\:(.+?)\)(?:\s*(<=|>=|<|>|=|==|!=|/)\s*(0(?:\.\d+)?|1(?:\.0+)?|\?|))?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?(?:\s*\[(.*?)\])?"
 
     @staticmethod
     def parse_query(input: str) -> Formula:
@@ -45,7 +45,7 @@ class Parser:
                      "A parenthesis is not opened or a space might be missing. Result : ",
                      logical_equation_components))
 
-        if mutation_param is None:
+        if mutation_param is None or mutation_param == " ":
             mutation_param_final = []
         else:
             mutation_param_final = []
