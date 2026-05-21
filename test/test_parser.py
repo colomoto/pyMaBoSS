@@ -197,6 +197,9 @@ class TestParser(TestCase):
     def test_formula_increase_has_operator(self):
         self.assertRaises(WrongGrammarException, FormulaChecker.check_formula, ERROR_DECREASE_HAS_OPERATOR)
 
+    def test_formula_raise_fixpoint_without_comb(self):
+        self.assertRaises(FormulaException, FormulaChecker.check_formula,  Parser.parse_query("P(fp:AKT1,AKT2) >= 0.2 [ ] [ ] [ ]"))
+
 # ---------------------------- TESTS FOR COMPUTATION OF LOGICAL EXPRESSION -----------------------
     def test_expression_no_error(self):
         try:
