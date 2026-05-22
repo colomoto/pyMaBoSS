@@ -294,7 +294,7 @@ class MaBoSSEvaluator:
                 MaBoSSEvaluator.combination = True
 
     @staticmethod
-    def querying(queries: list[str], sim_cfg, sim_bnd, initial_state: list[dict] = None):
+    def querying(queries: list[str], sim_cfg=None, sim_bnd=None, initial_state: list[dict] = None):
         """
         Interaction method between the user and the program.
         First it runs all the necessary simulations, a dictionary avoids two identical simulations to be run twice. It always
@@ -322,13 +322,13 @@ class MaBoSSEvaluator:
         query_to_compare = {}
         query_options = {}
         query_digits = {}
-        query_combination = {}
 
         # Running the simulations and stocked the results
         model_sim = maboss.load(bnd_filename=sim_bnd, cfg_filename=sim_cfg)
         if initial_state:
             for e in initial_state:
                 maboss.set_nodes_istate(model_sim, [e['node']], e['istate'])
+
         res_master = model_sim.run()
         sim_results['master_simulation'] = res_master
         # sim_results['master_simulation'].plot_piechart()
@@ -395,6 +395,7 @@ class MaBoSSEvaluator:
                         if parsed_query.logical_equation: warnings.warn("Logical equation will be ignored for this evaluation.")
                         list_of_df.append(MaBoSSEvaluator.evaluate_query_combinatory(parsed_query, res))
                     else:
+                        #print(parsed_query)
                         list_of_df.append(MaBoSSEvaluator.evaluate_query(parsed_query, res, tab_options_query, query_digits[q]))
                 else:
                     # print(f"Query is a dependency, increase or decrease: {q}")
@@ -827,7 +828,12 @@ class MaBoSSEvaluator:
                 data_out[f"Combinatory {', '.join(name_target)}"] = 0.0
                 return pd.DataFrame(data_out)
 
-            df_states = sim_res.get_states_probtraj()
+            if not "Time" in sim_res.get_states_probtraj().columns:
+                df_states = sim_res.get_states_probtraj().copy()
+                df_states["Time"] = df_states.index
+            else:
+                df_states = sim_res.get_states_probtraj().copy()
+                
             #match columns in state df
             matching_columns = [col for col in df_states.columns if all(name in col for name in name_target)]
 
