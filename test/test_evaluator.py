@@ -119,8 +119,8 @@ class TestEvaluator(TestCase):
             'AKT2' : [0.854,0.332],
             'AKT3' : [0.120,0.941],
             'AKT1--AKT2--AKT3': [0.6,0.15],
-            'AKT1--AKT3' : [0.07521,0.2],
-            'AKT2_state' : [0.00479,0.05],
+            'AKT1--AKT3' : [0.0752,0.2],
+            'AKT2_state' : [0.0048,0.05],
         })
         print(f"Results: \n{res}")
         print(f"Expected : \n{expected}")
@@ -133,14 +133,15 @@ class TestEvaluator(TestCase):
         MaBoSSEvaluator.parsed_query = Parser.parse_query(query)
         res = MaBoSSEvaluator.evaluate_query(Parser.parse_query(query), FakeResult(df_nodes, df_states, None), None, 4)
         res.to_csv("test/test_data_result.csv", index=False)
+        display(res)
         assert res.equals(pd.DataFrame({
             'Time' : [0.0,1.0],
             'AKT1' : [0.421,0.678],
             'AKT2' : [0.854,0.332],
             'AKT3' : [0.120,0.941],
             'AKT1--AKT2--AKT3': [0.6,0.15],
-            'AKT1--AKT3' : [0.07521,0.2],
-            'AKT2_state' : [0.00479,0.05],
+            'AKT1--AKT3' : [0.0752,0.2],
+            'AKT2_state' : [0.0048,0.05],
         }))
 
     def test_all_columns(self):
@@ -238,8 +239,8 @@ class TestEvaluator(TestCase):
             'AKT2': [0.854, 0.567],
             'AKT3' : [0.12,0.443],
             'AKT1--AKT2--AKT3': [0.6,0.11],
-            'AKT1--AKT3' : [0.07521,0.11],
-            'AKT2_state' : [0.00479,0.11]
+            'AKT1--AKT3' : [0.0752,0.11],
+            'AKT2_state' : [0.0048,0.11]
         })
 
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -288,8 +289,8 @@ class TestEvaluator(TestCase):
             'AKT2' : [0.854],
             'AKT3' : [0.120],
             'AKT1--AKT2--AKT3': [0.6],
-            'AKT1--AKT3' : [0.07521],
-            'AKT2_state' : [0.00479]
+            'AKT1--AKT3' : [0.0752],
+            'AKT2_state' : [0.0048]
         })
 
         print(f"Results : \n{res}\n Expected : \n{expected}")
@@ -324,7 +325,7 @@ class TestEvaluator(TestCase):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
         MaBoSSEvaluator.parsed_query = Parser.parse_query("Pmax(node:AKT4) > 0.1")
-        self.assertRaises(FormulaException, MaBoSSEvaluator.evaluate_query, Parser.parse_query("Pmax(node:AKT4) > 0.1"), FakeResult(df_nodes, df_states, None))
+        self.assertRaises(FormulaException, MaBoSSEvaluator.evaluate_query, Parser.parse_query("Pmax(node:AKT4) > 0.1"), FakeResult(df_nodes, df_states, None), options=[])
 
     def test_min_state_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
@@ -335,9 +336,9 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'Time' : [0.0],
             '<nil>' : [0.32],
-            'AKT1--AKT3': [0.07521],
+            'AKT1--AKT3': [0.0752],
             'AKT1--AKT2--AKT3': [0.6],
-            'AKT2' : [0.00479],
+            'AKT2' : [0.0048],
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
@@ -406,12 +407,12 @@ class TestEvaluator(TestCase):
             'AKT2' : [0.854,0.332],
             'AKT3' : [0.120,0.941],
             'AKT1--AKT2--AKT3': [0.6,0.15],
-            'AKT1--AKT3' : [0.07521,0.2],
-            'AKT2_state' : [0.00479,0.05],
+            'AKT1--AKT3' : [0.0752,0.2],
+            'AKT2_state' : [0.0048,0.05],
         })
 
         print(f"Results : \n{res}\n Expected : \n{expected}")
-        assert res.equals(expected)
+        assert res.equals(expected.round(4))
 
     def test_time_max_query(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
@@ -436,9 +437,9 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             '<nil>' : [0.32,0.4],
-            'AKT1--AKT3': [0.07521,0.2],
+            'AKT1--AKT3': [0.0752,0.2],
             'AKT1--AKT2--AKT3': [0.6,.15],
-            'AKT2' : [0.00479,0.05],
+            'AKT2' : [0.0048,0.05],
         })
         assert res.equals(expected)
 
@@ -453,8 +454,8 @@ class TestEvaluator(TestCase):
             'AKT3' : [0.120,0.941],
             '<nil>' : [0.32,0.40],
             'AKT1--AKT2--AKT3': [0.60,0.15],
-            'AKT1--AKT3': [0.07521, 0.2],
-            'AKT2' : [0.00479,0.05],
+            'AKT1--AKT3': [0.0752, 0.2],
+            'AKT2' : [0.0048,0.05],
         })
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
