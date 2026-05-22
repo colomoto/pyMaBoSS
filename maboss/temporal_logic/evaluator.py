@@ -53,7 +53,7 @@ class MaBoSSEvaluator:
             "--------------------------------------------------------------------------------------------------------")
         print("HELP FOR THE QUERY")
         print(
-            "The query is a string that contains the following elements : [type]([target_type]:name1,name2...) [operator] [value] [logical_equation (optional)]")
+            "The query is a string that contains the following elements : [type]([target_type]:name1,name2...) [operator] [value] [logical_equation (optional)] [mutations (opt)] [options]")
         print("[type] : The type of operation to perform, can be P (probability) or T (time).")
         print("\t - P : will compare the probability of the target to the value. Only one to handle \'?\' value")
         print("\t - T : will return the periods of time where the target probability is meeting the criteria of value.")
@@ -70,11 +70,13 @@ class MaBoSSEvaluator:
             "\t - Inc : check if the node or the state passed in parameters sees its probability increase on the last time period after the mutation. Mutation constraint are required.")
         print(
             "\t - Dec : check if the node or the state passed in parameters sees its probability decrease on the last time period after the mutation. Mutation constraint are required.")
-        print("[target_type] : The type of target to look for, can be node or state.")
+        print("[target_type] : The type of target to look for, can be node, state or a fixpoint.")
         print("\t - node : will look for the probability of the target node.")
         print("\t - state : will look for the probability of the target state.")
-        print("[name] : The name of the target to look for. If target_type is node, name is the name of the node. "
-              "If target_type is state, name is the name of the state. No spaces or \"\". For all targets use *. Can handle multiple names separated by commas, no spaces or \"\" even for multiple names.")
+        print("\t - ")
+        print("[name] : The name of the target to look for. If target_type is node, name is the name of the node."
+              "If target_type is state, name is the name of the state. No spaces or \"\". For all targets use *. Can handle multiple names separated by commas, no spaces or \"\" even for multiple names."
+              "If target_type is state you can pass a list of nodes' name if you also put 'comb' in the options.")
         print("[operator] : The operator to use to compare the target to the value. Can be <, <=, =, !=, >=, > or /.")
         print("Note that != might return very broad results and = might not return anything.")
         print("\t - < : the probability of the target must be less than the value.")
@@ -87,11 +89,11 @@ class MaBoSSEvaluator:
         print(
             "[value] : The value to compare the target to. Can be a number between 0 and 1 or \"?\" ONLY IF the operator used is \'=\' and query type P. If value is \"?\", the query will return the probability of the target.")
         print(
-            "With a value of \'?\' the logical equation must not be empty. The value must be empty for D, M, Dec or Inc type.")
+            "With a value of \'?\' the logical equation must not be empty. The value must be empty for Dec or Inc type.")
         print(
             "[logical_equation] : An optional logical equation to apply to the results. Can be a string or a list of strings.")
         print(
-            "\t - The logical equation is a string that contains the following elements : [ [name]  [operator] [value] ]")
+            "\t - The logical equation is a string that contains the following elements : [ [name] [operator] [value] ]")
         print("\t - The operator can be &, | (pipe). A logical-not ! can be used in front of a name : !name.")
         print("\t - The name can referenced to a node or a state, by default the result will be the probability "
               "of the node or state, thus returning both. For less columns in output, use : node:name or state:name."
@@ -99,9 +101,22 @@ class MaBoSSEvaluator:
         print(
             "\t - The logical equation can contain a numerical evaluation. This one must be placed in between parentheses or strange results may occur.")
         print(
-            "\t - The logical equation can have multiple conditions intricated on numerous levels: [ ( condition A ) | ( ( condition B ) | ( ( condition C ) ) ) ]")
+            "\t - The logical equation can have multiple conditions intricate on numerous levels: [ ( condition A ) | ( ( condition B ) | ( ( condition C ) ) ) ]")
         print(
             "\t - It is really important to separate each member by a space so the parser reads it correctly and not raises an Exception.")
+        print("[mutations]: Optional except for Inc and Dec operations that compare two simulations of the same model.")
+        print("\tMultiple mutations can be passed, all mutation must be write like: node_name:ON or node_name:OFF and multiple couples must be separate by a space.")
+        print("[options]: ")
+        print("\t - digits:int : option to restrain the amount of digits after the dot in the computations and ouput. e.g: digits:3 DEFAULT VALUE IS 4.")
+        print("\t - compare:mut:state,mut2:state: option to compare the computation with this mutation instead of the master simulation. The mutation must be a string like \"node_name:ON\" or \"state_name:OFF\". Multiple mutations can be passed and must be separated by a comma without spaces.")
+        print("\t - int%: option to require a minimum difference between the two probabilities of the target. e.g: 10% DEFAULT VALUE IS 0.")
+        print("\t - transient: special option to check for variations during the simulation and not only a difference at the end. It has the following sub-options:")
+        print("\t\t - threshold:val : general minimal change value for the evolution comparisons, DEFAULT: 0.05")
+        print("\t\t - start:val : minimal change value for the evolution comparisons at the beginning of the simulation, DEFAULT: 0.1")
+        print("\t\t - end:val : minimal change value for the evolution comparisons at the end of the simulation, DEFAULT: 0.1")
+        print("\t\t - optimum:val : minimal change value to consider reaching a min or max value in the evolution. DEFAULT 0.1")
+        print("\t example of options: [ 5% digits:2 compare:AKT:OFF,BRAF:ON transient:threshold:0.05,start:0.1,end:0.1 ]")
+        print("\t NB: the order is not relevant.")
         print("------------------------------------------------------------------------------------------------------")
         print("Examples :")
         print("P(node:A) > 0.5 : returns all the rows where the probability of node A is greater than 0.5")
@@ -145,7 +160,7 @@ class MaBoSSEvaluator:
             "--------------------------------------------------------------------------------------------------------")
         print(
             "For more exemples and output exemples you can check the test_evaluator.py file. Check the notebook Tuto Temporal Logic for more info.")
-        print("In case of any question you can contact me at : oscardufossez@gmail.com")
+        print("In case of any question or bug you can contact me at : oscardufossez@gmail.com or by my GitHub: ODufossez")
 
     @staticmethod
     def reset_default_values():
@@ -679,7 +694,7 @@ class MaBoSSEvaluator:
         return pd.DataFrame(data_out)
 
     @staticmethod
-    def evaluate_query(parsed_query_input: Formula, results, options, digits=4):  # maybe pass the results as an array to compute more than one simulation
+    def evaluate_query(parsed_query_input: Formula, results, options=[], digits=4):  # maybe pass the results as an array to compute more than one simulation
         """
         This method might need reformating for more cleanliness (11th may 2026)
         Method to evaluate query of any other query type aside of Dec and Inc.
