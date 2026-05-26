@@ -1,17 +1,9 @@
 import warnings
-from itertools import combinations
-from unittest import case
-
-from jedi.inference.compiled import value
-from pexpect import expect
-from scipy.signal import lsim
-
-
-from IPython.display import display
+import gc
 
 import maboss
 import numpy as np
-
+from IPython.display import display
 from maboss import Result, Network
 from maboss.temporal_logic.custom_exceptions import DataFrameIsEmpty, NoNameException, NoNameValidException, \
     FormulaException, NoCommonTimes, ErrorInLogicalExpression
@@ -105,17 +97,26 @@ class MaBoSSEvaluator:
         print(
             "\t - It is really important to separate each member by a space so the parser reads it correctly and not raises an Exception.")
         print("[mutations]: Optional except for Inc and Dec operations that compare two simulations of the same model.")
-        print("\tMultiple mutations can be passed, all mutation must be write like: node_name:ON or node_name:OFF and multiple couples must be separate by a space.")
+        print(
+            "\tMultiple mutations can be passed, all mutation must be write like: node_name:ON or node_name:OFF and multiple couples must be separate by a space.")
         print("[options]: ")
-        print("\t - digits:int : option to restrain the amount of digits after the dot in the computations and ouput. e.g: digits:3 DEFAULT VALUE IS 4.")
-        print("\t - compare:mut:state,mut2:state: option to compare the computation with this mutation instead of the master simulation. The mutation must be a string like \"node_name:ON\" or \"state_name:OFF\". Multiple mutations can be passed and must be separated by a comma without spaces.")
-        print("\t - int%: option to require a minimum difference between the two probabilities of the target. e.g: 10% DEFAULT VALUE IS 0.")
-        print("\t - transient: special option to check for variations during the simulation and not only a difference at the end. It has the following sub-options:")
+        print(
+            "\t - digits:int : option to restrain the amount of digits after the dot in the computations and ouput. e.g: digits:3 DEFAULT VALUE IS 4.")
+        print(
+            "\t - compare:mut:state,mut2:state: option to compare the computation with this mutation instead of the master simulation. The mutation must be a string like \"node_name:ON\" or \"state_name:OFF\". Multiple mutations can be passed and must be separated by a comma without spaces.")
+        print(
+            "\t - int%: option to require a minimum difference between the two probabilities of the target. e.g: 10% DEFAULT VALUE IS 0.")
+        print(
+            "\t - transient: special option to check for variations during the simulation and not only a difference at the end. It has the following sub-options:")
         print("\t\t - threshold:val : general minimal change value for the evolution comparisons, DEFAULT: 0.05")
-        print("\t\t - start:val : minimal change value for the evolution comparisons at the beginning of the simulation, DEFAULT: 0.1")
-        print("\t\t - end:val : minimal change value for the evolution comparisons at the end of the simulation, DEFAULT: 0.1")
-        print("\t\t - optimum:val : minimal change value to consider reaching a min or max value in the evolution. DEFAULT 0.1")
-        print("\t example of options: [ 5% digits:2 compare:AKT:OFF,BRAF:ON transient:threshold:0.05,start:0.1,end:0.1 ]")
+        print(
+            "\t\t - start:val : minimal change value for the evolution comparisons at the beginning of the simulation, DEFAULT: 0.1")
+        print(
+            "\t\t - end:val : minimal change value for the evolution comparisons at the end of the simulation, DEFAULT: 0.1")
+        print(
+            "\t\t - optimum:val : minimal change value to consider reaching a min or max value in the evolution. DEFAULT 0.1")
+        print(
+            "\t example of options: [ 5% digits:2 compare:AKT:OFF,BRAF:ON transient:threshold:0.05,start:0.1,end:0.1 ]")
         print("\t NB: the order is not relevant.")
         print("------------------------------------------------------------------------------------------------------")
         print("Examples :")
@@ -160,7 +161,8 @@ class MaBoSSEvaluator:
             "--------------------------------------------------------------------------------------------------------")
         print(
             "For more exemples and output exemples you can check the test_evaluator.py file. Check the notebook Tuto Temporal Logic for more info.")
-        print("In case of any question or bug you can contact me at : oscardufossez@gmail.com or by my GitHub: ODufossez")
+        print(
+            "In case of any question or bug you can contact me at : oscardufossez@gmail.com or by my GitHub: ODufossez")
 
     @staticmethod
     def reset_default_values():
@@ -294,7 +296,8 @@ class MaBoSSEvaluator:
                 MaBoSSEvaluator.combination = True
 
     @staticmethod
-    def querying(queries: list[str], sim_cfg=None, sim_bnd=None, initial_state: list[dict] = None):
+    def querying(queries: list[str], sim_cfg=None, sim_bnd=None, initial_state: list[dict] = None,
+                 output_setting: list[str] = None):
         """
         Interaction method between the user and the program.
         First it runs all the necessary simulations, a dictionary avoids two identical simulations to be run twice. It always
@@ -306,6 +309,7 @@ class MaBoSSEvaluator:
         and mutation if needed) and passes them all to the evaluation methods depending on the query type (P, T ...)
         Finally, the results of the evaluation are all appended in a list that is returned at the end of the function.
 
+        :param output_setting: list of nodes and/or states that must appear in the results
         :param queries: a list of string each being an assertion or query to be evaluated, contains a lot of information regarding
         the simulation to which it is linked (see formula)
         :param sim_cfg: the config file of the simulation
@@ -329,11 +333,16 @@ class MaBoSSEvaluator:
             for e in initial_state:
                 maboss.set_nodes_istate(model_sim, [e['node']], e['istate'])
 
+        if output_setting:
+            model_sim.network.set_output(output_setting)
+
         res_master = model_sim.run()
+        # print(f"Nodes: {res_master.get_nodes_probtraj().columns.tolist()} ")
+        # print(f"States: {res_master.get_states_probtraj().columns.tolist()}")
         sim_results['master_simulation'] = res_master
         # sim_results['master_simulation'].plot_piechart()
 
-        # Reading of the queries and launching the simulation for a mutation if it was not done before
+        # Reading the queries and launching the simulation for a mutation if it was not done before
         for q in queries:
             # print(f"Query to parse : {q}")
             parsed_query = Parser.parse_query(q)
@@ -382,7 +391,7 @@ class MaBoSSEvaluator:
 
         for q in checked_query:
             try:
-                #print(f"query : {q}")
+                # print(f"query : {q}")
                 sim_key = query_to_sim[q]
                 res = sim_results[sim_key]
                 # print(f"Nodes for this query : {res.get_nodes_probtraj()}")
@@ -405,11 +414,10 @@ class MaBoSSEvaluator:
 
                             compare_key = query_to_compare.get(q, 'master_simulation')
                             # print(f"Query: {q}")
-                            #print(f"Main simulation key: {sim_key}")
-                            #print(f"Compare simulation key: {compare_key}")
+                            # print(f"Main simulation key: {sim_key}")
+                            # print(f"Compare simulation key: {compare_key}")
 
-
-                            #print(f"Combination : {tab_options_query[6]}")
+                            # print(f"Combination : {tab_options_query[6]}")
                             # print(f"  Digits: {query_digits[q]}")
                             list_of_df.append(MaBoSSEvaluator.evaluate_increase_decrease(parsed_query,
                                                                                          res, sim_results[compare_key],
@@ -428,6 +436,17 @@ class MaBoSSEvaluator:
                 print(f"df {i} is empty. Query was : {checked_query[i]}")
 
         MaBoSSEvaluator.reset_default_values()
+        MaBoSSEvaluator.simulation_results = None
+        MaBoSSEvaluator.simulation_results_raw = None
+
+        sim_results.clear()
+        query_to_sim.clear()
+        query_to_compare.clear()
+        query_options.clear()
+        query_digits.clear()
+        checked_query.clear()
+
+        gc.collect()
         print("Evaluations done !")
         return list_of_df
 
@@ -482,12 +501,15 @@ class MaBoSSEvaluator:
             if df.empty or df is None:
                 raise DataFrameIsEmpty(f"The dataframe is empty for target \"{parsed_query_input.target}\"")
 
-            df = df.dropna().copy()
+            df = df.dropna()
             # removing the spaces on the values
-            df.columns = df.columns.str.replace(' ', '')
+            df = df.rename(columns=lambda x: str(x).replace(' ', ''))
+
+            float_cols = df.select_dtypes(include=['float64']).columns
+            df[float_cols] = df[float_cols].astype('float32')
 
             if 'State' in df.columns:
-                df['State'] = df['State'].astype(str).str.replace(' ', '')
+                df['State'] = df['State'].astype(str).str.replace(' ', '').astype('category')
 
             if parsed_query_input.target == TargetType.FIXPOINT and parsed_query_input.logical_equation:
                 try:
@@ -595,14 +617,14 @@ class MaBoSSEvaluator:
 
                     if parsed_query_input.type == QueryType.INCREASE:
                         data_out[f"Increase {name}"] = MaBoSSEvaluator.evaluate_increase_decrease_value("increase",
-                                                                                                    evaluate_on_percentage,
-                                                                                                    val_master,
-                                                                                                    val_mutation)
+                                                                                                        evaluate_on_percentage,
+                                                                                                        val_master,
+                                                                                                        val_mutation)
                     else:
                         data_out[f"Decrease {name}"] = MaBoSSEvaluator.evaluate_increase_decrease_value('decrease',
-                                                                                                    evaluate_on_percentage,
-                                                                                                    val_master,
-                                                                                                    val_mutation)
+                                                                                                        evaluate_on_percentage,
+                                                                                                        val_master,
+                                                                                                        val_mutation)
                     if MaBoSSEvaluator.transient:
                         data_out.update(MaBoSSEvaluator.check_transient(df_master, df_mutation, name))
 
@@ -613,10 +635,12 @@ class MaBoSSEvaluator:
                         df_states_master.columns = df_states_master.columns.str.replace(' ', '')
                         df_states_mutation.columns = df_states_mutation.columns.str.replace(' ', '')
 
-                        matching_cols = [col for col in df_states_master.columns if all(name in col for name in name_target)]
+                        matching_cols = [col for col in df_states_master.columns if
+                                         all(name in col for name in name_target)]
                         val_cumul_master = df_states_master[matching_cols].iloc[0].sum()
 
-                        matching_cols = [col for col in df_states_mutation.columns if all(name in col for name in name_target)]
+                        matching_cols = [col for col in df_states_mutation.columns if
+                                         all(name in col for name in name_target)]
                         val_cumul_mutation = df_states_mutation[matching_cols].iloc[0].sum()
 
                         data_out[f"P_cumul({','.join(name_target)}) master"] = val_cumul_master.round(digits)
@@ -655,14 +679,14 @@ class MaBoSSEvaluator:
 
                     if parsed_query_input.type == QueryType.INCREASE:
                         data_out[f"Increase cumul"] = [MaBoSSEvaluator.evaluate_increase_decrease_value("increase",
-                                                                                                       evaluate_on_percentage,
-                                                                                                       val_cumul_master,
-                                                                                                       val_cumul_mutation)]
+                                                                                                        evaluate_on_percentage,
+                                                                                                        val_cumul_master,
+                                                                                                        val_cumul_mutation)]
                     else:
                         data_out[f"Decrease cumul"] = [MaBoSSEvaluator.evaluate_increase_decrease_value("decrease",
-                                                                                                       evaluate_on_percentage,
-                                                                                                       val_cumul_master,
-                                                                                                       val_cumul_mutation)]
+                                                                                                        evaluate_on_percentage,
+                                                                                                        val_cumul_master,
+                                                                                                        val_cumul_mutation)]
                 else:  # an exact state name was passed
                     for name in name_target:
                         try:
@@ -695,7 +719,8 @@ class MaBoSSEvaluator:
         return pd.DataFrame(data_out)
 
     @staticmethod
-    def evaluate_query(parsed_query_input: Formula, results, options=[], digits=4):  # maybe pass the results as an array to compute more than one simulation
+    def evaluate_query(parsed_query_input: Formula, results, options=[],
+                       digits=4):  # maybe pass the results as an array to compute more than one simulation
         """
         This method might need reformating for more cleanliness (11th may 2026)
         Method to evaluate query of any other query type aside of Dec and Inc.
@@ -730,11 +755,9 @@ class MaBoSSEvaluator:
         if results is None:
             raise ValueError("Results are empty")
 
+        df_states = results.get_states_probtraj()
         if not "Time" in results.get_states_probtraj().columns:
-            df_states = results.get_states_probtraj().copy()
             df_states["Time"] = df_states.index
-        else:
-            df_states = results.get_states_probtraj().copy()
 
         df_states.columns = df_states.columns.str.replace(" ", "", regex=False)
 
@@ -787,16 +810,19 @@ class MaBoSSEvaluator:
         # print(f"DF after name selection : \n {filtered_data}")
 
         if query_input.logical_equation:
-            # print(f"DF in treatment for logical equation")
+            print(f"DF in treatment for logical equation")
             log_df = ComputeLogicalExpression.compute_logical_expression(query_input.logical_equation,
                                                                          MaBoSSEvaluator.simulation_results)
             # print(f"DF after logical equation : \n {log_df} \n Will be merged with :\n {filtered_data}\n")
+            renamed_state = MaBoSSEvaluator.simulation_results[1].rename(columns={c: f"{c}_state" for c in
+                             MaBoSSEvaluator.simulation_results[1].columns if c != 'Time'})
+
+
+            #print(f"renamed_state (evaluator): \n {renamed_state} \n")
+
             filtered_data = ComputeLogicalExpression.merge_or(filtered_data, log_df,
-                                                              MaBoSSEvaluator.simulation_results[0],
-                                                              MaBoSSEvaluator.simulation_results[1]
-                                                              .rename(columns={c: f"{c}_state" for c in
-                                                                               MaBoSSEvaluator.simulation_results[
-                                                                                   1].columns if c != 'Time'}), True)
+                                                          MaBoSSEvaluator.simulation_results[0], renamed_state
+                                                          , True)
 
         if filtered_data.empty:
             raise DataFrameIsEmpty(f"The dataframe is empty for target \"{MaBoSSEvaluator.parsed_query.target}\" "
@@ -828,24 +854,26 @@ class MaBoSSEvaluator:
                 data_out[f"Combinatory {', '.join(name_target)}"] = 0.0
                 return pd.DataFrame(data_out)
 
-            if not "Time" in sim_res.get_states_probtraj().columns:
-                df_states = sim_res.get_states_probtraj().copy()
-                df_states["Time"] = df_states.index
-            else:
-                df_states = sim_res.get_states_probtraj().copy()
-                
-            #match columns in state df
+            df_states = sim_res.get_states_probtraj()
+            if "Time" not in df_states.columns:
+                df_states = df_states.assign(Time=df_states.index)
+
+            float_cols = df_states.select_dtypes(include=['float64']).columns
+            if not float_cols.empty:
+                df_states[float_cols] = df_states[float_cols].astype('float32')
+
+            # match columns in state df
             matching_columns = [col for col in df_states.columns if all(name in col for name in name_target)]
 
             data_out[f"Combinatory {', '.join(name_target)}"] = df_states[matching_columns].sum(axis=1)
             data_out["Time"] = df_states["Time"]
-            #print(data_out)
+            # print(data_out)
             df_out = pd.DataFrame(data_out).dropna(ignore_index=True)
             # move the time column to first position
             col = df_out.pop("Time")
             df_out.insert(0, "Time", col)
 
-            #applying the constraint on the value
+            # applying the constraint on the value
             value = parsed_query_input.value
             try:
                 value = float(value)
@@ -853,16 +881,23 @@ class MaBoSSEvaluator:
                 return df_out
 
             match parsed_query_input.operator:
-                case Operators.GE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] >= value)
-                case Operators.GT: mask = (df_out[f"Combinatory {', '.join(name_target)}"] > value)
-                case Operators.LE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] <= value)
-                case Operators.LT: mask = (df_out[f"Combinatory {', '.join(name_target)}"] < value)
-                case Operators.EQ: mask = (df_out[f"Combinatory {', '.join(name_target)}"] == value)
-                case Operators.NE: mask = (df_out[f"Combinatory {', '.join(name_target)}"] != value)
-                case _: raise ValueError("Operator is not supported, try >=, >, <=, <, = or !=")
+                case Operators.GE:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] >= value)
+                case Operators.GT:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] > value)
+                case Operators.LE:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] <= value)
+                case Operators.LT:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] < value)
+                case Operators.EQ:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] == value)
+                case Operators.NE:
+                    mask = (df_out[f"Combinatory {', '.join(name_target)}"] != value)
+                case _:
+                    raise ValueError("Operator is not supported, try >=, >, <=, <, = or !=")
 
             df_out = df_out[mask]
-        else: #fixpoints
+        else:  # fixpoints
             df_fp = sim_res.get_fptable()
 
             # check all the names exists
@@ -876,24 +911,29 @@ class MaBoSSEvaluator:
             cumul_proba = matching_lines["Proba"].sum()
             data_out[f"P_cumul({','.join(name_target)})"] = [cumul_proba]
 
-
             try:
                 val = float(parsed_query_input.value)
                 match parsed_query_input.operator:
-                    case Operators.GE: data_out["Comparison value"] = (cumul_proba >= val)
-                    case Operators.GT: data_out["Comparison value"] = (cumul_proba > val)
-                    case Operators.LE: data_out["Comparison value"] = (cumul_proba <= val)
-                    case Operators.LT: data_out["Comparison value"] = (cumul_proba < val)
-                    case Operators.EQ: data_out["Comparison value"] = (cumul_proba == val)
-                    case Operators.NE: data_out["Comparison value"] = (cumul_proba != val)
-                    case _: raise ValueError()
+                    case Operators.GE:
+                        data_out["Comparison value"] = (cumul_proba >= val)
+                    case Operators.GT:
+                        data_out["Comparison value"] = (cumul_proba > val)
+                    case Operators.LE:
+                        data_out["Comparison value"] = (cumul_proba <= val)
+                    case Operators.LT:
+                        data_out["Comparison value"] = (cumul_proba < val)
+                    case Operators.EQ:
+                        data_out["Comparison value"] = (cumul_proba == val)
+                    case Operators.NE:
+                        data_out["Comparison value"] = (cumul_proba != val)
+                    case _:
+                        raise ValueError()
             except ValueError:
                 df_out = pd.DataFrame(data_out)
                 return df_out
 
             df_out = pd.DataFrame(data_out)
         return df_out
-
 
     @staticmethod
     def get_df_target(target: TargetType, fp: bool = False, get_last: bool = False):
@@ -919,7 +959,7 @@ class MaBoSSEvaluator:
                 return MaBoSSEvaluator.simulation_results[0]
             elif target.value == TargetType.STATE.value:
                 return (MaBoSSEvaluator.simulation_results[1]
-                        .rename(
+                .rename(
                     columns={c: f"{c}_state" for c in MaBoSSEvaluator.simulation_results[1].columns if c != 'Time'}))
             else:
                 raise ValueError("Target is not supported, try node or state")
@@ -946,6 +986,7 @@ class MaBoSSEvaluator:
             new_df["Time"] = df["Time"]
             for name in cols_to_check:
                 new_df[name] = df[name]
+
         else:
             new_df = df.copy()
 
@@ -984,23 +1025,23 @@ class MaBoSSEvaluator:
                             mask = (df[cols_to_check] < value).any(
                                 axis=1)  # just check the value, any column checking it as good passes the test
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (value-df[cols_to_check] > perc).any(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (value - df[cols_to_check] > perc).any(axis=1)
                     else:
                         if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] < value).all(
                                 axis=1)  # all the values on the line must be less than the value
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (value-df[cols_to_check] > perc).all(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (value - df[cols_to_check] > perc).all(axis=1)
                 case Operators.EQ:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] == value).any(axis=1)
                         else:
                             mask = (abs(df[cols_to_check] - value) < MaBoSSEvaluator.percentage_value_int/100).any(axis=1)
                     else:
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] == value).all(axis=1)
                         else:
                             mask = (abs(df[cols_to_check] - value) < MaBoSSEvaluator.percentage_value_int/100).all(axis=1)
@@ -1009,40 +1050,40 @@ class MaBoSSEvaluator:
                         if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] > value).any(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value > perc).any(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value > perc).any(axis=1)
                     else:
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] > value).all(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value > value).all(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value > value).all(axis=1)
                 case Operators.LE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] <= value).any(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value <= perc).any(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value <= perc).any(axis=1)
                     else:
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] <= value).all(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value <= perc).all(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value <= perc).all(axis=1)
                 case Operators.GE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] >= value).any(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value >= perc).any(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value >= perc).any(axis=1)
                     else:
-                        if MaBoSSEvaluator.percentage_value_int==0:
+                        if MaBoSSEvaluator.percentage_value_int == 0:
                             mask = (df[cols_to_check] >= value).all(axis=1)
                         else:
-                            perc = MaBoSSEvaluator.percentage_value_int/100
-                            mask = (df[cols_to_check]-value >= perc).all(axis=1)
+                            perc = MaBoSSEvaluator.percentage_value_int / 100
+                            mask = (df[cols_to_check] - value >= perc).all(axis=1)
                 case Operators.NE:
                     if MaBoSSEvaluator.parsed_query.target_name[0] != '*':
                         if MaBoSSEvaluator.percentage_value_int == 0:
@@ -1224,19 +1265,16 @@ class MaBoSSEvaluator:
                 base_name = col[:-6]
                 if base_name in current_cols:
                     try:
-                        # we compute the difference max between the two columns
-                        diff = (df[col].astype(float) - df[base_name].astype(float)).abs().max()
+                        diff = (df[col].head(5).astype(float) - df[base_name].head(5).astype(float)).abs().max()
                         if diff < 1e-10:
                             rename_map[col] = base_name
                     except Exception:
                         if df[col].equals(df[base_name]):
                             rename_map[col] = base_name
                 else:
-                    # if the base name is not in the columns, we keep the column so it is clearer
                     rename_map[col] = base_name
         # applying the rename
         df = df.rename(columns=rename_map)
-        # delete the columns that became identical
         df = df.loc[:, ~df.columns.duplicated()].copy()
         df.dropna(inplace=True, ignore_index=True)
         # print(df)
@@ -1349,7 +1387,7 @@ class MaBoSSEvaluator:
         i_val_mut = df_mut[node].iloc[0].round(digits)
         f_val_mut = df_mut[node].tail(10).mean().round(digits)
         peak_mut = df_mut[node].max().round(digits) if MaBoSSEvaluator.parsed_query.type == QueryType.INCREASE else \
-        df_mut[node].min().round(digits)
+            df_mut[node].min().round(digits)
         move_mut = abs(peak_mut - i_val_mut) > threshold
         return_to_normal_mut = abs(f_val_mut - i_val_mut) < threshold
 
@@ -1387,9 +1425,9 @@ class MaBoSSEvaluator:
         """
         if min_diff is None: min_diff = 0
         if direction == "increase":
-            res = val_ref < val_mut and abs(val_ref - val_mut)*100 >= min_diff
+            res = val_ref < val_mut and abs(val_ref - val_mut) * 100 >= min_diff
             if not res:
-                res = val_ref > val_mut and abs(val_ref - val_mut)*100 >= min_diff
+                res = val_ref > val_mut and abs(val_ref - val_mut) * 100 >= min_diff
                 if not res:
                     return "Stable"
                 else:
@@ -1397,9 +1435,9 @@ class MaBoSSEvaluator:
             else:
                 return "True"
         else:
-            res = val_ref > val_mut and abs(val_ref - val_mut)*100 >= min_diff
+            res = val_ref > val_mut and abs(val_ref - val_mut) * 100 >= min_diff
             if not res:
-                res = val_ref < val_mut and abs(val_ref - val_mut)*100 >= min_diff
+                res = val_ref < val_mut and abs(val_ref - val_mut) * 100 >= min_diff
                 if not res:
                     return "Stable"
                 else:
