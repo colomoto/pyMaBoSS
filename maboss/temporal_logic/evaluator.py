@@ -35,12 +35,14 @@ class MaBoSSEvaluator:
     @staticmethod
     def help():
         print("MaBoSSEvaluator help :")
+        print("The tool runs all the simulations that are required to evaluate your queries. Use the following syntax :")
+        print("MaBoSSEvaluator.querying(query, cfg_file, bnd_file, [initial_state], [output_setting])")
         print(
-            "To evaluate one or multiple queries based on ONE already run simulation (v1.0), use the following syntax :")
-        print("MaBoSSEvaluator.evaluate_query([query], results)")
-        print(
-            "query : the query to evaluate, a list of strings : [\"query1\",\"query2\"], results] , [\"query\"], results]")
-        print("results : the results of the simulation, a SimulationResults object (one that maboss returns)")
+            "query : the query to evaluate, a list of strings : [\"query1\",\"query2\"]")
+        print("cfg_file : the path to the configuration file, a string")
+        print("bnd_file : the path to the binary file, a string")
+        print("initial_state : the initial state of the simulation, a dictonary as : [{'node':'name','state':'ON/OFF'},,{'node':'name','state':'ON/OFF'}]")
+        print("output_setting : the output setting of the simulation, a list of strings : [\"output1\",\"output2\"] the nodes passed are going to be defined as external")
         print(
             "--------------------------------------------------------------------------------------------------------")
         print("HELP FOR THE QUERY")
@@ -115,6 +117,7 @@ class MaBoSSEvaluator:
             "\t\t - end:val : minimal change value for the evolution comparisons at the end of the simulation, DEFAULT: 0.1")
         print(
             "\t\t - optimum:val : minimal change value to consider reaching a min or max value in the evolution. DEFAULT 0.1")
+        print("\t\t - comb : Option to combine the probabilities of multiple nodes, will compute the value for both the nodes to be active at the same time.")
         print(
             "\t example of options: [ 5% digits:2 compare:AKT:OFF,BRAF:ON transient:threshold:0.05,start:0.1,end:0.1 ]")
         print("\t NB: the order is not relevant.")
@@ -335,6 +338,8 @@ class MaBoSSEvaluator:
 
         if output_setting:
             model_sim.network.set_output(output_setting)
+        else:
+            warnings.warn("No output setting was provided, all the nodes will be outputed, results might be enormous and the computing might not work.")
 
         res_master = model_sim.run()
         # print(f"Nodes: {res_master.get_nodes_probtraj().columns.tolist()} ")
