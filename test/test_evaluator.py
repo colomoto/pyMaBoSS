@@ -1,6 +1,7 @@
 from unittest import TestCase
 import os
 
+import numpy as np
 from IPython.core.display_functions import display
 
 from maboss.temporal_logic.evaluator import MaBoSSEvaluator
@@ -626,6 +627,8 @@ class TestEvaluator(TestCase):
             "Percentage <nil>" : ["77.30%"],
             "Increase <nil>" : ["True"],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv('test/result_increase_true.csv')
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.round(5).equals(expected.round(5))
@@ -643,6 +646,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT1--AKT3' : ["-91.55%"],
             'Increase AKT1--AKT3' : ["False"],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv('test/result_increase_false.csv')
         assert res.equals(expected)
 
@@ -659,6 +664,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT2' : ["0.00%"],
             'Increase AKT2' : ["Stable"],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv('test/result_increase_false_equality.csv')
         assert res.equals(expected)
 
@@ -675,6 +682,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT1--AKT2--AKT3' : ["-43.60%"],
             'Decrease AKT1--AKT2--AKT3' : ["True"],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv('test/result_decrease_true.csv')
         assert res.round(5).equals(expected.round(5))
 
@@ -692,7 +701,8 @@ class TestEvaluator(TestCase):
             "Percentage <nil>": ["77.30%"],
             "Decrease <nil>": ["False"],
         })
-
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         print(f"Results : \n{res}\n Expected : \n{expected}")
         res.to_csv('test/result_decrease_false.csv')
         assert res.round(5).equals(expected.round(5))
@@ -710,7 +720,8 @@ class TestEvaluator(TestCase):
             "Percentage AKT1--AKT2--AKT3": ["0.00%"],
             "Decrease AKT1--AKT2--AKT3": ["Stable"],
         })
-        print(f"Results : \n{res}\n Expected : \n{expected}")
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         assert res.equals(expected)
 
 
@@ -728,6 +739,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT1': ["3350.00%"],
             'Decrease AKT1' : ["False"]
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.round(5).equals(expected.round(5))
 
@@ -744,6 +757,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT1' : ["326.32%"],
             'Increase AKT1' : ["True"]
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         print(f"Res:\n {res}")
         res.to_csv('test/result_last_state_inc_dec_with_logical.csv')
         assert res.equals(expected)
@@ -768,6 +783,8 @@ class TestEvaluator(TestCase):
             'Percentage AKT2' : ["0.00%"],
             'Increase AKT2' : ["Stable"]
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv('test/result_last_state_inc_dec_with_single_node_state.csv')
         assert res.equals(expected)
 
@@ -791,6 +808,8 @@ class TestEvaluator(TestCase):
             "Time" : [0.0, 1.0, 2.0],
             "Combinatory AKT1, AKT2" : [0.6, 0.15, 0.11],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
 
         res= MaBoSSEvaluator.evaluate_query_combinatory(parsed_q,results)
 
@@ -818,7 +837,8 @@ class TestEvaluator(TestCase):
             "Time": [0.0],
             "Combinatory AKT1, AKT2": [0.6],
         })
-
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res = MaBoSSEvaluator.evaluate_query_combinatory(parsed_q, results)
 
         print(f"Res:\n {res}\nexpected:\n{expected}")
