@@ -316,8 +316,8 @@ class MaBoSSEvaluator:
         :param queries: a list of string each being an assertion or query to be evaluated, contains a lot of information regarding
         the simulation to which it is linked (see formula)
         :param sim_cfg: the config file of the simulation
-        :param sim_bnd: the binarie file of the simulation
-        :param initial_state: optionnal, if you want to set some nodes in certain states at the beginning of the simulation.
+        :param sim_bnd: the binary file of the simulation
+        :param initial_state: optional, if you want to set some nodes in certain states at the beginning of the simulation.
         This state will be used for all the simulations relative to the list of queries passed
         :return: a list of dataframes that are the results of the evaluations
         """
@@ -339,7 +339,7 @@ class MaBoSSEvaluator:
         if output_setting:
             model_sim.network.set_output(output_setting)
         else:
-            warnings.warn("No output setting was provided, all the nodes will be outputed, results might be enormous and the computing might not work.")
+            warnings.warn("Not passing any names in the ouput_setting might make the computing really slow and/or make it crash.")
 
         res_master = model_sim.run()
         # print(f"Nodes: {res_master.get_nodes_probtraj().columns.tolist()} ")
@@ -1428,11 +1428,16 @@ class MaBoSSEvaluator:
         :param val_mut:
         :return:
         """
+        #print(f"val mut: {val_mut}, val ref: {val_ref}")
+        val_ref = val_ref.__round__(MaBoSSEvaluator.digits)
+        val_mut = val_mut.__round__(MaBoSSEvaluator.digits)
         if min_diff is None: min_diff = 0
+        #print(f"min diff: {min_diff}")
         if direction == "increase":
-            res = val_ref < val_mut and abs(val_ref - val_mut) * 100 >= min_diff
+            res = val_ref < val_mut and (abs(val_ref - val_mut) * 100)/val_ref >= min_diff
+            #print(f"res: {res}")
             if not res:
-                res = val_ref > val_mut and abs(val_ref - val_mut) * 100 >= min_diff
+                res = val_ref > val_mut and (abs(val_ref - val_mut) * 100)/val_ref >= min_diff
                 if not res:
                     return "Stable"
                 else:
@@ -1440,9 +1445,9 @@ class MaBoSSEvaluator:
             else:
                 return "True"
         else:
-            res = val_ref > val_mut and abs(val_ref - val_mut) * 100 >= min_diff
+            res = val_ref > val_mut and (abs(val_ref - val_mut) * 100)/val_ref >= min_diff
             if not res:
-                res = val_ref < val_mut and abs(val_ref - val_mut) * 100 >= min_diff
+                res = val_ref < val_mut and (abs(val_ref - val_mut) * 100)/val_ref >= min_diff
                 if not res:
                     return "Stable"
                 else:

@@ -103,7 +103,7 @@ Optional except for `Inc` and `Dec` operations that compare two simulations of t
 * `threshold:val` : General minimal change value for the evolution comparisons *(Default: 0.05)*
 * `start:val` : Minimal change value at the beginning of the simulation *(Default: 0.1)*
 * `end:val` : Minimal change value at the end of the simulation *(Default: 0.1)*
-* `optimum:val` : Minimal change value to consider reaching a min or max value in the evolution *(Default: 0.1)*
+* `optimum:val` : Tolerated difference between the two min/max values *(Default: 0.1)*
 * **`comb`** : Option to combine the probabilities of multiple nodes, will compute the value for both the nodes to be active at the same time. *(Default: False)*
 
 
