@@ -30,5 +30,13 @@ $RUN_BINARY -m unittest test.test_types
 check "types"
 $RUN_BINARY -m unittest test.test_uppmaboss
 check "uppmaboss"
+$RUN_BINARY -m unittest test.test_compute_logical
+check "compute_logical"
+$RUN_BINARY -m unittest test.test_evaluator
+check "evaluator"
+$RUN_BINARY -m unittest test.test_extractor
+check "extractor"
+$RUN_BINARY -m unittest test.test_parser
+check "parser"
 
 exit $return_code

@@ -29,6 +29,17 @@ call:check
 %RUN_WITH% -m unittest test.test_uppmaboss
 call:check
 
+%RUN_WITH% -m unittest test.test_compute_logical
+call:check
+
+%RUN_WITH% -m unittest test.test_evaluator
+call:check
+
+%RUN_WITH% -m unittest test.test_extractor
+call:check
+
+%RUN_WITH% -m unittest test.test_parser
+call:check
 
 exit /b %FAIL%
 
