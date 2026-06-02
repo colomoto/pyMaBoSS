@@ -9,10 +9,6 @@ Date: 2026-04
 
 import pandas as pd
 import operator
-
-from numpy.f2py.auxfuncs import isattr_value
-from pandas import Series as series
-
 from pyparsing import warnings
 from maboss.temporal_logic.formulas import Operators
 from maboss.temporal_logic.custom_exceptions import ErrorInLogicalExpression

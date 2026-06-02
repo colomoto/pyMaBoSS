@@ -29,9 +29,10 @@ class Extractor(object):
         :return: a dataframe with the column that was extracted
         """
         cols_to_keep = ["Time"]
-        #print(f"column_name : {column_name}")
+        #print(f"column_name : {column_name}, is_state : {is_state}, exclusion : {exclusion}")
 
         for col_name in df.columns:
+            #print(f"col_name : {col_name}")
             if col_name == "Time": continue
 
             if not is_state:
@@ -44,7 +45,7 @@ class Extractor(object):
                 if (clean_col_name == column_name and not exclusion) or (clean_col_name != column_name and exclusion):
                     cols_to_keep.append(col_name)
 
-        return df[cols_to_keep].copy()
+        return df[cols_to_keep]
 
     @staticmethod
     def extract_column_last_states(df: pd.DataFrame, node_name: str, exclusion=False):
@@ -65,7 +66,7 @@ class Extractor(object):
                 cols_to_keep.append(col_name)
 
         #print(f"(extractors) cols_to_keep :\n {df[cols_to_keep].copy()}")
-        return df[cols_to_keep].copy()
+        return df[cols_to_keep]
 
 
     @staticmethod
@@ -81,29 +82,32 @@ class Extractor(object):
         :param is_state: the column is related to a state
         :return: a dataframe containing the rows that meet the condition on the column
         """
-        #print("Entering extract_column_numerical")
+        print("Entering extract_column_numerical")
         #print(f"df : \n {df}\n")
+        #print("col name:", column_name)
+        #print(f"is_state : {is_state}")
         if sim_res is not None:
             df_nodes = sim_res[0]
             df_states = sim_res[1]
-            df_states = df_states.replace(" ","").replace("_state","")
+            #print(f"df_states : {df_states}")
             if is_state:
                 clean_col_name = column_name.replace(" ", "").replace("_state", "")
                 #print(f"clean_col_name : {clean_col_name}")
                 df_name = Extractor.extract_column(df_states, clean_col_name, is_state=True)
+                #print(f"df_name : {df_name}")
             else:
                 df_name = Extractor.extract_column(df_nodes, column_name)
             #print(f"df_name : {df_name}")
 
-        else:
-            raise ValueError("No simulation result provided")
+        if is_state: column_name = column_name+"_state"
 
-        out_df = pd.DataFrame()
+        #print(f"column_name : {column_name}, op : {op}, value : {value}, exclusion : {exclusion}")
+
         if exclusion:
             prob_not_active = 1 - df_name[column_name]
-            #keep only the columns that check this : 1 - df_final[column_name] op value
+            #keep only the columns that check this: 1 - df_final[column_name] op value
             mask = Extractor.OPERATOR_MAP[op](prob_not_active, value)
-            #keep only the rows that check this : df.loc[mask] which only contains values that meets : 1 - df_final[column_name] op value
+            #keep only the rows that check this: df.loc[mask] which only contains values that meets : 1 - df_final[column_name] op value
             out_df = df_name.loc[mask].copy()
             #print(f"out_df : {out_df}")
         else:

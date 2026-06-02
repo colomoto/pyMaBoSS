@@ -83,8 +83,6 @@ class FormulaChecker:
         :return: nothing if everything is ok, raise an exception otherwise
         """
 
-
-
         if formula.type == QueryType.T or formula.type == QueryType.TMAX or formula.type == QueryType.TMIN:
             if formula.target == TargetType.FIXPOINT:
                 raise FormulaException(f"The fixpoint target type for this operation: {formula.type} is not supported.")
