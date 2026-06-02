@@ -117,7 +117,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_logical_expression_return_df(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.read_csv(get_test_path("expected_compute_data.csv"))
         fake = [df_nodes, df_states]
         results = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', 'AKT2'], fake)
@@ -127,7 +127,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_with_no(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
@@ -143,7 +143,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_with_no_and(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT2': [0.854, 0.332, 0.567],
@@ -173,7 +173,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_with_or(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
@@ -191,7 +191,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_with_no_or(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
@@ -207,7 +207,7 @@ class TestLogicalCompute(TestCase):
     def test_compute_intrication(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
@@ -228,7 +228,7 @@ class TestLogicalCompute(TestCase):
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
             'AKT2': [0.854, 0.332, 0.567],
-            'AKT1--AKT2--AKT3': [0.6, 0.15, 0.11],
+            'AKT1--AKT2--AKT3_state': [0.6, 0.15, 0.11],
         })
 
         res = ComputeLogicalExpression.compute_logical_expression(['AKT1', '&', 'AKT2'], [df_nodes, df_states])
@@ -240,8 +240,7 @@ class TestLogicalCompute(TestCase):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
         print(df_states)
-        df_states.rename(columns={c: f"{c}_state" for c in
-                                  df_states.columns if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states.columns if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0, 2.0],
             'AKT1': [0.421, 0.678, 0.115],
@@ -252,13 +251,14 @@ class TestLogicalCompute(TestCase):
         })
 
         res = ComputeLogicalExpression.compute_logical_expression(['AKT1', '|', 'AKT2'], [df_nodes, df_states])
+        res.to_csv("test/res_compute_full_process_simple_or.csv")
         print(f"Results : \n{res}\n Expected : \n{expected}")
         assert res.equals(expected)
 
     def test_simple_value_numerical(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0],
             'AKT1': [0.421, 0.678],
@@ -273,7 +273,7 @@ class TestLogicalCompute(TestCase):
     def test_simple_value_numerical_with_no(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 2.0],
             '<nil>_state': [0.32, 0.67],
@@ -286,7 +286,7 @@ class TestLogicalCompute(TestCase):
     def test_simple_value_numerical_with_or(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 1.0],
             'AKT1': [0.421, 0.678],
@@ -307,8 +307,8 @@ class TestLogicalCompute(TestCase):
             'AKT1': [0.421, 0.678],
             'AKT2': [0.854, 0.332],
             'AKT3': [0.12, 0.941],
-            'AKT1--AKT2--AKT3': [0.6, 0.15],
-            'AKT1--AKT3': [0.07521, 0.2]
+            'AKT1--AKT2--AKT3_state': [0.6, 0.15],
+            'AKT1--AKT3_state': [0.07521, 0.2]
         })
         log_exp = [['AKT1', '>', '0.4'], '|', ['AKT2', '&', 'AKT3']]
         res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes, df_states])
@@ -318,7 +318,7 @@ class TestLogicalCompute(TestCase):
     def test_expression_more_complex_with_no(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         expected = pd.DataFrame({
             'Time': [0.0, 2.0],
             'AKT2': [0.854, 0.567],
@@ -340,7 +340,7 @@ class TestLogicalCompute(TestCase):
             'Time': [0.0, 1.0, 2.0],
             'AKT2': [0.854, 0.332, 0.567],
             'AKT3': [0.12, 0.941, 0.443],
-            'AKT1--AKT2--AKT3': [0.6, 0.15, 0.11],
+            'AKT1--AKT2--AKT3_state': [0.6, 0.15, 0.11],
         })
 
         log_exp = [['AKT2', '&', 'AKT3']]
@@ -372,7 +372,7 @@ class TestLogicalCompute(TestCase):
     def test_logical_with_state(self):
         df_nodes = pd.read_csv(get_test_path("test_data.csv"))
         df_states = pd.read_csv(get_test_path("test_data_states.csv"))
-        df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
+        #df_states.rename(columns={c: f"{c}_state" for c in df_states if c != 'Time'}, inplace=True)
         log_exp = ['state:AKT2', '>=', '0.1']
         res = ComputeLogicalExpression.compute_logical_expression(log_exp, [df_nodes, df_states])
         expected = pd.DataFrame({

@@ -357,6 +357,7 @@ class ComputeLogicalExpression:
         :param nodes_df: the nodes dataframe used for the computing coming from the simulation results
         :return: a dataframe containing the results of the logical expression that will be later used to compute the final result
         """
+        #print("-------------")
         if df1.empty: return df2
         if df2.empty: return df1
 
@@ -373,6 +374,8 @@ class ComputeLogicalExpression:
 
         result = df1_idx.combine_first(df2_idx).reset_index()
 
+        #print(f"dataframe temp merge or:\n {result}")
+
         if keep_times_df1:
             result = result[result['Time'].isin(df1['Time'])] #if true, filter to keep only the times of df1 important for tmin and tmax
 
@@ -384,8 +387,8 @@ class ComputeLogicalExpression:
             for c in result.columns:
                 if c=='Time':continue
 
-                is_node = ComputeLogicalExpression.check_if_node(c, result[c], nodes_df, state_df)
-
+                is_node = ComputeLogicalExpression.check_if_node(c, result[c], nodes_df, state_df, result['Time'].iloc[0] if 'Time' in result.columns else None)
+                #print(f"Column: {c} is node: {is_node}")
                 if is_node: node_cols.append(c)
                 else: state_cols.append(c)
 
@@ -432,7 +435,7 @@ class ComputeLogicalExpression:
                 m_name = col + '_df1'
 
             # is the name a column node or column state ?
-            is_node = ComputeLogicalExpression.check_if_node(col, merged[m_name], nodes_df, state_df)
+            is_node = ComputeLogicalExpression.check_if_node(col, merged[m_name], nodes_df, state_df, merged['Time'].iloc[0] if 'Time' in merged.columns else None)
 
             if is_node:
                 if col not in node_cols:
@@ -476,7 +479,7 @@ class ComputeLogicalExpression:
         return df1[common_cols].head(1)
 
     @staticmethod
-    def check_if_node(name: str, col, nodes_df, state_df):
+    def check_if_node(name: str, col, nodes_df, state_df, timecode):
         """
         Method to check if a column is a node or a state. Some states are single-node, method to differentiate them.
         :param name: the name of the column
@@ -497,13 +500,19 @@ class ComputeLogicalExpression:
                 state_ref = f"{name}_state"
 
         in_states = state_ref is not None
-
+        #print(f"check if node: {name} in node: {in_nodes} and state: {in_states}")
         if in_nodes and in_states:
             try:
                 act_val = float(col.dropna().iloc[0])
-                node_ref_val = float(nodes_df[name].dropna().iloc[0])
-                state_ref_val = float(state_df[state_ref].dropna().iloc[0])
+                if timecode is not None:
+                    node_ref_val = float(nodes_df[nodes_df['Time'] == timecode][name].dropna().iloc[0])
+                    state_ref_val = float(state_df[state_df['Time'] == timecode][state_ref].dropna().iloc[0])
+                else:
+                    node_ref_val = float(nodes_df[name].dropna().iloc[0])
+                    state_ref_val = float(state_df[state_ref].dropna().iloc[0])
 
+                #print(f"act_val: {act_val}, node_ref_val: {node_ref_val}, state_ref_val: {state_ref_val}")
+                #print(f"diff act and node={abs(act_val - node_ref_val)}\ndiff act and state={abs(act_val - state_ref_val)}")
                 if abs(act_val - node_ref_val) < abs(act_val - state_ref_val): return True
                 return False
             except Exception:

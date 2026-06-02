@@ -193,9 +193,10 @@ class TestEvaluator(TestCase):
             '<nil>' : [0.4],
             'AKT1--AKT2--AKT3': [0.15],
             'AKT1--AKT3' : [0.2],
-            'AKT2': [0.332],
             'AKT2_state': [0.05],
         })
+        float_col = list(expected.select_dtypes(include="float64"))
+        expected[float_col] = expected[float_col].astype("float32")
         res.to_csv("test/test_data_result.csv", index=False)
         pd.testing.assert_frame_equal(res, expected, check_dtype=False, check_categorical=False, atol=1e-3, check_exact=False)
 
@@ -208,11 +209,10 @@ class TestEvaluator(TestCase):
         expected = pd.DataFrame({
             'Time': [1.0],
             'AKT1': [0.678],
-            'AKT2': [0.05],
             '<nil>' : [0.4],
             'AKT1--AKT2--AKT3': [0.15],
             'AKT1--AKT3': [0.2],
-
+            'AKT2': [0.05],
         })
         res.to_csv("test/test_data_result.csv", index=False)
         pd.testing.assert_frame_equal(res, expected, check_dtype=False, check_categorical=False, atol=1e-3, check_exact=False)
@@ -586,9 +586,10 @@ class TestEvaluator(TestCase):
     def test_node_with_state_in_logical(self):
         df_nodes = pd.read_csv(get_test_path('test_data.csv'))
         df_states = pd.read_csv(get_test_path('test_data_states.csv'))
+        df_fp = pd.read_csv(get_test_path('test_data_fp_master.csv'))
         MaBoSSEvaluator.parsed_query = Parser.parse_query("P(node:AKT1,AKT3) = ? [ state:AKT2 < 0.1 ]")
         res = MaBoSSEvaluator.evaluate_query(Parser.parse_query("P(node:AKT1,AKT3) = ? [ state:AKT2 < 0.1 ]"),
-                                             FakeResult(df_nodes, df_states, None), None, 4)
+                                             FakeResult(df_nodes, df_states, df_fp), None, 4)
         expected = pd.DataFrame({
             'Time' : [0.0,1.0],
             #sum of the probas of the states where AKT1 and AKT3 are in

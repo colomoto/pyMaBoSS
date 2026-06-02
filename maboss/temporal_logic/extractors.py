@@ -111,6 +111,7 @@ class Extractor(object):
             out_df = df_name.loc[mask].copy()
             #print(f"out_df : {out_df}")
         else:
+            if "_state" in column_name: column_name = column_name.replace("_state", "")
             mask = Extractor.OPERATOR_MAP[op](df_name[column_name], value)
             out_df = df_name.loc[mask].copy()
             #print(f"out_df : {out_df}")
