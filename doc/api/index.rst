@@ -8,3 +8,4 @@ API
    maboss-server.rst
    uppmaboss-api.rst
    ensemblemaboss-api.rst
+   coherency_checker-api.rst

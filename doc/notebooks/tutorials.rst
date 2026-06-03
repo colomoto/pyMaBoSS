@@ -11,3 +11,4 @@ Tutorials
    Server.ipynb
    Reproducing_Prostate_Montagud.ipynb
    CellFateScheduling.nblink
+   Tuto_temporal_logic.nblink
