@@ -220,17 +220,17 @@ jobs:
         
     - name: Build pyMaBoSS Anaconda package
       run: |
-        conda build -c conda-forge -c colomoto ./conda
+        conda build -c conda-forge -c colomoto --output-folder conda-dist ./conda
         
     - name: Upload Anaconda package to colomoto's repo
       if: github.event_name == 'release' && github.event.action == 'created' && github.repository == 'colomoto/pyMaBoSS'
       run: |
-        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u colomoto /usr/share/miniconda/conda-bld/noarch/*.conda --skip-existing
+        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u colomoto conda-dist/noarch/*.conda --skip-existing
         
     - name: Upload Anaconda package to vincent-noel's repo
       if: github.repository == 'vincent-noel/pyMaBoSS' && github.ref == 'refs/heads/master'
       run: |
-        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u vincent-noel /usr/share/miniconda/conda-bld/noarch/*.conda --skip-existing
+        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u vincent-noel conda-dist/noarch/*.conda --skip-existing
       
   pypi_pymaboss:
     name: pyMaBoSS PyPi package
