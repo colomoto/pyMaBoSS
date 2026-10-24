@@ -5,6 +5,7 @@ API
 
    pymaboss_api.rst
    sensitivity_api.rst
+   optimization_api.rst
    maboss-server.rst
    uppmaboss-api.rst
    ensemblemaboss-api.rst
