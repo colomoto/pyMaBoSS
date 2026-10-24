@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   push:
   pull_request:
-#  release:
-#    types: [created]
+  release:
+    types: [created]
     
 jobs:
   pymaboss_test:
@@ -225,12 +225,12 @@ jobs:
     - name: Upload Anaconda package to colomoto's repo
       if: github.event_name == 'release' && github.event.action == 'created' && github.repository == 'colomoto/pyMaBoSS'
       run: |
-        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u colomoto /usr/share/miniconda/conda-bld/noarch/*.conda --force;
+        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u colomoto /usr/share/miniconda/conda-bld/noarch/*.conda --skip-existing
         
     - name: Upload Anaconda package to vincent-noel's repo
       if: github.repository == 'vincent-noel/pyMaBoSS' && github.ref == 'refs/heads/master'
       run: |
-        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u vincent-noel /usr/share/miniconda/conda-bld/noarch/*.conda --force;
+        conda run -n base anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload -u vincent-noel /usr/share/miniconda/conda-bld/noarch/*.conda --skip-existing
       
   pypi_pymaboss:
     name: pyMaBoSS PyPi package
@@ -240,17 +240,18 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     
-    - name: Install twine
-      run: python -m pip install twine
-      
+    - name: Install build and twine
+      run: python -m pip install build twine
+
     - name: Build pyMaBoSS PyPi package
       run: |
-        python3 setup.py sdist bdist_wheel
-      
+        python -m build
+        python -m twine check dist/*
+
     - name: Upload pyMaBoSS PyPi package
       if: github.event_name == 'release' && github.event.action == 'created' && github.repository == 'colomoto/pyMaBoSS'
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
-        python3 -m twine upload --skip-existing dist/*
+        python -m twine upload --skip-existing dist/*
